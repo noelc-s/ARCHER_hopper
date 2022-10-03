@@ -1,0 +1,97 @@
+<robot name="3D_hopper">
+
+  <link name="torso">
+	<inertial>
+			<mass value="4.55"/>
+			<inertia ixx="0.04131" ixy="0" ixz="0" iyy="0.04093" iyz="0" izz="0.02210"/>
+		</inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.10000" radius="0.05000"/>
+      </geometry>
+    </visual>
+	</link>
+
+  <link name="wheel1">
+    <inertial>
+      <mass value="0.32"/>
+      <inertia ixx="0.00056" ixy="0" ixz="0" iyy="0.00056" iyz="0" izz="0.00111"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.02000" radius="0.05000"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="wheel2">
+    <inertial>
+      <mass value="0.32"/>
+      <inertia ixx="0.00056" ixy="0" ixz="0" iyy="0.00056" iyz="0" izz="0.00111"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.02000" radius="0.05000"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="wheel3">
+    <inertial>
+     <mass value="0.32"/>
+      <inertia ixx="0.00056" ixy="0" ixz="0" iyy="0.00056" iyz="0" izz="0.00111"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.02000" radius="0.05000"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="foot">
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.00165" ixy="0" ixz="0" iyy="0.00161" iyz="0" izz="0.00032"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <sphere radius="0.02000"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="foot_slide" type="prismatic">
+    <origin xyz="0.00000 0.00000 -0.2"/>
+    <parent link="torso"/>
+    <child link="foot"/>
+    <axis xyz="0.00000 0 1.00000"/>
+    <!-- velocity can be crazy high, Eric was unsure about the effor on the feet around 300N, FORCE LIMIT IS NOT SYMETRIC!!!, around 10cm is the maximal spring compression-->
+    <limit effort="300" velocity="10" lower="-0.1" upper="0" />
+  </joint>
+
+  <joint name="wheel1_rotation" type="revolute">
+    <parent link="torso"/>
+    <child link="wheel1"/>
+    <origin xyz="0.0776 0 0.0547" rpy = "0 0.5 0"/>
+    <axis xyz="0 0 1"/>
+    <!-- effort is in Nm, vel in rad/s, postiion should be infinity, check if null is allowed this!!! -->
+    <limit effort="1.6" velocity="600"/>
+  </joint>
+
+  <joint name="wheel2_rotation" type="revolute">
+    <parent link="torso"/>
+    <child link="wheel2"/>
+    <origin xyz="-0.0388 0.0672 0.0548" rpy = "-0.5 -0.5 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1.6" velocity="600"/>
+  </joint>
+
+  <joint name="wheel3_rotation" type="revolute">
+    <parent link="torso"/>
+    <child link="wheel3"/>
+    <origin xyz="-0.0388 -0.0672 0.0548" rpy = "0.5 -0.5 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1.6" velocity="600"/>
+  </joint>
+
+</robot>

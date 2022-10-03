@@ -1,0 +1,50 @@
+Orientation:
+        Kp: [ 50,50,50 ]
+        Kd: [ .15,.15,.15 ]
+        #Kp: [ 0,0,0 ]
+        #Kd: [ 0,0,0 ]
+Leg:
+        Kp: .5
+        Kd: .005
+        #Kp: 0
+        #Kd: 0
+SpringStiffness: 1000 # Not SO unreasonable that this is a parameter, as it is a soft contact simulator
+
+Simulator:
+  p0: [0,0,.45]
+  v0: [0,0,0]
+  rpy0: [0,0,0]
+  #w0: [10,10,10]
+  w0: [0,0,0]
+  pauseBeforeStart: 0 # in seconds
+  speed: 1
+
+Debug:
+  dt: 0.001
+  predHorizon: 1
+  # using a predHorizon > 1 with torque is not good, as the torque will be changing
+  stopIndex: 600000
+
+MPC:
+  N: 20
+  stateScaling: [10,10,0,10,10,10,0,0,0,0, # pos
+                 1,1,0,.01,.01,.01,0,0,0,0]   # vel
+  inputScaling: [.001,.001,.001,.001]
+  discountFactor: 1 # scale each future node by gamma^k
+  terminalScaling: 1
+  dt_flight: 0.01
+  dt_ground: 0.001
+  dt_replan: 0.01
+  SQP_iter: 2
+  tau_max: 1.5
+  f_max: 0
+  groundDuration: 0.07
+  heightOffset: 0.35
+  frameOffset: 0.0 # why in the world would there be a frame offset??
+  markerOffset: -0.1016 # frame is 4 inches lower than markers
+  time_between_contacts: 0.3
+  multiplier_on_deltaf: 0 # not SO unreasonable, as constraints are soft in Mujoco
+  hop_height: 0.5
+  circle_amp: -0.2
+  circle_freq: 10
+  max_vel: 1

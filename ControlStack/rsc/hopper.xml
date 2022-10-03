@@ -1,0 +1,140 @@
+<mujoco model="3D_hopper">
+    <compiler angle='radian' eulerseq='xyz' meshdir='STLs' discardvisual = "false"/>
+
+    <visual>
+        <headlight ambient="0.5 0.5 0.5"/>
+    </visual>
+
+
+    <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>
+
+    <asset>
+        <mesh name='torso'  scale='0.001 0.001 0.001' file='torso_reduced.stl'/>
+        <mesh name='wheel'  scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
+        <mesh name='foot'   scale='0.001 0.001 0.001' file='foot.stl'/>
+        <texture type='skybox' builtin='gradient' width='128' height='128' rgb1='0.4 0.6 0.8' rgb2='0 0 0'/>
+        <texture name='plane' type='2d' builtin='checker' rgb1='0.9 0.9 0.9' rgb2='0.7 0.7 0.7' width='512' height='512'/>
+        <material name='plane' reflectance='0.0' texture='plane' texrepeat='1 1' texuniform='true'/>
+    </asset>
+
+    <worldbody>
+        <geom name="plane" type="plane"  material='plane' size="10 5 0.1" rgba=".9 .9 .9 1"/>
+
+    <camera mode="fixed"/>
+        <body name="torso" pos="0 0 1">
+            <!--light diffuse=".1 .1 .1" pos="0 0 5" dir="0 0 -1" mode="trackcom" cutoff="90"/-->
+            <site name="torso_IMU" type = "sphere" size = ".03" pos= "0 0 0" rgba = ".9 0 0 1"/>
+            <geom type="cylinder" size=".05 .05" rgba=".9 .9 .9 1" />
+            <geom name ="torso_stl" type='mesh' mesh='torso' contype="0" conaffinity="0" rgba = "0.18 0.18 0.18 0.8" pos="-0.055     0.183     -0.26" xyaxes="1 -0.55 0 0 0 1" />
+            <inertial pos =" 0.0 0.0 0" mass = "4.55" diaginertia ="0.04131 0.04093 0.02210"/>
+            <freejoint name="root"/>
+
+            <body name="wheel1" pos ="0.0776 0 0.0547" zaxis="0.0776 0 0.0547">
+                <geom type="cylinder" size=".05 .01" rgba="0 0 0 0"/>
+                <geom name="wheel1_stl" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos="-0.065     -0.065     -0.013  " rgba = "0.937 .39 0 1"/>
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel1" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="wheel2" pos ="-0.0388 0.0672 0.0548" zaxis="-0.0388 0.0672 0.0548" >
+                <geom type="cylinder" size=".05 .01" rgba="0 0 0 0"/>
+                <geom name="wheel2_stl" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos="-0.065     -0.065     -0.013" rgba = "0.937 .39 0 1"/>
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel2" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="wheel3" pos ="-0.0388 -0.0672 0.0548" zaxis="-0.0388 -0.0672 0.0548">
+                <geom type="cylinder" size=".05 .01" rgba="0 0 0 0"/>
+                <geom name="wheel3_stl" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos= "-0.065     -0.065     -0.013 " rgba = "0.937 .39 0 1" />
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel3" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="foot" pos="0 0 -0.36">
+                <geom type="sphere" size="0.02" rgba=".9 .9 0 0"/>
+                <geom name="foot_stl" type='mesh' mesh='foot'  contype="0" conaffinity="0" rgba=".9 .9 .9 1"  pos="-0.023     0.05     -0.013" xyaxes="1 -0.5 0 0 0 1"/> 
+                <inertial pos =" 0 0 0" mass = "0.4" diaginertia ="0.00165 0.00161 0.00032"/>
+                <joint name="knee" type="slide" pos="0 0 0.25" axis="0 0 1" limited = "true" range ="0.0 0.1" solimplimit = "0.99 0.999 0.001 0.5 2" solreflimit=" 0.002 1"  />
+            </body>
+            
+            <!-- This is to check quat_act-->
+	          <!--body name="quat_act" pos="0 0 0" quat="0.8806    0.3646   -0.2795    0.1160">
+			  <geom type="box" size=".1 .1 .1" rgba=".9 .9 0 1"/>
+            </body-->
+
+        </body>
+
+        <body name="torso_T" pos="0 0 2"  >
+            <geom name ="torso_stl_T" type='mesh' mesh='torso' contype="0" conaffinity="0" rgba = "0.18 0.18 0.18 0" pos="-0.055     0.183     -0.26" xyaxes="1 -0.55 0 0 0 1" />
+            <inertial pos =" 0 0 0" mass = "4.55" diaginertia ="0.04131 0.04093 0.02210"/>
+            <freejoint name="root_T"/>
+
+            <body name="wheel1_T" pos ="0.0776 0 0.0547" zaxis="0.0776 0 0.0547">
+                <geom name="wheel1_stl_T" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos="-0.065     -0.065     -0.013  " rgba = "0.937 .39 0 0"/>
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel1_T" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="wheel2_T" pos ="-0.0388 0.0672 0.0548" zaxis="-0.0388 0.0672 0.0548" >
+                <geom name="wheel2_stl_T" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos="-0.065     -0.065     -0.013" rgba = "0.937 .39 0 0"/>
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel2_T" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="wheel3_T" pos ="-0.0388 -0.0672 0.0548" zaxis="-0.0388 -0.0672 0.0548">
+                <geom name="wheel3_stl_T" type='mesh' mesh='wheel' contype="0" conaffinity="0" pos= "-0.065     -0.065     -0.013 " rgba = "0.937 .39 0 0" />
+                <inertial pos =" 0 0 0" mass = "0.32" diaginertia ="0.00056 0.00056 0.00111"/>
+                <joint name="joint_wheel3_T" type="hinge" pos="0 0 0" axis="0 0 1" />
+            </body>
+
+            <body name="foot_T" pos="0 0 -0.36">
+                <geom name="foot_stl_T" type='mesh' mesh='foot'  contype="0" conaffinity="0" rgba=".9 .9 .9 0"  pos="-0.023     0.05     -0.013" xyaxes="1 -0.5 0 0 0 1"/> 
+                <inertial pos =" 0 0 0" mass = "0.4" diaginertia ="0.00165 0.00161 0.00032"/>
+                <joint name="knee_T" type="slide" pos="0 0 0.25" axis="0 0 1" limited = "true" range ="0.0 0.1" solimplimit = "0.99 0.999 0.001 0.5 2" solreflimit=" 0.002 1"  />
+            </body>
+            
+            <!-- This is to check quat_act-->
+	          <!--body name="quat_act" pos="0 0 0" quat="0.8806    0.3646   -0.2795    0.1160">
+			  <geom type="box" size=".1 .1 .1" rgba=".9 .9 0 1"/>
+            </body-->
+
+        </body>
+        <body name="target" pos="0 0 0" >
+		<geom type="ellipsoid" size=".05 .05 .01" contype="0" conaffinity="0" rgba = "0.8588    0.3176    0.3176  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+        <body name="target1" pos="0 0 0" >
+		<geom type="ellipsoid" size=".02 .02 .005" contype="0" conaffinity="0" rgba = "0.8706    0.7059    0.3216  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+        <body name="target2" pos="0 0 0" >
+		<geom type="ellipsoid" size=".02 .02 .005" contype="0" conaffinity="0" rgba = "0.8706    0.7059    0.3216  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+        <body name="target3" pos="0 0 0" >
+		<geom type="ellipsoid" size=".02 .02 .005" contype="0" conaffinity="0" rgba = "0.8706    0.7059    0.3216  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+        <body name="target4" pos="0 0 0" >
+		<geom type="ellipsoid" size=".02 .02 .005" contype="0" conaffinity="0" rgba = "0.8706    0.7059    0.3216  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+        <body name="target5" pos="0 0 0" >
+		<geom type="ellipsoid" size=".02 .02 .005" contype="0" conaffinity="0" rgba = "0.8706    0.7059    0.3216  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+	</body>
+
+    </worldbody>
+    <actuator>
+        <position name="position_actuator" joint = "knee" kp ="11732" forcerange = "0 250"/>
+        <motor name="wheel1_actuator" joint = "joint_wheel1" ctrlrange = "-1.6 1.6"/>
+        <motor name="wheel2_actuator" joint = "joint_wheel2" ctrlrange = "-1.6 1.6"/>
+        <motor name="wheel3_actuator" joint = "joint_wheel3" ctrlrange = "-1.6 1.6"/>
+    </actuator>
+</mujoco>
