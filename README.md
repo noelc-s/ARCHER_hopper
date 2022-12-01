@@ -18,4 +18,4 @@ This directory contains all of the code for controlling and simulating the robot
 This directory contains the code for the hardware platform.
 
 ### Connection Diagram
-(ConnectionDiagram.png)
+![Connection Diagram](./ConnectionDiagram.png)
