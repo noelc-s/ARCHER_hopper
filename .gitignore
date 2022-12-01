@@ -6,4 +6,5 @@ data
 *.asv
 *.png
 *.svg
+!ConnectionDiagram.png
 

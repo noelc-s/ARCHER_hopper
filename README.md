@@ -16,3 +16,6 @@ This directory contains all of the code for controlling and simulating the robot
 
 ### HardwareStack
 This directory contains the code for the hardware platform.
+
+### Connection Diagram
+(ConnectionDiagram.png)
