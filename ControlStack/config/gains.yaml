@@ -1,56 +1,51 @@
-Orientation:
-        Kp: [ 50,50,50 ]
-        Kd: [ .15,.15,.15]
-        #Kp: [ 5.0,5.0,5.0 ]
-        #Kd: [ .015,.015,.015 ]
-        #Kp: [ 0,0,0 ]
-        #Kd: [ 0,0,0 ]
-Leg:
-        Kp: 2 
-        Kd: .02
-        #Kp: 0
-        #Kd: 0
-SpringStiffness: 1000 # Not SO unreasonable that this is a parameter, as it is a soft contact simulator
+# Gains associated with the low-level controller
+LowLevel:
+  # For the reaction wheeels multiplying orientation error and angular rate
+  Orientation:
+    Kp: [ 50,50,50 ]
+    Kd: [ .15,.15,.15 ]
+  # For the leg multiplying deflection error and velocity
+  Leg:
+    Kp: .5
+    Kd: .005
+  dt: 0.001
 
 Simulator:
-  p0: [0,0,1]
-  v0: [0,0,0]
-  rpy0: [0,0,0]
-  #w0: [10,10,10]
-  w0: [0,0,0]
-  pauseBeforeStart: 5 # in seconds
-  speed: 1
-  pert_force_x: [100, -100,100,-100]
-  pert_force_y: [0,0, 100,100]
-  #pert_force_x: [0, 00, 00]
-  #pert_force_y: [0, 00, 00]
-  pert_start: [3000, 8000, 11000,14000]
-  pert_end: [3150, 8150, 11150, 14150]
+  p0: [0,0,0.5]         # initial position [x,y,z]
+  v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
+  rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
+  w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
+  pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
+  speed: 1              # speed of simulation [multiplier]
 
-Debug:
-  dt: 0.001
-  predHorizon: 1
-  # using a predHorizon > 1 with torque is not good, as the torque will be changing
-  stopIndex: 600000
-
+  # Perturbation Forces
+  pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
+  pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
+  # pert_force_x: [100, -100,100,-100]
+  # pert_force_y: [0,0, 100,100]
+  pert_start: [3000, 8000, 11000,14000] # start time for force [milliseconds]
+  pert_end: [3150, 8150, 11150, 14150]  # end time for force [milliseconds
+  simEnd: 10000.0               # time to end the simulation [s]
+  
 MPC:
-  N: 20
-  stateScaling: [20,20,0,8,8,8,0,0,0,0, # pos
-                 2.5,2.5,0,.03,.03,.03,0,0,0,0]   # vel
-  inputScaling: [.01,.01,.01,.01]
-  discountFactor: 1 # scale each future node by gamma^k
-  terminalScaling: 1
-  dt_flight: 0.01
-  dt_ground: 0.001
-  dt_replan: 0.01
-  SQP_iter: 2
-  tau_max: 15
-  f_max: 0
-  groundDuration: 0.07
-  heightOffset: 0.35
-  time_between_contacts: 0.3
-  multiplier_on_deltaf: 0 # not SO unreasonable, as constraints are soft in Mujoco
+  N: 20                                                 # nodes of MPC horizon
+  stateScaling: [20,20,0,8,8,8,0,0,0,0,                 # cost function scaling on state
+                 2.5,2.5,0,.03,.03,.03,0,0,0,0]         # cost function scaling on vel
+  inputScaling: [.01,.01,.01,.01]                       # cost function scaling on input
+  discountFactor: 1                                     # scale each future node by gamma^k
+  terminalScaling: 1                                    # scaling of terminal state
+  dt_flight: 0.01                                       # dt of flight phase [s]
+  dt_ground: 0.001                                      # dt of ground phase [s]
+  dt_replan: 0.01                                       # dt to run MPC at
+  SQP_iter: 2                                           # number of SQP iterations
+  tau_max: 1.5                                          # maximum control input
+  f_max: 0                                              # maximum force applied to foot
+  groundDuration: 0.07                                  # duration of ground phase
+  heightOffset: 0.35                                    # offset from torso frame (center of flywheels) to uncompressed foot
+  time_between_contacts: 0.3                            # approximate time between contact events
+  multiplier_on_deltaf: 0 # not so unreasonable, as constraints are soft in Mujoco
   hop_height: 0.5
   circle_amp: -1
   circle_freq: 20
   max_vel: 5
+SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator

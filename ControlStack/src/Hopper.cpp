@@ -54,10 +54,10 @@ Hopper::Hopper() {
 
     // Read gain yaml
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
-    std::vector<scalar_t> orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-    gains.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
-    gains.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
+    std::vector<scalar_t> orientation_kp = config["LowLevel"]["Orientation"]["Kp"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> orientation_kd = config["LowLevel"]["Orientation"]["Kd"].as<std::vector<scalar_t>>();
+    gains.leg_kp = config["LowLevel"]["Leg"]["Kp"].as<scalar_t>();
+    gains.leg_kd = config["LowLevel"]["Leg"]["Kd"].as<scalar_t>();
 
     gains.orientation_kp << orientation_kp[0], orientation_kp[1], orientation_kp[2];
     gains.orientation_kd << orientation_kd[0], orientation_kd[1], orientation_kd[2];
@@ -112,9 +112,6 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
 
     quat_t quat_a_ = quat;
 
-    //quat_d_ *= quat_actuator;
-    //quat_a_ *= quat_actuator;
-
     vector_4t quat_d;
     vector_4t quat_a;
     quat_d << quat_d_.w(), quat_d_.x(), quat_d_.y(), quat_d_.z();
@@ -124,9 +121,6 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     delta_quat << quat_a[0] * quat_d.segment(1, 3) - quat_d[0] * quat_a.segment(1, 3) -
                   cross(quat_a.segment(1, 3)) * quat_d.segment(1, 3);
      
-    //auto quat_ = manif::SO3<scalar_t>(quat_d_.inverse()*quat_a_);
-    //manif::SO3Tangent<scalar_t> xi = quat_.log();
-    //delta_quat << xi.coeffs();
     matrix_3t Kp, Kd;
     Kp.setZero();
     Kd.setZero();
@@ -147,9 +141,8 @@ vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, cons
     switch(d)
     {
         case flight: {
+		//Not constrained dynamics for flight, because that would fix the foot position
 		aba(model, data, q, v, a);
-                //initConstraintDynamics(model, data, contact_model_flight);
-		//constraintDynamics(model, data, q, v, a, contact_model_flight, contact_data_flight);
     		x_dot << v.segment(0,6),0,v.segment(7,3), data.ddq;
 		break;
 	}
@@ -179,9 +172,8 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
     switch(d)
     {
         case flight: {
+		//Not constrained dynamics for flight, because that would fix the foot position
 		computeABADerivatives(model, data, q,v,a);
-                //initConstraintDynamics(model, data, contact_model_flight);
-		//computeConstraintDynamicsDerivatives(model, data, contact_model_flight, contact_data_flight);
 		springJacobian.setZero();
 		break;
 	}
@@ -200,7 +192,6 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
 	     break;
 	}
     }
-    // TODO: verify this jacobian
     A << matrix_t::Zero(10,10),matrix_t::Identity(10,10), data.ddq_dq+springJacobian, data.ddq_dv;
 
     matrix_t B_mat(10,4);
@@ -226,6 +217,7 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
 
 void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc, const float dt,
                                            matrix_t &Ad, matrix_t &Bd, matrix_t &Cd) {
+    // Exact discretization
     int dim = Ac.cols() + Bc.cols() + Cc.cols();
     matrix_t M = matrix_t::Zero(dim, dim);
     M << Ac, Bc, Cc, Eigen::Matrix<scalar_t, Eigen::Dynamic,Eigen::Dynamic>::Zero( Bc.cols() + Cc.cols(), dim);
@@ -235,16 +227,16 @@ void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc,
     Ad << Me.block(0, 0, Ac.rows(), Ac.cols());
     Bd << Me.block(0, Ac.cols(), Bc.rows(), Bc.cols());
     Cd << Me.block(0, Ac.cols() + Bc.cols(), Cc.rows(), Cc.cols());
+
+    // One step euler prediction
     //Ad = (matrix_t::Identity(Ac.rows(), Ac.cols()) + Ac*dt);
     //Bd = Bc*dt;
     //Cd = Cc*dt;
 };
 
 vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
-    //std::cout << "q: " << q << std::endl;
-    //std::cout << "d: " << d << std::endl;
-      const double mu0 = 0.;
-  const double r_coeff = 0; // restitution coeff
+    const double mu0 = 0.;
+    const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
     switch(d)
     {
         case flight_ground: {
@@ -321,7 +313,6 @@ void Hopper::DiscreteDynamics(const vector_t &x, const vector_t &u, const domain
             break;
         }
         case ground_flight: {
-            //throw std::invalid_argument("Not implemented yet!!");
             Ddelta_f(x.segment(0, 11), x.segment(11, 10), d, Ad, Bd, Cd,q0);
             break;
         }

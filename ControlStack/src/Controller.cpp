@@ -108,37 +108,26 @@ void setupSocket() {
 }
 
 struct Parameters {
-    std::vector<scalar_t> orientation_kp;
-    std::vector<scalar_t> orientation_kd;
-    scalar_t leg_kp;
-    scalar_t leg_kd;
+    //std::vector<scalar_t> orientation_kp;
+    //std::vector<scalar_t> orientation_kd;
+    //scalar_t leg_kp;
+    //scalar_t leg_kd;
     scalar_t dt;
     scalar_t MPC_dt_flight;
     scalar_t MPC_dt_ground;
     scalar_t MPC_dt_replan;
-    int predHorizon;
+    // int predHorizon;
     int stop_index; 
-    vector_t gains;
+    //vector_t gains;
 } p;
 
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
+    // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
-    p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-    p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-    p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
-    p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
-    p.dt = config["Debug"]["dt"].as<scalar_t>();
+    p.dt = config["LowLevel"]["dt"].as<scalar_t>();
     p.MPC_dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
     p.MPC_dt_flight = config["MPC"]["dt_flight"].as<scalar_t>();
     p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
-    p.predHorizon = config["Debug"]["predHorizon"].as<int>();
-    p.stop_index = config["Debug"]["stopIndex"].as<int>();
-    p.gains.resize(8);
-    p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
-            p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
-            p.leg_kp, p.leg_kd;
-
-        // Read gain yaml
     mpc_p.N = config["MPC"]["N"].as<int>();
     mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
     mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();

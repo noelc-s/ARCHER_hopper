@@ -6,4 +6,6 @@ data
 *.asv
 *.png
 *.svg
+/docs/**
+!/docs/README.md
 

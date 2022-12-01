@@ -1,8 +1,6 @@
 #include<stdlib.h>
 #include <iostream>
 #include<stdbool.h> //for bool
-//#include<unistd.h> //for usleep
-//#include <math.h>
 
 #include "mujoco.h"
 #include "GLFW/glfw3.h"
@@ -28,8 +26,11 @@ using namespace Eigen;
 
 IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
+///////////////////////////////////////////////////////////////////////////////////////
+////////////////// All of this first stuff is just Mujoco example code ////////////////
+///////////////////////////////////////////////////////////////////////////////////////
+
 //simulation end time
-double simend = 50;
 char path[] = "../rsc/";
 char xmlfile[] = "hopper.xml";
 
@@ -226,32 +227,36 @@ int main(int argc, const char **argv) {
     /* initialize random seed: */
     srand(time(NULL));
 
-    // Socket Stuff
+    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////// This is where custom code deviates from Mujoco examples ///////////////
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    // Setup the socket to communicate between the simulator and the controller
     int *new_socket = new int;
     int valread;
     struct sockaddr_in serv_addr;
+    // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
         return -1;
     }
-
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
-
     // Convert IPv4 and IPv6 addresses from text to binary form
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("\nInvalid address/ Address not supported \n");
         return -1;
     }
-
     if (connect(*new_socket, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         printf("\nConnection Failed \n");
         return -1;
     }
 
+    // Read the gain matrix from the yaml file
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
     std::vector<scalar_t> p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> v0 = config["Simulator"]["v0"].as<std::vector<scalar_t>>();
@@ -263,11 +268,9 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_force_y = config["Simulator"]["pert_force_y"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
+    scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
 
-    // Initial condition
-    //d->qpos[4] = (rand() % 1000) / 5000.0;
-    //d->qpos[5] = (rand() % 1000) / 5000.0;
-    //d->qpos[6] = (rand() % 1000) / 5000.0;
+    // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
     d->qpos[1] = p0[1];
     d->qpos[2] = p0[2];
@@ -280,6 +283,8 @@ int main(int argc, const char **argv) {
     d->qvel[3] = w0[0];
     d->qvel[4] = w0[1];
     d->qvel[5] = w0[2];
+
+    //////////////////////////////// Standard Mujoco Setup //////////////////////////////////////
     // get framebuffer viewport
     mj_step(m, d); // populate state info
     mjrRect viewport = {0, 0, 0, 0};
@@ -290,19 +295,13 @@ int main(int argc, const char **argv) {
     mjr_render(viewport, &scn, &con);
     // swap OpenGL buffers (blocking call due to v-sync)
     glfwSwapBuffers(window);
-    
     // process pending GUI events, call GLFW callbacks
     glfwPollEvents();
     sleep(pauseBeforeStart);
-
     c = d->contact;
-    
+    // Instantiate perturbation object
     mjvPerturb* pert = new mjvPerturb();
     pert->select = 1;
-    //pert->localpos[0] = 1;
-    //pert->localpos[1] = 0;
-    //pert->localpos[2] = 0;
-    //pert->scale = 1;
     pert->active = 1;
     opt.flags[mjVIS_PERTFORCE] = 1;
     int iter = 0;
@@ -314,22 +313,13 @@ int main(int argc, const char **argv) {
         //  this loop will finish on time for the next frame to be rendered at 60 fps.
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = d->time;
-
-
 	
-	//m->vis.scale.forcewidth = 0.1;
-        while (d->time - simstart < 1.0*speed / 60.0) {
+        while (d->time - simstart < speed / 60.0) {
             //use this for sending actual states
             mjtNum *quat;
             mjtNum *pos;
             quat = d->xquat;
             pos = d->xpos;
-            //pert->refpos[0] = .1;
-            //pert->refpos[1] = 0;
-            //pert->refpos[2] = pos[3+2];
-	    //mjv_initPerturb(m,d,&scn,pert);
-            //pert->refpos[0] = pos[3]+.1;
-            //pert->refpos[2] = pos[3+2];
 	    d->xfrc_applied[6] = 0;
 	    d->xfrc_applied[7] = 0;
 	    for (int i = 0; i < pert_force_x.size(); i++) {
@@ -338,10 +328,9 @@ int main(int argc, const char **argv) {
 		  d->xfrc_applied[7] += pert_force_y[i];
 		}
 	    }
-	      //mjv_applyPerturbForce(m, d, pert);
 
-            // State Message:
-            // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed
+            // Pack the state message:
+            // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
             int ind = 0;
             TX_state[0] = d->time;
             ind++;
@@ -358,6 +347,7 @@ int main(int argc, const char **argv) {
                 ind++;
             }
 
+	    // Threshold for registering contact
             scalar_t contact_threshold = -0.003;
             TX_state[ind] = (c[0].dist < contact_threshold);
             ind++;
@@ -366,59 +356,53 @@ int main(int argc, const char **argv) {
             ind++;
             TX_state[ind] = d->qvel[9];
             ind++;
-
             TX_state[ind] = d->qvel[6];
             ind++;
             TX_state[ind] = d->qvel[7];
             ind++;
             TX_state[ind] = d->qvel[8];
             ind++;
-	    //for (int i = 0; i < 20; i++) 
-	//	    std::cout << TX_state[i] << std::endl;
 
             //send current states to the controller
             send(*new_socket, &TX_state, sizeof(TX_state), 0);
             read(*new_socket, &RX_torques, sizeof(RX_torques));
-
-            Map<vector_t> torques(RX_torques, 23);
-            //std::cout << "Torques: " << torques.transpose().format(CleanFmt) << std::endl;
 
             //override the communication based on the received toruqe comands from ctrl
             d->ctrl = RX_torques;
 
             // Take integrator step
             mj_step(m, d);
-	   	    iter++;
+	    iter++;
         } 
+
+	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
 	static int body_offset = 11;
 	static int vel_offset = 10;
-	    d->qpos[body_offset+0] = RX_torques[4];
- 	    d->qpos[body_offset+1] = RX_torques[5];
-	    d->qpos[body_offset+2] = RX_torques[6];
-	    d->qvel[vel_offset+0] = 0;
-	    d->qvel[vel_offset+1] = 0;
-	    d->qvel[vel_offset+2] = 0;
-	    // // Still not sure about the convention...
-	    d->qpos[body_offset+3] = RX_torques[7];
-	    d->qpos[body_offset+4] = RX_torques[8];
-	    d->qpos[body_offset+5] = RX_torques[9];
-	    d->qpos[body_offset+6] = RX_torques[10];
+	d->qpos[body_offset+0] = RX_torques[4];
+ 	d->qpos[body_offset+1] = RX_torques[5];
+	d->qpos[body_offset+2] = RX_torques[6];
+	d->qvel[vel_offset+0] = 0;
+	d->qvel[vel_offset+1] = 0;
+	d->qvel[vel_offset+2] = 0;
+	d->qpos[body_offset+3] = RX_torques[7];
+	d->qpos[body_offset+4] = RX_torques[8];
+	d->qpos[body_offset+5] = RX_torques[9];
+	d->qpos[body_offset+6] = RX_torques[10];
 
-	    d->qpos[22] = RX_torques[11];
-	    d->qpos[23] = RX_torques[12];
-	    d->qpos[24] = RX_torques[13];
-	    d->qpos[25] = RX_torques[14];
-	    d->qpos[26] = RX_torques[15];
-	    d->qpos[27] = RX_torques[16];
-	    d->qpos[28] = RX_torques[17];
-	    d->qpos[29] = RX_torques[18];
-	    d->qpos[30] = RX_torques[19];
-	    d->qpos[31] = RX_torques[20];
-	    d->qpos[32] = RX_torques[21];
-	    d->qpos[33] = RX_torques[22];
-	    //d->qpos[23-1] = 0;
-	    //d->qpos[23-1] = 0;
+	d->qpos[22] = RX_torques[11];
+	d->qpos[23] = RX_torques[12];
+	d->qpos[24] = RX_torques[13];
+	d->qpos[25] = RX_torques[14];
+	d->qpos[26] = RX_torques[15];
+	d->qpos[27] = RX_torques[16];
+	d->qpos[28] = RX_torques[17];
+	d->qpos[29] = RX_torques[18];
+	d->qpos[30] = RX_torques[19];
+	d->qpos[31] = RX_torques[20];
+	d->qpos[32] = RX_torques[21];
+	d->qpos[33] = RX_torques[22];
 
+	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
         mjrRect viewport = {0, 0, 0, 0};
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
