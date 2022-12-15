@@ -1,9 +1,9 @@
 %% Read Data
 clear;clc;%clf;
-% A = readmatrix('../data/data.csv');
-A = readmatrix('../data/data_hardware.csv');
+A = readmatrix('../data/data.csv');
+% A = readmatrix('../data/data_hardware.csv');
 % A = readmatrix('../data/data_hardware_test39.csv');
-sim = false;
+sim = true;
 if sim
     param = yaml.loadFile("../config/gains.yaml");
 else
@@ -11,10 +11,11 @@ else
 end
 
 
-dt = param.Debug.dt;
+% dt = param.Debug.dt;
+dt = 0.01;
 N = param.MPC.N;
 % MPC_dt = param.MPC.dt;
-ph = param.Debug.predHorizon;
+% ph = param.Debug.predHorizon;
 
 ind = 1;
 t = (A(:,ind)-A(1,ind));        ind=ind+1; % Sample time
