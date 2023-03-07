@@ -2,11 +2,14 @@
 LowLevel:
   # For the reaction wheeels multiplying orientation error and angular rate
   Orientation:
+    #Kp: [200, 200, 200]
     Kp: [ 50,50,50 ]
     Kd: [ .15,.15,.15 ]
   # For the leg multiplying deflection error and velocity
   Leg:
+    #Kp: 10
     Kp: .5
+    #Kd: .01
     Kd: .005
   dt: 0.001
 
@@ -19,10 +22,10 @@ Simulator:
   speed: 1              # speed of simulation [multiplier]
 
   # Perturbation Forces
-  pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
-  pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
-  # pert_force_x: [100, -100,100,-100]
-  # pert_force_y: [0,0, 100,100]
+  # pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
+  # pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
+  pert_force_x: [30, -30,10,-10]
+  pert_force_y: [0,0, 10,10]
   pert_start: [3000, 8000, 11000,14000] # start time for force [milliseconds]
   pert_end: [3150, 8150, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]

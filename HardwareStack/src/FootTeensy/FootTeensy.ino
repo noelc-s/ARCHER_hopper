@@ -19,7 +19,7 @@ Bia bia(dENC,elmo,cBia);
 
 uint32_t T1, Th;
 float tau_max = 10;
-int numHops = 50;
+int numHops = 200;
 volatile uint32_t T0,nF,pF,rt;
 volatile float rb,wb,xf,vf,u;
 float d0 = 0.015; // spring deflection // 0.15
@@ -137,10 +137,12 @@ void loop() {
   {std::lock_guard<std::mutex> lck(state_mtx);
   contact = 0;
   }
-  h++;
-  if(h>=numHops){
-    exitProgram();
-  }
+//  h++;
+//  Serial.print("Num hops: ");
+//  Serial.println(numHops);
+//  if(h>=numHops){
+//    exitProgram();
+//  }
 }
 
 void compPhase() {
@@ -165,15 +167,17 @@ void compPhase() {
     bia.updateState(2,x, v); // x and v are spring deflection in mm     
     }
 
-    float kp = 0.4;
-    float kd = 0.04;
+    float kp = 1.0;
+    float kd = 0.08;
     float x_star = 30;
     u = -kp*(x - x_star) - kd*v;
+
 //    Serial.println(x);
-    if (theta-theta_0 >= 0.04) {
-      exitProgram();
-    }
+//    if (theta-theta_0 >= 0.04) {
+//      exitProgram();/
+//    }/
     rt = elmo.sendTC(-u+u0,4);
+    Serial.println(-u+u0);
 
     if(i==0){                 // Waiting for compression
       if(x>8.0){             // Check for enough deflection

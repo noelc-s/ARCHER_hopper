@@ -89,7 +89,7 @@ void Hopper::updateState(vector_t state) {
     }
     if (contact == 1 && state[ind] <= .1) {
 	    last_flight_time = t;
-    }
+   }
     if (state[ind] <= .1) {
             contact = 0;
     } else {
@@ -106,8 +106,23 @@ void Hopper::updateState(vector_t state) {
     v << vel, omega, leg_vel, wheel_vel;
 };
 
+// Here, is where the input torque is computed, I need to insert my CLF in here
+// Just note that I need to get current state data somehow.
+// Plan: I can compute my Q and P matrices to satisfy CARE and put them in  YAML config file,
+// From there import into this src file and compute the LQR solution to the output dynamics CLF. 
 void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des) {
+    
+    // *** Here I am going to implement the contorl Lyapunov Function ***
+    
+    // turn acutal desired parameters into actual vectors	
+    // vector_3t omega_a;
+    // quat_t quat_a = quat;
 
+    // vector_4t quat_d;
+    // vector_4t quat_a;
+    //quat_d << quat_d_.w()
+   
+    // Noel's PD controller on quaternion error
     vector_3t omega_a;
 
     quat_t quat_a_ = quat;

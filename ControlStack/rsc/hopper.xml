@@ -132,9 +132,9 @@
 
     </worldbody>
     <actuator>
-        <position name="position_actuator" joint = "knee" kp ="11732" forcerange = "0 250"/>
-        <motor name="wheel1_actuator" joint = "joint_wheel1" ctrlrange = "-1.6 1.6"/>
-        <motor name="wheel2_actuator" joint = "joint_wheel2" ctrlrange = "-1.6 1.6"/>
-        <motor name="wheel3_actuator" joint = "joint_wheel3" ctrlrange = "-1.6 1.6"/>
+        <position name="position_actuator" joint = "knee" kp ="11732"/>
+	<motor name="wheel1_actuator" joint = "joint_wheel1"/>
+	<motor name="wheel2_actuator" joint = "joint_wheel2"/>
+	<motor name="wheel3_actuator" joint = "joint_wheel3"/>
     </actuator>
 </mujoco>

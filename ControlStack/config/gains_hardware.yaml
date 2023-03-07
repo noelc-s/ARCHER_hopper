@@ -26,12 +26,12 @@ Debug:
   stopIndex: 600000
 
 MPC:
-  N: 20
+  N: 40
   stateScaling: [10,10,0,10,10,10,0,0,0,0, # pos
                  1,1,0,.01,.01,.01,0,0,0,0]   # vel
   inputScaling: [.001,.001,.001,.001]
   discountFactor: 1 # scale each future node by gamma^k
-  terminalScaling: 1
+  terminalScaling: 10
   dt_flight: 0.01
   dt_ground: 0.001
   dt_replan: 0.01

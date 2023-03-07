@@ -1,9 +1,9 @@
 %% Read Data
 clear;clc;%clf;
-A = readmatrix('../data/data.csv');
-% A = readmatrix('../data/data_hardware.csv');
+% A = readmatrix('../data/data.csv');
+A = readmatrix('../data/data_hardware.csv');
 % A = readmatrix('../data/data_hardware_test39.csv');
-sim = true;
+sim = false;
 if sim
     param = yaml.loadFile("../config/gains.yaml");
 else

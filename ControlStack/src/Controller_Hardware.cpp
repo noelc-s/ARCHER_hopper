@@ -287,6 +287,7 @@ int main(int argc, char **argv){
     desstate[8] = 0;
     desstate[9] = 0;
 
+    std::cout << "Setting up Socket comms" << std::endl;
     signal(SIGINT, signal_callback_handler);
     setupSocket();
     std::thread thread_object(getStateFromESP);
