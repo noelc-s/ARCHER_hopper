@@ -1,3 +1,9 @@
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/joystick.h>
+
 // server program for udp connection
 #include <stdio.h>
 #include <fstream>
@@ -64,6 +70,70 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
         input = future.get();
    command << input;
   }
+}
+
+// Reads a joystick event from the joystick device.
+// Returns 0 on success. Otherwise -1 is returned.
+int read_event(int dev, struct js_event *event)
+{
+    ssize_t bytes;
+    bytes = read(dev, event, sizeof(*event)); // read bytes sent by controller
+
+    if (bytes == sizeof(*event))
+        return 0;
+
+    /* Error, could not read full event. */
+    return -1;
+}
+
+// Current state of an axis.
+struct axis_state {
+    short x, y;
+};
+
+size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
+{
+    size_t axis = event->number / 2;
+
+    if (axis < 3)
+    {
+        if (event->number % 2 == 0)
+            axes[axis].x = event->value;
+        else
+            axes[axis].y = event->value;
+    }
+
+    return axis;
+}
+
+void getJoystickInput(vector_3t &command, std::condition_variable & cv, std::mutex & m)
+{
+  vector_3t input; input.setZero();
+  std::chrono::seconds timeout(50000);
+  const char *device;
+  int js;
+  struct js_event event;
+  struct axis_state axes[3] = {0};
+  size_t axis;
+
+  // find which device is joystick. (you can have multiple of these)
+  device = "/dev/input/js0";
+
+  // integer value of joystick
+  js = open(device, O_RDONLY); 
+  if (js == -1)
+      perror("Could not open joystick");
+
+  /* This loop will exit if the controller is unplugged. */
+  while (read_event(js, &event) == 0)
+  {
+    axis = get_axis_state(&event, axes);
+    if (axis == 0)
+      command << axes[0].x, axes[1].y, 0;
+  }
+
+  close(js);
+  return 0;
 }
 
     int *server_fd = new int;
@@ -207,7 +277,7 @@ int main() {
     std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(command), std::ref(cv), std::ref(m));
     matrix_t x_pred(21,2);
     matrix_t u_pred(4,1);
 
