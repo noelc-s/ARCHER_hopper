@@ -1,4 +1,4 @@
-// Joystick code from: Jason White
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -275,7 +275,7 @@ int main() {
     std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(command), std::ref(cv), std::ref(m));
     matrix_t x_pred(21,2);
     matrix_t u_pred(4,1);
 
