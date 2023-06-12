@@ -34,12 +34,14 @@ using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
 using matrix_3t = Eigen::Matrix<float, 3, 3>;
 using quat_t = Eigen::Quaternion<float>;
 
-//For rotation about x and y
-#define kp_y 100.0
+// For rotation about x and y (this is what Noel and I did the other day)
+// The proportional and derivative gain should both be the same sine the dynamics are coupled
+#define kp_y 100.0      
 #define kp_rp 100.0
 #define kd_y 2.0
 #define kd_rp 2.0
 
+// We insrted this bias because the true CG is a little of center
 #define r_offset 0.005
 #define p_offset 0.023
 

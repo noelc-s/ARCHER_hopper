@@ -7,10 +7,12 @@ LowLevel:
     Kd: [ .15,.15,.15 ]
   # For the leg multiplying deflection error and velocity
   Leg:
-    #Kp: 10
-    Kp: .5
-    #Kd: .01
+    # Sim Limits for Foot
+    Kp: 5
     Kd: .005
+    # Hardware Limits for Foot
+    # Kp: .5
+    # Kd: .005
   dt: 0.001
 
 Simulator:
@@ -41,7 +43,8 @@ MPC:
   dt_ground: 0.001                                      # dt of ground phase [s]
   dt_replan: 0.01                                       # dt to run MPC at
   SQP_iter: 2                                           # number of SQP iterations
-  tau_max: 1.5                                          # maximum control input
+    # tau_max: 1.5                                          # maximum control input (hardware)
+  tau_max: 15                                          # maximum control input (simulation)
   f_max: 0                                              # maximum force applied to foot
   groundDuration: 0.07                                  # duration of ground phase
   heightOffset: 0.35                                    # offset from torso frame (center of flywheels) to uncompressed foot

@@ -1,0 +1,17 @@
+digraph G {
+node [shape=box];
+"torso" [label="torso"];
+"foot" [label="foot"];
+"wheel1" [label="wheel1"];
+"wheel2" [label="wheel2"];
+"wheel3" [label="wheel3"];
+node [shape=ellipse, color=blue, fontcolor=blue];
+"torso" -> "foot_slide" [label="xyz: 0 0 -0.2 \nrpy: 0 -0 0"]
+"foot_slide" -> "foot"
+"torso" -> "wheel1_rotation" [label="xyz: 0.0776 0 0.0547 \nrpy: 0 0.5 0"]
+"wheel1_rotation" -> "wheel1"
+"torso" -> "wheel2_rotation" [label="xyz: -0.0388 0.0672 0.0548 \nrpy: -0.5 -0.5 0"]
+"wheel2_rotation" -> "wheel2"
+"torso" -> "wheel3_rotation" [label="xyz: -0.0388 -0.0672 0.0548 \nrpy: 0.5 -0.5 0"]
+"wheel3_rotation" -> "wheel3"
+}

@@ -164,7 +164,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     for (int i = 1; i < p.N-1; i++){
 	x_bar.block(0,i,nx,1) << oneStepPredict(hopper,x_bar.block(0,i-1,nx,1),u_bar.block(0,i-1,nu,1),elapsed_time(i+1)-elapsed_time(i),d_bar(i-1), x0_local);
     }
-    f = -H*full_ref;
+    f = -H*full_ref; // SEE NOEL NOTE ////////////////////  Here and down
 
     for (int iter = 0; iter < p.SQP_iter; iter++) {
       LinearizeDynamics(hopper, x_bar, u_bar, d_bar, x0_local, elapsed_time);

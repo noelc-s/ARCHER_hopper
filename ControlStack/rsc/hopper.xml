@@ -9,6 +9,10 @@
     <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>
 
     <asset>
+        <!-- Try adding this staricase -->
+        <!--
+        <mesh name='staircase' scale='0.001 0.001 0.001' file='staircase.stl'/>
+        -->  
         <mesh name='torso'  scale='0.001 0.001 0.001' file='torso_reduced.stl'/>
         <mesh name='wheel'  scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
         <mesh name='foot'   scale='0.001 0.001 0.001' file='foot.stl'/>
@@ -18,7 +22,13 @@
     </asset>
 
     <worldbody>
-        <geom name="plane" type="plane"  material='plane' size="10 5 0.1" rgba=".9 .9 .9 1"/>
+      <geom name="plane" type="plane"  material='plane' size="10 5 0.1" rgba=".9 .9 .9 1"/>
+      <!-- Try adding this staircase -->
+      <!--
+      <body name="stairs" pos="3 3 3">
+        <geom name="stair" type="stairs_stl" type="mesh" mesh='staircase' contype="0" conaffinity="0" rgba=".18 .18 .18 .8" pos="0 0 0" />
+      </body>
+      -->
 
     <camera mode="fixed"/>
         <body name="torso" pos="0 0 1">
@@ -56,7 +66,7 @@
                 <inertial pos =" 0 0 0" mass = "0.4" diaginertia ="0.00165 0.00161 0.00032"/>
                 <joint name="knee" type="slide" pos="0 0 0.25" axis="0 0 1" limited = "true" range ="0.0 0.1" solimplimit = "0.99 0.999 0.001 0.5 2" solreflimit=" 0.002 1"  />
             </body>
-            
+
             <!-- This is to check quat_act-->
 	          <!--body name="quat_act" pos="0 0 0" quat="0.8806    0.3646   -0.2795    0.1160">
 			  <geom type="box" size=".1 .1 .1" rgba=".9 .9 0 1"/>

@@ -1,8 +1,12 @@
 <robot name="3D_hopper">
 
+  <!-- units are SI -->
+
   <link name="torso">
 	<inertial>
-			<mass value="4.55"/>
+      <!-- the curretn value doesnt account for large diff in battery weight --> 
+			<!-- mass value="4.55"/ -->
+      <mass value="4.55"/>
 			<inertia ixx="0.04131" ixy="0" ixz="0" iyy="0.04093" iyz="0" izz="0.02210"/>
 		</inertial>
     <visual>
@@ -14,6 +18,7 @@
 
   <link name="wheel1">
     <inertial>
+      <!--the mass for each one is slightly off, off by like 20 grams. won't change anything.-->
       <mass value="0.32"/>
       <inertia ixx="0.00056" ixy="0" ixz="0" iyy="0.00056" iyz="0" izz="0.00111"/>
     </inertial>
@@ -59,6 +64,8 @@
       </geometry>
     </visual>
   </link>
+
+<!------------------------------------------------------------------------------------->
 
   <joint name="foot_slide" type="prismatic">
     <origin xyz="0.00000 0.00000 -0.2"/>

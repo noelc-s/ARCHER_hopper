@@ -37,6 +37,8 @@ using namespace pinocchio;
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
+// command is the floating object that needs to be altered within the function
+// Need to append here to get PS4 inputs
 static vector_3t getInput() {
   vector_3t input;
   std::string line;
