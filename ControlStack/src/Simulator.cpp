@@ -370,6 +370,9 @@ int main(int argc, const char **argv) {
             //override the communication based on the received toruqe comands from ctrl
             d->ctrl = RX_torques;
 
+	    d->xfrc_applied[6] = RX_torques[23];
+	    d->xfrc_applied[7] = RX_torques[24];
+
             // Take integrator step
             mj_step(m, d);
 	    iter++;
@@ -402,8 +405,6 @@ int main(int argc, const char **argv) {
 	d->qpos[32] = RX_torques[21];
 	d->qpos[33] = RX_torques[22];
 
-	d->xfrc_applied[6] = RX_torques[23];
-	d->xfrc_applied[7] = RX_torques[24];
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
