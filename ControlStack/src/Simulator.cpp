@@ -236,7 +236,7 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t RX_torques[25] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -401,6 +401,9 @@ int main(int argc, const char **argv) {
 	d->qpos[31] = RX_torques[20];
 	d->qpos[32] = RX_torques[21];
 	d->qpos[33] = RX_torques[22];
+
+	d->xfrc_applied[6] = RX_torques[23];
+	d->xfrc_applied[7] = RX_torques[24];
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
