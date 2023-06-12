@@ -127,11 +127,10 @@ void getJoystickInput(vector_3t &command, std::condition_variable & cv, std::mut
   {
     axis = get_axis_state(&event, axes);
     if (axis == 0)
-      command << axes[0].x, axes[1].y, 0;
+      command << axes[0].x/20000., axes[1].y/20000., 0;
   }
 
   close(js);
-  return 0;
 }
 
     int *server_fd = new int;
