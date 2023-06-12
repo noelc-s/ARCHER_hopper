@@ -106,7 +106,7 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
     return axis;
 }
 
-void getJoystickInput(vector_3t &command, std::condition_variable & cv, std::mutex & m)
+void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
 {
   vector_3t input; input.setZero();
   std::chrono::seconds timeout(50000);
@@ -129,11 +129,12 @@ void getJoystickInput(vector_3t &command, std::condition_variable & cv, std::mut
   {
     axis = get_axis_state(&event, axes);
     if (axis == 0)
-      command << axes[0].x, axes[1].y, 0;
+      command << axes[0].x/20000., axes[0].y/20000., 0;
+    if (axis == 1)
+      dist[0] = axes[1].x;
   }
 
   close(js);
-  return 0;
 }
 
     int *server_fd = new int;
@@ -142,7 +143,7 @@ void getJoystickInput(vector_3t &command, std::condition_variable & cv, std::mut
     struct sockaddr_in *address = new sockaddr_in;
     int opt_socket = 1;
     int addrlen = sizeof(*address);
-    scalar_t TX_torques[13+2*5] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t TX_torques[13+2*5+2] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void setupSocket() {
@@ -276,8 +277,9 @@ int main() {
     std::condition_variable cv;
     std::mutex m;
     vector_3t command;
+    vector_2t dist;
     vector_2t command_interp;
-    std::thread userInput(getJoystickInput, std::ref(command), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
     matrix_t x_pred(21,2);
     matrix_t u_pred(4,1);
 
@@ -411,6 +413,9 @@ int main() {
 	TX_torques[20] = sol(floor(1./4*(mpc_p.N-1))*20+1);
 	TX_torques[21] = opt.full_ref(0);
 	TX_torques[22] = opt.full_ref(1);
+
+	TX_torques[23] = dist(0);
+	TX_torques[24] = dist(1);
 
 
 
