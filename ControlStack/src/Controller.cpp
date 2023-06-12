@@ -129,7 +129,7 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
     if (axis == 0)
       command << axes[0].x/20000., axes[0].y/20000., 0;
     if (axis == 1)
-      dist[0] = axes[1].x;
+      dist[0] = axes[1].x/200.;
   }
 
   close(js);
