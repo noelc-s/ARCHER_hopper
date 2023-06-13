@@ -39,7 +39,6 @@ using namespace Eigen;
 using namespace Hopper_t;
 using namespace pinocchio;
 
-
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
@@ -115,6 +114,7 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
   struct js_event event;
   struct axis_state axes[3] = {0};
   size_t axis;
+  dist.setZero();
 
   // find which device is joystick. (you can have multiple of these)
   device = "/dev/input/js0";
@@ -131,8 +131,8 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
     if (axis == 0)
       command << axes[0].x/20000., axes[0].y/20000., 0;
     if (axis == 2)
-      dist << axes[2].x/200., axes[2].y/200.;
-  }
+      dist << axes[2].x/200.,0;//, axes[2].y/20000.;
+    }
 
   close(js);
 }

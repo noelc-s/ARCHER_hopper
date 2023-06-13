@@ -8,14 +8,11 @@
 
     <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>
 
-    <asset>
-        <!-- Try adding this staricase -->
-        <!--
-        <mesh name='staircase' scale='0.001 0.001 0.001' file='staircase.stl'/>
-        -->  
-        <mesh name='torso'  scale='0.001 0.001 0.001' file='torso_reduced.stl'/>
-        <mesh name='wheel'  scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
-        <mesh name='foot'   scale='0.001 0.001 0.001' file='foot.stl'/>
+    <asset> <!-- case sensitive for the STL name-->
+      <mesh name='stairs' scale='0.001 0.001 0.001' file='staircase.stl'/>  <!-- insert the staircase here-->
+        <mesh name='torso'     scale='0.001 0.001 0.001' file='torso_reduced.stl'/>
+        <mesh name='wheel'     scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
+        <mesh name='foot'      scale='0.001 0.001 0.001' file='foot.stl'/>
         <texture type='skybox' builtin='gradient' width='128' height='128' rgb1='0.4 0.6 0.8' rgb2='0 0 0'/>
         <texture name='plane' type='2d' builtin='checker' rgb1='0.9 0.9 0.9' rgb2='0.7 0.7 0.7' width='512' height='512'/>
         <material name='plane' reflectance='0.0' texture='plane' texrepeat='1 1' texuniform='true'/>
@@ -23,12 +20,6 @@
 
     <worldbody>
       <geom name="plane" type="plane"  material='plane' size="10 5 0.1" rgba=".9 .9 .9 1"/>
-      <!-- Try adding this staircase -->
-      <!--
-      <body name="stairs" pos="3 3 3">
-        <geom name="stair" type="stairs_stl" type="mesh" mesh='staircase' contype="0" conaffinity="0" rgba=".18 .18 .18 .8" pos="0 0 0" />
-      </body>
-      -->
 
     <camera mode="fixed"/>
         <body name="torso" pos="0 0 1">
@@ -140,7 +131,18 @@
 		<joint type="slide" axis = "0 1 0"/>
 	</body>
 
-    </worldbody>
+  <!-- Insert the staircase here  -->
+  <body name="stair" pos="1.5 0.5 0" xyaxes="0 -1 0 0 0 1">
+    <geom type='mesh' mesh='stairs' contype="1" conaffinity="0" rgba="0.92 0.3896 0.0433 1.00"/>
+  </body>
+
+
+  <!-- TESTING A BOX 
+  <body name="box69" pos="0 0 0">
+    <geom type="box" size="0.1 0.1 0.1" contype="1" conaffinity="0" rgba="0.1 0.1 0.1 1"/>
+  </body>
+  -->
+  </worldbody>
     <actuator>
         <position name="position_actuator" joint = "knee" kp ="11732"/>
 	<motor name="wheel1_actuator" joint = "joint_wheel1"/>
