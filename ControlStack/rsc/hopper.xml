@@ -5,7 +5,7 @@
         <headlight ambient="0.5 0.5 0.5"/>
     </visual>
 
-
+    <!-- solimp for the frction ceon shape ; solref for the mass-spring-damper dyanmics of contact. -->
     <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>
 
     <asset> <!-- case sensitive for the STL name-->
@@ -132,16 +132,10 @@
 	</body>
 
   <!-- Insert the staircase here  -->
-  <body name="stair" pos="1.5 0.5 0" xyaxes="0 -1 0 0 0 1">
+  <body name="stair" pos="2.0 0.5 0" xyaxes="0 -1 0 0 0 1">
     <geom type='mesh' mesh='stairs' contype="1" conaffinity="0" rgba="0.92 0.3896 0.0433 1.00"/>
   </body>
 
-
-  <!-- TESTING A BOX 
-  <body name="box69" pos="0 0 0">
-    <geom type="box" size="0.1 0.1 0.1" contype="1" conaffinity="0" rgba="0.1 0.1 0.1 1"/>
-  </body>
-  -->
   </worldbody>
     <actuator>
         <position name="position_actuator" joint = "knee" kp ="11732"/>

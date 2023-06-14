@@ -8,7 +8,7 @@ LowLevel:
   # For the leg multiplying deflection error and velocity
   Leg:
     # Sim Limits for Foot
-    Kp: 5
+    Kp: 1.0
     Kd: .005
     # Hardware Limits for Foot
     # Kp: .5

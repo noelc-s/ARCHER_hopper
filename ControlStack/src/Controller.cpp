@@ -1,4 +1,4 @@
-
+// for joystick inputs
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -90,19 +90,37 @@ struct axis_state {
     short x, y;
 };
 
+// simple list for button map
+char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
+
+// get PS4 LS and RS joystick axis information
 size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
 {
-    size_t axis = event->number / 2;
+  /* hard code for PS4 controller
+     Left Stick:  +X is Axis 0 and right, +Y is Axis 1 and down
+     Right Stick: +X is Axis 3 and right, +Y is Axis 4 and down 
+  */
+  size_t axis;
 
-    if (axis < 3)
-    {
-        if (event->number % 2 == 0)
-            axes[axis].x = event->value;
-        else
-            axes[axis].y = event->value;
-    }
+  // Left Stick (LS)
+  if (event->number==0 || event->number==1) {
+    axis = 0;  // arbitrarily call LS Axis 0
+    if (event->number == 0)
+      axes[axis].x = event->value;
+    else
+      axes[axis].y = event->value;
+  }
 
-    return axis;
+  // Right Stick (RS)
+  else {
+    axis = 1;  // arbitrarily call RS Axis 1
+    if (event->number == 3)
+      axes[axis].x = event->value;
+    else 
+      axes[axis].y = event->value;
+  }
+
+  return axis;
 }
 
 void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
@@ -116,23 +134,46 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
   size_t axis;
   dist.setZero();
 
-  // find which device is joystick. (you can have multiple of these)
+  // if only one joystick input, almost always "/dev/input/js0"
   device = "/dev/input/js0";
 
-  // integer value of joystick
+  // joystick device index
   js = open(device, O_RDONLY); 
   if (js == -1)
       perror("Could not open joystick");
 
+  //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
+  double comm_scale = 10000.;
+  double dist_scale = 7000.;
+
   /* This loop will exit if the controller is unplugged. */
   while (read_event(js, &event) == 0)
   {
-    axis = get_axis_state(&event, axes);
-    if (axis == 0)
-      command << axes[0].x/20000., axes[0].y/20000., 0;
-    if (axis == 2)
-      dist << axes[2].x/200.,0;//, axes[2].y/20000.;
+    switch(event.type) {
+      
+      // moving a joystick
+      case JS_EVENT_AXIS:
+        axis = get_axis_state(&event, axes);
+        if (axis == 0) { 
+          command << axes[axis].x / comm_scale, -axes[axis].y / comm_scale, 0; // Left Joy Stick
+          std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
+        }
+        if (axis == 1) {
+          dist << axes[axis].x / dist_scale, -axes[axis].y / dist_scale; // Right Joy Stick
+          std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
+        }
+        break;
+
+      // pressed a button
+      case JS_EVENT_BUTTON:
+        // can do something cool with buttons
+        break;
+      
+      // ignore init events
+      default:
+        break;
     }
+  }
 
   close(js);
 }
