@@ -29,6 +29,8 @@
 #include "../inc/Types.h"
 #include "../inc/MPC.h"
 
+#include "../inc/Trajectory.h"
+
 #include "pinocchio/algorithm/jacobian.hpp"
 //#include "pinocchio/algorithm/kinematics.hpp"
 
@@ -166,7 +168,10 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 
       // pressed a button
       case JS_EVENT_BUTTON:
-        // can do something cool with buttons
+        if (event.number == 0 && event.value == 1){ //pressed 'X'
+          command << 0,0,1;
+          std::cout << "Flip: " << std::endl;
+          }
         break;
       
       // ignore init events
@@ -266,11 +271,31 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
 // Driver code
 int main() {
 
+    vector_array_t n;
+    scalar_array_t times;
+    int num = 5; 
+  
+    vector_t vec(12);
+    vec << 1,2,3,4,5,6,7,8,9,10,11,12;
+
+    for (int i=0; i<num; i++) {
+      n.push_back(vec);
+      times.push_back(i);
+    }
+  
+    Traj trajectory = {n,times,num};
+
+    Trajectory t(trajectory, 1.0);
+    
+    
+  std::cout << t.getState(2.0) << std::endl;
+
     setupSocket();    
     MPC::MPC_Params mpc_p;
     setupGains("../config/gains.yaml", mpc_p);
 
     // Read yaml
+
 
     vector_t state(20);
 

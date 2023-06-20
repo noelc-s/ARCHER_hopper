@@ -34,7 +34,10 @@ set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/l
 add_library(MPC SHARED
     src/Hopper.cpp
     src/MPC.cpp
+    src/Trajectory.cpp
 )
+
+
 target_link_libraries(MPC Eigen3::Eigen)
 target_link_libraries(MPC osqp::osqp)
 target_link_libraries(MPC OsqpEigen::OsqpEigen)
@@ -62,6 +65,14 @@ target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})         #################
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
 
 
+# trajectory class
+#add_library(Trajectory SHARED src/Trajectory.cpp)
+#target_link_libraries(Trajectory PUBLIC Eigen3::Eigen)
+#target_link_libraries(MPC Trajectory)
 
-
-
+set(bezier_DIR /home/sergio/repos/BezierTubes)
+add_library(bezier SHARED IMPORTED)
+set_property(TARGET bezier PROPERTY IMPORTED_LOCATION ${bezier_DIR}/build/libBEZIER.so)
+include_directories(bezier INTERFACE ${bezier_DIR}/inc)
+add_library(cddeigen SHARED IMPORTED)
+set_target_properties(cddeigen PROPERTIES IMPORTED_LOCATION /home/sergio/repos/eigen-cddlib_install/lib/libeigen-cdd.so)

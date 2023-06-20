@@ -1,4 +1,5 @@
 #include "../inc/MPC.h"
+#include "../inc/Trajectory.h"
 #include <cassert>
 
 // Use (void) to silence unused warnings.
@@ -43,8 +44,9 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     }
 
     static bool circle_started = false;
-    static scalar_t circle_start_time = 100;
+    static scalar_t circle_start_time = 100; // Noel time
 
+    // this is the circle trajectory -- modify here!!
     if (abs(command(2)- 2) <= 0.05) {
       if (circle_started == false) {
 	circle_started = true;
@@ -52,7 +54,9 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
       } else {
         //command(0) = p.circle_amp*sin(4*3.14159*(hopper.t-circle_start_time)/p.circle_freq);
         //command(1) = p.circle_amp*cos(2*3.14159*(hopper.t-circle_start_time)/p.circle_freq)-p.circle_amp; 
-	int corner = floor(4*(fmod(hopper.t-circle_start_time, p.circle_freq))/p.circle_freq);
+	
+  // this the square trajectory -- modify here!!
+  int corner = floor(4*(fmod(hopper.t-circle_start_time, p.circle_freq))/p.circle_freq);
 	switch(corner) {
 		case 0: 
 	    command(0) = 1;
@@ -76,6 +80,10 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
       circle_started = false;
     }
 
+  // follow an arbitrary reference trasjectory
+
+
+    // this is the flip maneuver -- what in the world is going on here?
     scalar_t alpha;
    if (flip_started) {
           alpha = command(2)*4*3.14;
