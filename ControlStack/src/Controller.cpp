@@ -276,19 +276,23 @@ int main() {
     int num = 5; 
   
     vector_t vec(12);
-    vec << 1,2,3,4,5,6,7,8,9,10,11,12;
+    vec.setZero();
 
     for (int i=0; i<num; i++) {
+      vec.segment(0,2) << i,i+1;
       n.push_back(vec);
       times.push_back(i);
     }
   
     Traj trajectory = {n,times,num};
 
-    Trajectory t(trajectory, 1.0);
+    Bezier_T t(trajectory, 1.0);
     
-    
-  std::cout << t.getState(2.0) << std::endl;
+    vector_t t_s(11);
+    t_s << 3., 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.99;
+    vector_array_t XD = t.getState(t_s);
+    for (int i = 0; i < t_s.size(); i++)
+      std::cout << XD[i] << std::endl;
 
     setupSocket();    
     MPC::MPC_Params mpc_p;

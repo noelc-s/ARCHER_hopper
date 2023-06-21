@@ -3,7 +3,7 @@ This is a (minimally documented) repository for the ICRA 2023 submission: "Nonli
 
 ### Dependencies
 * Eigen
-* Yaml-cpp
+* Yaml-cpp (make sure to build with shared libraries on)
 * OSQP
 * OSQP-Eigen
 * glfw3
