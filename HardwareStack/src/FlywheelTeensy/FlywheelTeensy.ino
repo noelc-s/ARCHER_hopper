@@ -34,16 +34,30 @@ using matrix_t = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
 using matrix_3t = Eigen::Matrix<float, 3, 3>;
 using quat_t = Eigen::Quaternion<float>;
 
-// For rotation about x and y (this is what Noel and I did the other day)
-// The proportional and derivative gain should both be the same sine the dynamics are coupled
-#define kp_y 100.0      
-#define kp_rp 100.0
-#define kd_y 2.0
-#define kd_rp 2.0
+//======================== SD CARD Vars ===========================
 
-// We insrted this bias because the true CG is a little of center
-#define r_offset 0.005
-#define p_offset 0.023
+const byte NUMBER_OF_RECORDS = 6;
+char parameterArray[NUMBER_OF_RECORDS][30];
+char aRecord[30];
+byte recordNum;
+byte charNum;
+
+// SD card location of gain config
+String gain_config = "gain_config.txt";
+File gainFile;
+
+// For rotation about x and y (this is what Noel and I did the other day)
+// The proportional and derivative gain should both be the same since the dynamics are coupled
+double kp_y;     
+double kp_rp;
+double kd_y;
+double kd_rp;
+
+// We inserted this bias because the true CG is a little of center
+double r_offset;
+double p_offset;
+
+//=================================================================
 
 /*
  * Fix yaw singularity
@@ -114,6 +128,64 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
+  
+  //==============LOAD IN FROM SD CARD=============
+  
+  // init SD card module, using built-in Teensy SD
+  Serial.print("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+
+  // open gain file config
+  gainFile = SD.open(gain_config.c_str());
+  
+  // read gain config parameters
+  if (gainFile) {
+    Serial.println("SD card opened succesfully. Reading now.");
+
+    while (gainFile.available())
+    {
+      char inChar = gainFile.read();  //get a character
+      if (inChar == '\n') //if it is a newline
+      {
+        parseRecord(recordNum);
+        recordNum++;
+        charNum = 0;  //start again at the beginning of the array record
+      }
+      else
+      {
+        aRecord[charNum] = inChar;  //add character to record
+        charNum++;  //increment character index
+        aRecord[charNum] = '\0';  //terminate the record
+      }
+    }
+    gainFile.close();
+  }
+  else {
+    Serial.print("Error opening "); Serial.println(gain_config);
+  }
+
+  // Assign gain_config values from SD card to actual values
+  kp_y =     atof(parameterArray[0]);
+  kp_rp =    atof(parameterArray[1]);
+  kd_y =     atof(parameterArray[2]);
+  kd_rp =    atof(parameterArray[3]);
+  r_offset = atof(parameterArray[4]);
+  p_offset = atof(parameterArray[5]);
+
+  Serial.println("Loaded Parameters: ");
+  Serial.print("kp_y = ");     Serial.println(kp_y);
+  Serial.print("kp_rp = ");    Serial.println(kp_rp);
+  Serial.print("kd_y = ");     Serial.println(kd_y);
+  Serial.print("kd_rp = ");    Serial.println(kd_rp);
+  Serial.print("r_offset = "); Serial.println(r_offset);
+  Serial.print("p_offset = "); Serial.println(p_offset);
+
+  //=================================================
+
   //  //================Koios=============
   koios = new Koios(tENC, elmo);
   koios->initKoios1(1);
@@ -155,6 +227,16 @@ void setup() {
 }
 
 //============FUNCTIONS==========
+
+// for parsing SD card txt files, line-by-line
+void parseRecord(byte index)
+{
+  char * ptr;
+  ptr = strtok(aRecord, " = ");  //find the " = "
+  ptr = strtok(NULL, ""); //get remainder of text
+  strcpy(parameterArray[index], ptr + 2); //skip 2 characters and copy to array
+}
+
 void delayLoop(uint32_t T1, uint32_t L) {
   uint32_t T2 = micros();
   if ((T2 - T1) < L) {
