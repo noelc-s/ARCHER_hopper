@@ -3,7 +3,7 @@
 #include <ELMO_CANt4.h>
 #include <Koios.h>
 #include <SPI.h>
-//#include <SD.h>
+#include <SD.h>
 #include <TeensyThreads.h>
 #include <ArduinoEigen.h>
 
