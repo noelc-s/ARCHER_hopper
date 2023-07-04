@@ -8,24 +8,30 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
 
-SET(MUJOCO_DIR /home/amber/repos/mujoco-2.2.1 CACHE PATH "Path to Mujoco dir")
-SET(PINOCCHIO_DIR /home/amber/repos/pinocchio_install CACHE PATH "Path to pinocchio dir")
-SET(MANIF_DIR /home/amber/repos/manif_install CACHE PATH "Path to manif dir")
+SET(PATH_TO_REPOS /home/sergio/repos) ######################
+
+SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
+SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
+SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
+
 list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
+list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS}/eigenpy_install)
 
 option(HARDWARE "build with hardware support (ros)" ON)
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(osqp REQUIRED)
-find_package(OsqpEigen REQUIRED)
-find_package(glfw3 REQUIRED)
+find_package(osqp REQUIRED HINTS ${PATH_TO_REPOS}/osqp_install)
+find_package(OsqpEigen REQUIRED HINTS ${PATH_TO_REPOS}/osqp-eigen_install)
+find_package(glfw3 REQUIRED HINTS ${PATH_TO_REPOS}/glfw_install)
 find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
 find_package(manif REQUIRED HINTS ${MANIF_DIR})
+
 if(HARDWARE)
   find_package(roscpp REQUIRED)
   find_package(geometry_msgs REQUIRED)
 endif()
+
 include_directories(${PINOCCHIO_DIR}/include)
 
 include_directories(${MUJOCO_DIR}/include)
@@ -36,13 +42,13 @@ add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 
 # Bezier Tubes
-set(bezier_DIR /home/noel/BezierTubes)
-include_directories(/home/noel/repos/eigen-cddlib_install/include/eigen-cdd)
+set(bezier_DIR ${PATH_TO_REPOS}/BezierTubes)
+include_directories(${PATH_TO_REPOS}/eigen-cddlib_install/include/eigen-cdd)
 add_library(bezier SHARED IMPORTED)
 set_property(TARGET bezier PROPERTY IMPORTED_LOCATION ${bezier_DIR}/build/libBEZIER.so)
 include_directories(bezier INTERFACE ${bezier_DIR}/inc)
 add_library(cddeigen SHARED IMPORTED)
-set_target_properties(cddeigen PROPERTIES IMPORTED_LOCATION /home/noel/repos/eigen-cddlib_install/lib/libeigen-cdd.so)
+set_target_properties(cddeigen PROPERTIES IMPORTED_LOCATION ${PATH_TO_REPOS}/eigen-cddlib_install/lib/libeigen-cdd.so)
 
 add_library(MPC SHARED
     src/Hopper.cpp
@@ -61,6 +67,8 @@ add_library(TRAJECTORY SHARED
 target_link_libraries(TRAJECTORY Eigen3::Eigen)
 target_link_libraries(TRAJECTORY bezier)
 target_link_libraries(TRAJECTORY cddeigen)
+
+target_link_libraries(MPC TRAJECTORY) ##############
 
 # add the executable
 add_executable(hopper_ctrl src/Controller.cpp)
