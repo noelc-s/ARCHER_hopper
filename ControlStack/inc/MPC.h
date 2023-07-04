@@ -6,6 +6,8 @@
 #include "Hopper.h"
 #include <manif/manif.h>
 
+#include "Trajectory.h"
+
 using namespace Hopper_t;
 using namespace Eigen;
 
@@ -29,36 +31,36 @@ public:
     // Parameters for the MPC program
     struct MPC_Params {
         int N;
-	int SQP_iter;
+      	int SQP_iter;
         vector_t stateScaling;
         vector_t inputScaling;
         scalar_t discountFactor;
-	scalar_t dt_flight;
-	scalar_t dt_ground;
-	scalar_t tau_max;
-	scalar_t f_max;
-	scalar_t terminalScaling;
-	scalar_t groundDuration;
-	scalar_t heightOffset;
-	scalar_t time_between_contacts;
-	scalar_t hop_height;
-	scalar_t circle_freq;
-	scalar_t circle_amp;
-	scalar_t max_vel;
+        scalar_t dt_flight;
+        scalar_t dt_ground;
+        scalar_t tau_max;
+        scalar_t f_max;
+        scalar_t terminalScaling;
+        scalar_t groundDuration;
+        scalar_t heightOffset;
+        scalar_t time_between_contacts;
+        scalar_t hop_height;
+        scalar_t circle_freq;
+        scalar_t circle_amp;
+        scalar_t max_vel;
     } p;
 
     // Initialize the MPC object
     MPC(int nx, int nu, MPC_Params &loaded_p) {
         this->nx = nx;
         this->nu = nu;
-	p = loaded_p;
+      	p = loaded_p;
 
         std::cout << "Horizon length: " << p.N << std::endl;
         std::cout << "Pos gain: " << p.stateScaling(0) << ", " << p.stateScaling(1) << std::endl;
         std::cout << "Vel gain: " << p.stateScaling(10) << ", " << p.stateScaling(11) << std::endl;
 
-	d_bar.resize(p.N-1,1);
-	elapsed_time.resize(p.N,1);
+        d_bar.resize(p.N-1,1);
+        elapsed_time.resize(p.N,1);
 
         nvar = nx*p.N+nu*(p.N-1);
 
@@ -80,25 +82,25 @@ public:
         dynamics_b_lb.resize(nx*p.N+(p.N-1)*4);
         dynamics_b_ub.resize(nx*p.N+(p.N-1)*4);
 
-	f.resize(nx*p.N + nu*(p.N-1));
-	full_ref.resize(nx*p.N + nu*(p.N-1));
-	H.resize(nx*p.N + nu*(p.N-1),nx*p.N + nu*(p.N-1));
+        f.resize(nx*p.N + nu*(p.N-1));
+        full_ref.resize(nx*p.N + nu*(p.N-1));
+        H.resize(nx*p.N + nu*(p.N-1),nx*p.N + nu*(p.N-1));
 
         solver.settings()->setWarmStart(true);
-	solver.settings()->setVerbosity(false);
-	//solver.settings()->setAbsoluteTolerance(1e-9);
+        solver.settings()->setVerbosity(false);
+        //solver.settings()->setAbsoluteTolerance(1e-9);
         solver.data()->setNumberOfVariables(nx*p.N + nu*(p.N-1));
-	solver.data()->setNumberOfConstraints(nx*p.N+(p.N-1)*4);
+        solver.data()->setNumberOfConstraints(nx*p.N+(p.N-1)*4);
 
         reset();
         buildCost();
-	buildDynamicEquality();
-	solver.data()->setHessianMatrix(H);
+        buildDynamicEquality();
+        solver.data()->setHessianMatrix(H);
         solver.data()->setGradient(f);
         solver.data()->setLinearConstraintsMatrix(dynamics_A);
         solver.data()->setLowerBound(dynamics_b_lb);
         solver.data()->setUpperBound(dynamics_b_ub);
-	// instantiate the solver
+        // instantiate the solver
         solver.initSolver();
     }
 
@@ -199,9 +201,10 @@ public:
      * @param [in] hopper the hopping robot object
      * @param [in] &sol the solution object to write
      * @param [in] &command the commanded global pos [x,y] and extra signal [flip, traj tracking, etc]
-     * @param [in] &command_interp the interpolated command for trajectory tracking
+     * @param [in] &command_interp the interpolated command for trajectory tracking.
+     * @param [in] tra the Trajectory type to track.
      */
-    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp);
+    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra);
 
     /*! @brief build the cost function matrices*/
     void buildCost();

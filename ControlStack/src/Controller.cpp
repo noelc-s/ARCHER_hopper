@@ -29,8 +29,6 @@
 #include "../inc/Types.h"
 #include "../inc/MPC.h"
 
-#include "../inc/Trajectory.h"
-
 #include "pinocchio/algorithm/jacobian.hpp"
 //#include "pinocchio/algorithm/kinematics.hpp"
 
@@ -43,6 +41,8 @@ using namespace pinocchio;
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
+
+///////////////////////////////////////////////////////////////////////////////////////////
 
 // command is the floating object that needs to be altered within the function
 // Need to append here to get PS4 inputs
@@ -58,6 +58,8 @@ static vector_3t getInput() {
   }
   return input;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////
 
 // https://stackoverflow.com/questions/41505451/c-multi-threading-communication-between-threads
 // https://stackoverflow.com/questions/6171132/non-blocking-console-input-c
@@ -183,14 +185,16 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
   close(js);
 }
 
-    int *server_fd = new int;
-    int *new_socket = new int;
-    int valread;
-    struct sockaddr_in *address = new sockaddr_in;
-    int opt_socket = 1;
-    int addrlen = sizeof(*address);
-    scalar_t TX_torques[13+2*5+2] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+///////////////////////////////////////////////////////////////////////////////////////////
+
+int *server_fd = new int;
+int *new_socket = new int;
+int valread;
+struct sockaddr_in *address = new sockaddr_in;
+int opt_socket = 1;
+int addrlen = sizeof(*address);
+scalar_t TX_torques[13+2*5+2] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void setupSocket() {
 // Socket stuff
@@ -268,31 +272,42 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
     mpc_p.max_vel = config["MPC"]["max_vel"].as<scalar_t>();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // Driver code
 int main() {
 
-    vector_array_t n;
+    //***************************************************
+    
+    // test
+    vector_array_t waypts;
     scalar_array_t times;
-    int num = 5; 
   
     vector_t vec(12);
     vec.setZero();
 
-    for (int i=0; i<num; i++) {
-      vec.segment(0,2) << i,i+1;
-      n.push_back(vec);
-      times.push_back(i);
-    }
-  
-    Traj trajectory = {n,times,num};
+    vec.segment(0,2) << 0,0;
+    waypts.push_back(vec);
+    vec.segment(0,2) << -1,0;
+    waypts.push_back(vec);
+    vec.segment(0,2) << -1,1;
+    waypts.push_back(vec);
+    vec.segment(0,2) << 0,0;
+    waypts.push_back(vec);
+    vec.segment(0,2) << 1.9,0;
+    waypts.push_back(vec);
+    vec.segment(0,2) << 3.5,0;
+    waypts.push_back(vec);
 
-    Bezier_T t(trajectory, 1.0);
-    
-    vector_t t_s(11);
-    t_s << 3., 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.99;
-    vector_array_t XD = t.getState(t_s);
-    for (int i = 0; i < t_s.size(); i++)
-      std::cout << XD[i] << std::endl;
+    for (int i=0; i<waypts.size(); i++) {
+      times.push_back(10.* (float) i);
+    }
+
+    Traj trajectory = {waypts,times, waypts.size()};
+
+    Bezier_T tra(trajectory, 1.0);
+
+    //***************************************************
 
     setupSocket();    
     MPC::MPC_Params mpc_p;
@@ -338,6 +353,7 @@ int main() {
     vector_t u_des(4);
     u_des.setZero();
 
+    // MPC object
     MPC opt = MPC(20, 4, mpc_p);
     vector_t sol(opt.nx*opt.p.N+opt.nu*(opt.p.N-1));
     vector_t sol_g((opt.nx+1)*opt.p.N+opt.nu*(opt.p.N-1));
@@ -388,7 +404,7 @@ int main() {
 			  }
 	}
         if (replan) {
-          opt.solve(hopper, sol, command, command_interp);
+          opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
 	  for (int i = 0; i < opt.p.N; i++) {
             sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
 	  }
@@ -459,7 +475,7 @@ int main() {
 	TX_torques[9] = quat_term.y();
 	TX_torques[10] = quat_term.z();
 	TX_torques[11] = command_interp(0);
-	TX_torques[12] = command_interp(1);
+	TX_torques[12] = command_interp(1); // why do you need command_interp here?
 
 //	TX_torques[13] = opt.full_ref(floor(4./5*(mpc_p.N-1))*20);
 //	TX_torques[14] = opt.full_ref(floor(4./5*(mpc_p.N-1))*20+1);
