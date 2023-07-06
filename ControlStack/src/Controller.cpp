@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include<netinet/in.h>
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -28,6 +28,8 @@
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
 #include "../inc/MPC.h"
+
+#include "../inc/Graph.h"
 
 #include "pinocchio/algorithm/jacobian.hpp"
 //#include "pinocchio/algorithm/kinematics.hpp"
@@ -277,37 +279,82 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
 // Driver code
 int main() {
 
-    //***************************************************
-    
-    // test
-    vector_array_t waypts;
-    scalar_array_t times;
+  //***************************************************
   
-    vector_t vec(12);
-    vec.setZero();
+  // trajectory test
+  vector_array_t waypts;
+  scalar_array_t times;
+ 
+  vector_t vec(12);
+  vec.setZero();
 
-    vec.segment(0,2) << 0,0;
-    waypts.push_back(vec);
-    vec.segment(0,2) << -1,0;
-    waypts.push_back(vec);
-    vec.segment(0,2) << -1,1;
-    waypts.push_back(vec);
-    vec.segment(0,2) << 0,0;
-    waypts.push_back(vec);
-    vec.segment(0,2) << 1.9,0;
-    waypts.push_back(vec);
-    vec.segment(0,2) << 3.5,0;
-    waypts.push_back(vec);
+  vec.segment(0,2) << 0,0;
+  waypts.push_back(vec);
+  vec.segment(0,2) << -1,0;
+  waypts.push_back(vec);
+  vec.segment(0,2) << -1,1;
+  waypts.push_back(vec);
+  vec.segment(0,2) << 0,0;
+  waypts.push_back(vec);
+  vec.segment(0,2) << 1.9,0;
+  waypts.push_back(vec);
+  vec.segment(0,2) << 3.5,0;
+  waypts.push_back(vec);
 
-    for (int i=0; i<waypts.size(); i++) {
-      times.push_back(10.* (float) i);
-    }
+  for (int i=0; i<waypts.size(); i++) {
+    times.push_back(10.* (float) i);
+  }
 
-    Traj trajectory = {waypts,times, waypts.size()};
+  Traj trajectory = {waypts,times, waypts.size()};
 
-    Bezier_T tra(trajectory, 1.0);
+  Bezier_T tra(trajectory, 1.0);
 
-    //***************************************************
+  //***************************************************
+  
+  // vertices
+  vertex_array_t V_list;
+  
+  matrix_t C_(3,2);
+  vector_t d_(3);
+  vector_t x_(2);
+
+  Polytope h;
+  Vertex v_;
+
+  C_ << 0.9, 0.8,
+       10., -5.3,
+       -6.7, 1.0;
+  d_ << 0.8, 0. ,1;
+  x_ << 1,1;
+  h = {C_, d_};
+  v_ = {x_,h};
+  V_list.push_back(v_);
+
+  C_ << 1, 0.9,
+       11., -5.,
+       -6.6, 1.1;
+  d_ << 0.7, 0.1, 10 ;
+  x_ << 2,2;
+  h = {C_, d_};
+  v_ = {x_,h};
+  V_list.push_back(v_);
+  
+  // edges
+  Edge e;
+  e = {V_list[0], V_list[1], h, (scalar_t) 1.0};
+  edge_array_t E_list;
+  E_list.push_back(e);
+
+  //construct the graph
+  Graph graph(V_list, E_list);
+  vector_t x(2);
+  x << .2419,.519;
+  std::cout << graph.isInPolytope(x, h) << std::endl;
+
+  std::cout << "number vertices in G = " << graph.G.V.size() << std::endl;
+  std::cout << "number edges in G = " << graph.G.E.size() << std::endl;
+
+  //***************************************************
 
     setupSocket();    
     MPC::MPC_Params mpc_p;
@@ -466,6 +513,7 @@ int main() {
         for (int i = 0; i < 4; i++) {
             TX_torques[i] = hopper.torque[i];
         }
+
 
 	TX_torques[4] = pos_term[0];
 	TX_torques[5] = pos_term[1];

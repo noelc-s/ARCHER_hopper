@@ -64,17 +64,24 @@ target_link_directories(MPC PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
 add_library(TRAJECTORY SHARED
     src/Trajectory.cpp
 )
+add_library(GRAPH SHARED
+    src/Graph.cpp
+)  ##############
+
 target_link_libraries(TRAJECTORY Eigen3::Eigen)
 target_link_libraries(TRAJECTORY bezier)
 target_link_libraries(TRAJECTORY cddeigen)
 
-target_link_libraries(MPC TRAJECTORY) ##############
+target_link_libraries(GRAPH Eigen3::Eigen)  ##############
+
+target_link_libraries(MPC TRAJECTORY)  ##############
 
 # add the executable
 add_executable(hopper_ctrl src/Controller.cpp)
 target_link_libraries(hopper_ctrl MPC)
 target_link_libraries(hopper_ctrl TRAJECTORY)
 target_link_libraries(hopper_ctrl yaml-cpp)
+target_link_libraries(hopper_ctrl GRAPH)  ##############
 
 if(HARDWARE)
 add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)

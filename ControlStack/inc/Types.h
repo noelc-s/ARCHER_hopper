@@ -89,5 +89,36 @@ using eigen_scalar_array2_t = std::vector<eigen_scalar_array_t>;
 /** Array of arrays of eigen scalar trajectory type. */
 using eigen_scalar_array3_t = std::vector<eigen_scalar_array2_t>;
 
+/////////////////////////////////////////////////////////////////
+
+// Polytope, hyperplane representation
+struct Polytope {
+  matrix_t C;
+  vector_t d;
+};
+
+// Vertex, v in V
+struct Vertex {
+  vector_t x;
+  Polytope H_kino;
+};
+
+// Edge, e in E
+struct Edge {
+  Vertex v1;
+  Vertex v2;
+  Polytope H_dyn;
+  scalar_t weight;
+};
+
+/** Dynamic polytope's trajectory type. */
+using polytope_array_t = std::vector<Polytope>;
+
+/** Dynamic vertex's trajectory type. */
+using vertex_array_t = std::vector<Vertex>;
+
+/** Dynamic edge's trajectory type. */
+using edge_array_t = std::vector<Edge>;
+
 } 
 

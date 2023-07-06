@@ -112,11 +112,11 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
 
     ////////////////////////////////////////////////////////////////////
 
-    std::cout << "hopper.t = " << hopper.t << std::endl;
-    std::cout << "****************************************************" << std::endl;
-    std::cout << "traj: \n" << temp << std::endl;   
+  //  std::cout << "hopper.t = " << hopper.t << std::endl;
+  //  std::cout << "****************************************************" << std::endl;
+  //  std::cout << "traj: \n" << temp << std::endl;   
     //  std::cout << "full_ref: \n" << full_ref.segment(0,20) << std::endl;   
-    std::cout << "hopper.q, hopper.v: \n" << hopper.q << "\n" << hopper.v << std::endl;
+  //  std::cout << "hopper.q, hopper.v: \n" << hopper.q << "\n" << hopper.v << std::endl;
 
     ////////////////////////////////////////////////////////////////////
     
