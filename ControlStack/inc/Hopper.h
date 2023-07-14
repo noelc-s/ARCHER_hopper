@@ -30,7 +30,10 @@ public:
     quat_t quat;
     vector_3t vel;
     vector_3t omega;
-    scalar_t contact;
+  
+    bool contact;
+    scalar_t num_hops;  
+
     scalar_t last_impact_time;
     scalar_t last_flight_time;
     scalar_t leg_pos;

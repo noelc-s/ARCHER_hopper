@@ -257,6 +257,9 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
     mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
     mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
     mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
+  
+    p.stop_index = 100000;
+    
     int nx = 20;
     int nu = 4;
     mpc_p.stateScaling.resize(nx);
@@ -311,48 +314,48 @@ int main() {
 
   //***************************************************
   
-  // vertices
-  vertex_array_t V_list;
-  
-  matrix_t C_(3,2);
-  vector_t d_(3);
-  vector_t x_(2);
+ // // vertices
+ // vertex_array_t V_list;
+ // 
+ // matrix_t C_(3,2);
+ // vector_t d_(3);
+ // vector_t x_(2);
 
-  Polytope h;
-  Vertex v_;
+ // Polytope h;
+ // Vertex v_;
 
-  C_ << 0.9, 0.8,
-       10., -5.3,
-       -6.7, 1.0;
-  d_ << 0.8, 0. ,1;
-  x_ << 1,1;
-  h = {C_, d_};
-  v_ = {x_,h};
-  V_list.push_back(v_);
+ // C_ << 0.9, 0.8,
+ //      10., -5.3,
+ //      -6.7, 1.0;
+ // d_ << 0.8, 0. ,1;
+ // x_ << 1,1;
+ // h = {C_, d_};
+ // v_ = {x_,h};
+ // V_list.push_back(v_);
 
-  C_ << 1, 0.9,
-       11., -5.,
-       -6.6, 1.1;
-  d_ << 0.7, 0.1, 10 ;
-  x_ << 2,2;
-  h = {C_, d_};
-  v_ = {x_,h};
-  V_list.push_back(v_);
-  
-  // edges
-  Edge e;
-  e = {V_list[0], V_list[1], h, (scalar_t) 1.0};
-  edge_array_t E_list;
-  E_list.push_back(e);
+ // C_ << 1, 0.9,
+ //      11., -5.,
+ //      -6.6, 1.1;
+ // d_ << 0.7, 0.1, 10 ;
+ // x_ << 2,2;
+ // h = {C_, d_};
+ // v_ = {x_,h};
+ // V_list.push_back(v_);
+ // 
+ // // edges
+ // Edge e;
+ // e = {V_list[0], V_list[1], h, (scalar_t) 1.0};
+ // edge_array_t E_list;
+ // E_list.push_back(e);
 
-  //construct the graph
-  Graph graph(V_list, E_list);
-  vector_t x(2);
-  x << .2419,.519;
-  std::cout << graph.isInPolytope(x, h) << std::endl;
+ // //construct the graph
+ // Graph graph(V_list, E_list);
+ // vector_t x(2);
+ // x << .2419,.519;
+ // std::cout << graph.isInPolytope(x, h) << std::endl;
 
-  std::cout << "number vertices in G = " << graph.G.V.size() << std::endl;
-  std::cout << "number edges in G = " << graph.G.E.size() << std::endl;
+ // std::cout << "number vertices in G = " << graph.G.V.size() << std::endl;
+ // std::cout << "number edges in G = " << graph.G.E.size() << std::endl;
 
   //***************************************************
 
@@ -388,6 +391,13 @@ int main() {
     fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
     int index = 1;
+    
+    
+    // for counting number of hops based on z velocity
+    hopper.num_hops = 0;
+    int sign_flips =0;
+    bool pos_sign = hopper.vel(2) > 0;
+    bool pos_sign_check;
 
     scalar_t t_last = -1;
     scalar_t dt_elapsed;
@@ -552,12 +562,29 @@ int main() {
 	TX_torques[24] = dist(1);
 
 
+  // count number of hops based on changing directions of z velocity
+  pos_sign_check = hopper.vel(2) > 0;
+  if (pos_sign != pos_sign_check) {
+    pos_sign = pos_sign_check;
+    sign_flips ++;
+    if (sign_flips % 2 ==0)
+      hopper.num_hops++;
+  }
 
-        send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
-	if (index == p.stop_index){
+  std::cout << "Index: " << index << std::endl;
+  std::cout << "Stop Index: " << p.stop_index << std::endl;
+  std::cout << "Time: " << hopper.t << std::endl;
+  std::cout << "Contact: " << hopper.contact << std::endl;
+  std::cout << "Pos Sign: " << pos_sign << std::endl;
+  std::cout << "Sign Flips: " << sign_flips << std::endl;
+  std::cout << "Num hops: " << hopper.num_hops << std::endl;
+
+
+  send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+	if (index == p.stop_index || hopper.num_hops==50){
 		exit(2);
 	}
 	index++;
-    }
+  }
 
 }

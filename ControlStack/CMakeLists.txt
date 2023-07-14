@@ -17,7 +17,7 @@ SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
 list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS}/eigenpy_install)
 
-option(HARDWARE "build with hardware support (ros)" ON)
+option(HARDWARE "build with hardware support (ros)" OFF)
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -73,6 +73,7 @@ target_link_libraries(TRAJECTORY bezier)
 target_link_libraries(TRAJECTORY cddeigen)
 
 target_link_libraries(GRAPH Eigen3::Eigen)  ##############
+target_link_libraries(GRAPH cddeigen)  ##############
 
 target_link_libraries(MPC TRAJECTORY)  ##############
 
