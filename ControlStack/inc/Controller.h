@@ -39,6 +39,12 @@ using namespace Eigen;
 using namespace Hopper_t;
 using namespace pinocchio;
 
+enum ProgramState {
+  RUNNING = 1,
+  STOPPED = 0,
+  RESET = -1
+};
+
 struct Parameters {
     scalar_t dt;
     scalar_t MPC_dt_flight;
@@ -54,9 +60,11 @@ class Controller {
     // 1 = continue simulation as normal
     // 0 = stop simulation
     // -1 = reset simulation
-    scalar_t sim_flag = 1;
+    ProgramState programState_ = RUNNING;
     scalar_t t_last = -1;
     scalar_t t_last_MPC = -1;
+    scalar_t dt_elapsed;
+    scalar_t dt_elapsed_MPC;
 
     void resetSimulation(vector_t x0, scalar_t* TX_torques);
     void stopSimulation();

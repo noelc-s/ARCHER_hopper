@@ -2,7 +2,7 @@
 #include "Controller.h"
 
 void Controller::resetSimulation(vector_t x0, scalar_t* TX_torques) {
-  sim_flag = -1;
+  programState_ = RESET;
   t_last = -1;
   t_last_MPC = -1;
 
@@ -21,11 +21,11 @@ void Controller::resetSimulation(vector_t x0, scalar_t* TX_torques) {
 }
 
 void Controller::stopSimulation() {
-  sim_flag = 0;
+  programState_ = STOPPED;
 }
 
 void Controller::startSimulation() {
-  sim_flag = 1;
+  programState_ = RUNNING;
 }
 
 // command is the floating object that needs to be altered within the function

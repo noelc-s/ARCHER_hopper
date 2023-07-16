@@ -1,9 +1,3 @@
-// for joystick inputs
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <linux/joystick.h>
-
 // server program for udp connection
 #include <stdio.h>
 #include <fstream>
@@ -23,34 +17,79 @@
 #include <string.h>
 #include <math.h>
 
-#include <manif/manif.h>
-
-#include "../inc/Hopper.h"
-#include "../inc/Types.h"
-#include "../inc/MPC.h"
-
-#include "../inc/Graph.h"
+#include "Hopper.h"
+#include "Graph.h"
 #include "Controller.h"
-
-#include "pinocchio/algorithm/jacobian.hpp"
-//#include "pinocchio/algorithm/kinematics.hpp"
-
 
 using namespace Eigen;
 using namespace Hopper_t;
 using namespace pinocchio;
 
-
 // Driver code
 int main() {
 
+  ///////////// Variable Initialization ///////////////////////////
+  /////////////////////////////////////////////////////////////////
   // Socket related variables
   int *new_socket = new int;
   int *server_fd = new int;
   struct sockaddr_in* address = new sockaddr_in;
-  //***************************************************
+
+  // MPC related variables
+  Hopper hopper = Hopper();
+  Controller controller;
+  MPC::MPC_Params mpc_p;
+  setupGains("../config/gains.yaml", mpc_p);
+  MPC opt = MPC(20, 4, mpc_p);
+  vector_t sol(opt.nx*opt.p.N+opt.nu*(opt.p.N-1));
+  vector_t sol_g((opt.nx+1)*opt.p.N+opt.nu*(opt.p.N-1));
+  sol.setZero();
+  sol_g.setZero();
+  vector_t x_term(21); x_term.setZero();
+  quat_t quat_term;
+  vector_3t pos_term;
+  matrix_t x_pred(21,2);
+  matrix_t u_pred(4,1);
+
+  // State variables
+  vector_t state(20);
+  vector_t q(11);
+  vector_t v(10);
+  vector_t q_local(11);
+  vector_t v_local(10);
+  vector_t q_global(11);
+  vector_t v_global(10);
+  vector_t tau(10);
+  // Pinocchio states: pos, quat, leg, flywheeels
+
+  // Data logging related variables
+  bool fileWrite = true;
+  std::string dataLog = "../data/data.csv";
+  std::string predictionLog = "../data/prediction.csv";
+  std::ofstream fileHandle;
+  fileHandle.open(dataLog);
+  fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+  std::ofstream fileHandleDebug;
+  fileHandleDebug.open(predictionLog);
+  fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+
+  // Loop variables
+  int index = 1;
+  std::chrono::high_resolution_clock::time_point t1;
+  std::chrono::high_resolution_clock::time_point t2;
   
-  // trajectory test
+  // Mutex
+  std::condition_variable cv;
+  std::mutex m;
+
+  // Command and disturbance variables
+  vector_3t command;
+  vector_2t dist;
+  vector_2t command_interp;
+  std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
+
+  //////////////////////// Trajectory Test ////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////
   vector_array_t waypts;
   scalar_array_t times;
  
@@ -77,11 +116,10 @@ int main() {
   }
 
   Traj trajectory = {waypts,times, waypts.size()};
-
   Bezier_T tra(trajectory, 1.0);
 
-  //***************************************************
-  
+  /////////////////////// Graph Test ///////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
  // // vertices
  // vertex_array_t V_list;
  // 
@@ -125,40 +163,10 @@ int main() {
  // std::cout << "number vertices in G = " << graph.G.V.size() << std::endl;
  // std::cout << "number edges in G = " << graph.G.E.size() << std::endl;
 
-  //***************************************************
-
+ //////////////////////// Main Loop /////////////////////////////////
+ ////////////////////////////////////////////////////////////////////
     setupSocket(new_socket, server_fd, address);    
-    MPC::MPC_Params mpc_p;
-    setupGains("../config/gains.yaml", mpc_p);
 
-    // Read yaml
-
-
-    vector_t state(20);
-
-    Hopper hopper = Hopper();
-
-    vector_t q(11);
-    vector_t v(10);
-    vector_t q_local(11);
-    vector_t v_local(10);
-    vector_t q_global(11);
-    vector_t v_global(10);
-    vector_t tau(10);
-    // Pinocchio states: pos, quat, leg, flywheeels
-
-    // Set up Data logging
-    bool fileWrite = true;
-    std::string dataLog = "../data/data.csv";
-    std::string predictionLog = "../data/prediction.csv";
-    std::ofstream fileHandle;
-    fileHandle.open(dataLog);
-    fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
-    std::ofstream fileHandleDebug;
-    fileHandleDebug.open(predictionLog);
-    fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
-
-    int index = 1;
     
     // for counting number of hops based on z velocity
     hopper.num_hops = 0;
@@ -166,10 +174,7 @@ int main() {
     bool pos_sign = hopper.vel(2) > 0;
     bool pos_sign_check;
 
-    Controller controller;
 
-    scalar_t dt_elapsed;
-    scalar_t dt_elapsed_MPC;
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
@@ -177,38 +182,18 @@ int main() {
     vector_t u_des(4);
     u_des.setZero();
 
-    // MPC object
-    MPC opt = MPC(20, 4, mpc_p);
-    vector_t sol(opt.nx*opt.p.N+opt.nu*(opt.p.N-1));
-    vector_t sol_g((opt.nx+1)*opt.p.N+opt.nu*(opt.p.N-1));
-    sol.setZero();
-    sol_g.setZero();
-
-    std::condition_variable cv;
-    std::mutex m;
-    vector_3t command;
-    vector_2t dist;
-    vector_2t command_interp;
-    std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
-    matrix_t x_pred(21,2);
-    matrix_t u_pred(4,1);
-
-    vector_t x_term(21); x_term.setZero();
-    quat_t quat_term;
-    vector_3t pos_term;
-    std::chrono::high_resolution_clock::time_point t1;
-    std::chrono::high_resolution_clock::time_point t2;
     read(*new_socket, &RX_state, sizeof(RX_state));
 
     for (;;) {
-        if (controller.sim_flag < 0.1) {
-                controller.sim_flag = 1;
+	// If the reset flag has been set, return the program state to running
+        if (controller.programState_ == RESET) {
+                controller.programState_ = RUNNING;
         }
 	t1 = std::chrono::high_resolution_clock::now();
 
         Map<vector_t> state(RX_state, 20);
-	dt_elapsed = state(0) - controller.t_last;
-	dt_elapsed_MPC = state(0) - controller.t_last_MPC;
+	controller.dt_elapsed = state(0) - controller.t_last;
+	controller.dt_elapsed_MPC = state(0) - controller.t_last_MPC;
 
         hopper.updateState(state);
 	quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
@@ -220,13 +205,13 @@ int main() {
 	bool replan = false;
 	switch (hopper.contact>0.1) {
 		case (0): {
-			//replan = dt_elapsed_MPC >= p.MPC_dt_flight;
-			replan = dt_elapsed_MPC >= p.MPC_dt_replan;
+			//replan = controller.dt_elapsed_MPC >= p.MPC_dt_flight;
+			replan = controller.dt_elapsed_MPC >= p.MPC_dt_replan;
 			break;
 			  }
 		case (1): {
-			//replan = dt_elapsed_MPC >= p.MPC_dt_ground;
-			replan = dt_elapsed_MPC >= p.MPC_dt_replan;
+			//replan = controller.dt_elapsed_MPC >= p.MPC_dt_ground;
+			replan = controller.dt_elapsed_MPC >= p.MPC_dt_replan;
 			break;
 			  }
 	}
@@ -261,7 +246,7 @@ int main() {
 	quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));
 	pos_term << x_term(0), x_term(1), x_term(2);
 
-	if (dt_elapsed > p.dt) {
+	if (controller.dt_elapsed > p.dt) {
 		// Uncomment below to isolate the low level controller for testing
 		//quat_des = Quaternion<scalar_t>(1,0,0,0);
 		//omega_des << 0,0,0;
@@ -342,7 +327,7 @@ int main() {
 	  controller.resetSimulation(x0, TX_torques);
         }
 
-	TX_torques[25] = controller.sim_flag;
+	TX_torques[25] = (scalar_t) controller.programState_;
 
 
 
@@ -363,11 +348,13 @@ int main() {
   std::cout << "Sign Flips: " << sign_flips << std::endl;
   std::cout << "Num hops: " << hopper.num_hops << std::endl;
 
-
+  // right now this is an infinite do while loop if the program state becomes stopped. 
+  // TODO: add logic here to escape the loop when you want to start, will probably be commanded by
+  //       an outside program
   do {
     send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     read(*new_socket, &RX_state, sizeof(RX_state));
-  } while (controller.sim_flag < 0.1 && controller.sim_flag > -0.1);
+  } while (controller.programState_ == STOPPED);
   if (index == p.stop_index || hopper.num_hops==50){
     exit(2);
   }
