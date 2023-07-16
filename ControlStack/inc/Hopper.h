@@ -1,3 +1,4 @@
+# pragma once
 //
 // Created by igor on 7/20/22.
 //

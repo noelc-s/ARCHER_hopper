@@ -236,7 +236,7 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[25] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t RX_torques[26] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -306,8 +306,28 @@ int main(int argc, const char **argv) {
     opt.flags[mjVIS_PERTFORCE] = 1;
     int iter = 0;
 
+    scalar_t sim_flag = 1;
+
     // use the first while condition if you want to simulate for a period.
     while (!glfwWindowShouldClose(window)) {
+
+      if (sim_flag < -0.5) {
+	d->time = 0;
+        d->qpos[0] = p0[0];
+
+        d->qpos[1] = p0[1];
+        d->qpos[2] = p0[2];
+        d->qpos[4] = rpy0[0];
+        d->qpos[5] = rpy0[1];
+        d->qpos[6] = rpy0[2];
+        d->qvel[0] = v0[0];
+        d->qvel[1] = v0[1];
+        d->qvel[2] = v0[2];
+        d->qvel[3] = w0[0];
+        d->qvel[4] = w0[1];
+        d->qvel[5] = w0[2];
+       }
+
         // advance interactive simulation for 1/60 sec
         //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
         //  this loop will finish on time for the next frame to be rendered at 60 fps.
@@ -364,14 +384,18 @@ int main(int argc, const char **argv) {
             ind++;
 
             //send current states to the controller
-            send(*new_socket, &TX_state, sizeof(TX_state), 0);
-            read(*new_socket, &RX_torques, sizeof(RX_torques));
+	    do {
+              send(*new_socket, &TX_state, sizeof(TX_state), 0);
+              read(*new_socket, &RX_torques, sizeof(RX_torques));
 
-            //override the communication based on the received toruqe comands from ctrl
-            d->ctrl = RX_torques;
+              //override the communication based on the received toruqe comands from ctrl
+              d->ctrl = RX_torques;
 
-	    d->xfrc_applied[6] = RX_torques[23];
-	    d->xfrc_applied[7] = RX_torques[24];
+	      d->xfrc_applied[6] = RX_torques[23];
+	      d->xfrc_applied[7] = RX_torques[24];
+
+	      sim_flag = RX_torques[25];
+	    } while (sim_flag < 0.1 && sim_flag > -0.1);
 
             // Take integrator step
             mj_step(m, d);
