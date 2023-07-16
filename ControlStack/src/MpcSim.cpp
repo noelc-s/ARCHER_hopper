@@ -26,7 +26,7 @@ using namespace Hopper_t;
 using namespace pinocchio;
 
 // Driver code
-int main() {
+int main(int argc, char *argv[]) {
 
   ///////////// Variable Initialization ///////////////////////////
   /////////////////////////////////////////////////////////////////
@@ -34,6 +34,12 @@ int main() {
   int *new_socket = new int;
   int *server_fd = new int;
   struct sockaddr_in* address = new sockaddr_in;
+  std::unique_ptr<uint16_t> port;
+  if (argc < 2) {
+    port.reset(new uint16_t(8080));
+  } else {
+    port.reset(new uint16_t(static_cast<uint16_t>(std::stoul(argv[1]))));
+  }
 
   // MPC related variables
   Hopper hopper = Hopper();
@@ -165,7 +171,7 @@ int main() {
 
  //////////////////////// Main Loop /////////////////////////////////
  ////////////////////////////////////////////////////////////////////
-    setupSocket(new_socket, server_fd, address);    
+    setupSocket(new_socket, server_fd, address, *port);    
 
     
     // for counting number of hops based on z velocity

@@ -33,7 +33,7 @@
 #include "../inc/Graph.h"
 #include "pinocchio/algorithm/jacobian.hpp"
 //#include "pinocchio/algorithm/kinematics.hpp"
-#define PORT 8080
+//#define port 8080
 #define MAXLINE 1000
 using namespace Eigen;
 using namespace Hopper_t;
@@ -83,7 +83,7 @@ int read_event(int dev, struct js_event *event);
 size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m);
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p);
-void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address);
+void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT);
 
 // Current state of an axis.
 struct axis_state {

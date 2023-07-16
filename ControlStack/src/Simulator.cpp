@@ -17,7 +17,6 @@
 #include "../inc/Types.h"
 #include "yaml-cpp/yaml.h"
 
-#define PORT 8080
 #define MAXLINE 1000
 #define mjUSEDOUBLE
 
@@ -173,16 +172,7 @@ int main(int argc, const char **argv) {
     char error[1000] = "Could not load binary model";
 
     // check command-line arguments
-    if (argc < 2)
-        m = mj_loadXML(xmlpath, 0, error, 1000);
-
-    else if (strlen(argv[1]) > 4 && !strcmp(argv[1] + strlen(argv[1]) - 4, ".mjb"))
-        m = mj_loadModel(argv[1], 0);
-    else
-        m = mj_loadXML(argv[1], 0, error, 1000);
-    if (!m)
-        mju_error_s("Load model error: %s", error);
-
+     m = mj_loadXML(xmlpath, 0, error, 1000);
     // make data
     d = mj_makeData(m);
 
@@ -235,6 +225,13 @@ int main(int argc, const char **argv) {
     int *new_socket = new int;
     int valread;
     struct sockaddr_in serv_addr;
+    std::unique_ptr<uint16_t> port;
+    if (argc < 2) {
+      port.reset(new uint16_t(8080));
+    } else {
+      port.reset(new uint16_t(static_cast<uint16_t>(std::stoul(argv[1]))));
+    }
+
     // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[26] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
@@ -245,7 +242,7 @@ int main(int argc, const char **argv) {
         return -1;
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_port = htons(*port);
     // Convert IPv4 and IPv6 addresses from text to binary form
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("\nInvalid address/ Address not supported \n");

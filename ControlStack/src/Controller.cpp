@@ -164,7 +164,7 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
-void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address) {
+void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT) {
 int opt_socket = 1;
 int addrlen = sizeof(*address);
 // Socket stuff
