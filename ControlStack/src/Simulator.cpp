@@ -313,19 +313,33 @@ int main(int argc, const char **argv) {
 
       if (sim_flag < -0.5) {
 	d->time = 0;
-        d->qpos[0] = p0[0];
 
-        d->qpos[1] = p0[1];
-        d->qpos[2] = p0[2];
-        d->qpos[4] = rpy0[0];
-        d->qpos[5] = rpy0[1];
-        d->qpos[6] = rpy0[2];
-        d->qvel[0] = v0[0];
-        d->qvel[1] = v0[1];
-        d->qvel[2] = v0[2];
-        d->qvel[3] = w0[0];
-        d->qvel[4] = w0[1];
-        d->qvel[5] = w0[2];
+        d->qpos[0] = RX_torques[0];
+        d->qpos[1] = RX_torques[1];
+        d->qpos[2] = RX_torques[2];
+        d->qpos[4] = RX_torques[3];
+        d->qpos[5] = RX_torques[4];
+        d->qpos[6] = RX_torques[5];
+        d->qvel[0] = RX_torques[6];
+        d->qvel[1] = RX_torques[7];
+        d->qvel[2] = RX_torques[8];
+        d->qvel[3] = RX_torques[9];
+        d->qvel[4] = RX_torques[10];
+        d->qvel[5] = RX_torques[11];
+
+        //d->qpos[0] = p0[0];
+
+        //d->qpos[1] = p0[1];
+        //d->qpos[2] = p0[2];
+        //d->qpos[4] = rpy0[0];
+        //d->qpos[5] = rpy0[1];
+        //d->qpos[6] = rpy0[2];
+        //d->qvel[0] = v0[0];
+        //d->qvel[1] = v0[1];
+        //d->qvel[2] = v0[2];
+        //d->qvel[3] = w0[0];
+        //d->qvel[4] = w0[1];
+        //d->qvel[5] = w0[2];
        }
 
         // advance interactive simulation for 1/60 sec

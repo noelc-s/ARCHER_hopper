@@ -1,10 +1,23 @@
 
 #include "Controller.h"
 
-void Controller::resetSimulation() {
+void Controller::resetSimulation(vector_t x0, scalar_t* TX_torques) {
   sim_flag = -1;
   t_last = -1;
   t_last_MPC = -1;
+
+  TX_torques[0] = x0(0);
+  TX_torques[1] = x0(1);
+  TX_torques[2] = x0(2);
+  TX_torques[3] = x0(3);
+  TX_torques[4] = x0(4);
+  TX_torques[5] = x0(5);
+  TX_torques[6] = x0(6);
+  TX_torques[7] = x0(7);
+  TX_torques[8] = x0(8);
+  TX_torques[9] = x0(9);
+  TX_torques[10] = x0(10);
+  TX_torques[11] = x0(11);
 }
 
 void Controller::stopSimulation() {

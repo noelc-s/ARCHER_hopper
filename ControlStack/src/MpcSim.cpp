@@ -332,10 +332,14 @@ int main() {
 	TX_torques[24] = dist(1);
 
 	// reset MPC
+	// NOTICE: time gets reset, so this loops. Do not use state(0) [time] as a flag,
+	// becuase it will be reset by the simulator
         if (state(0) > 1.) {
 	  //controller.startSimulation();
 	  //controller.stopSimulation();
-	  controller.resetSimulation();
+	  vector_t x0(12);
+	  x0 << 0,0,1.5,0,0,0,0,0,0,0,0,0;
+	  controller.resetSimulation(x0, TX_torques);
         }
 
 	TX_torques[25] = controller.sim_flag;

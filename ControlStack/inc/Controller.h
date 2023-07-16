@@ -58,7 +58,7 @@ class Controller {
     scalar_t t_last = -1;
     scalar_t t_last_MPC = -1;
 
-    void resetSimulation();
+    void resetSimulation(vector_t x0, scalar_t* TX_torques);
     void stopSimulation();
     void startSimulation();
 };
