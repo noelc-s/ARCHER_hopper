@@ -108,18 +108,18 @@ namespace Archer
   }
 
   void Koios::initKoios1(int MC){
-    setLogo('R');
-    flashR(1);
-    delay(5000);
-    rt = initComm(MC);
-    delay(1000);
-    if(rt>0){
-      flashA1(2); }
+    setLogo('R');         // set A logo to RED
+    flashR(1);            // flash RED once on PCB
+    delay(5000);          
+    rt = initComm(MC);    // setup Serial bauds, elmo, encoder, imu
+    delay(1000);       
+    if(rt>0){ 
+      flashA1(2); }   // flash AMBER color twice on PCB if successful init comms with ELMOs
     else{
-      flashR(10); }
-    initIMU();
+      flashR(10); }   // flash RED on PCB if failed to init ELMOs
+    initIMU();        // init VectorNav IMU
     delay(10);
-    initSD();
+    initSD();         // init SD card (again after gains) for data logging
     delay(10);
   }
 

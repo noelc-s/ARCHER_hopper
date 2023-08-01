@@ -25,7 +25,8 @@ extern bool ESP_connected;
 extern volatile float dR, dP, dY, d1, v1, x2, v2, x2, v3, q0, q1, q2, q3;
 extern int nF;
 extern float torque_to_current;
-extern double kp_y, kp_rp, kd_y, kd_rp;
+extern double kp_y, kp_rp, kd_y, kd_rp, r_offset, p_offset;
+extern double wifi_on, foot_on, flywheel_on, debug_on;
 extern Archer::ELMO_CANt4 elmo;
 extern char aRecord[30];
 
@@ -273,6 +274,19 @@ void getTorque(float* state, quat_t quat_d, vector_3t omega_d, vector_3t tau_ff,
   Kp.diagonal() << kp_rp, kp_rp, kp_y;
   Kd.diagonal() << kd_rp, kd_rp, kd_y;
 
+  Serial.println("========================================================");
+  Serial.print("qd.w = "); Serial.print(quat_d.w(),3);  Serial.print(", "); 
+  Serial.print("qd.x = "); Serial.print(quat_d.x(),3);  Serial.print(", ");    
+  Serial.print("qd.y = "); Serial.print(quat_d.y(),3);  Serial.print(", ");     
+  Serial.print("qd.z = "); Serial.println(quat_d.z(),3);   
+  Serial.print("qa.w = "); Serial.print(quat_a.w(),3);  Serial.print(", ");    
+  Serial.print("qa.x = "); Serial.print(quat_a.x(),3);  Serial.print(", ");   
+  Serial.print("qa.y = "); Serial.print(quat_a.y(),3);  Serial.print(", ");   
+  Serial.print("qa.z = "); Serial.println(quat_a.z(),3);
+  Serial.print("dd.x = "); Serial.print(delta_quat[0],3);  Serial.print(", ");    
+  Serial.print("dd.y = "); Serial.print(delta_quat[1],3);  Serial.print(", ");   
+  Serial.print("dd.z = "); Serial.println(delta_quat[2],3);   
+
   vector_3t tau_fb;
   delta_omega = omega_a - omega_d;
   tau_fb = -quat_actuator.inverse()._transformVector(Kp * delta_quat) - quat_actuator.inverse()._transformVector(-Kd * delta_omega);
@@ -282,7 +296,7 @@ void getTorque(float* state, quat_t quat_d, vector_3t omega_d, vector_3t tau_ff,
 
 void writeData(File data, uint32_t Tc1, quat_t quat_a, quat_t quat_d, vector_3t omega_a, vector_3t omega_d, float* foot_state, vector_3t current) {
   
-  Serial.println(Tc1);
+  //Serial.println(Tc1);
   data.print(Tc1);
   data.print(",");
   data.print(quat_a.w(), 4);

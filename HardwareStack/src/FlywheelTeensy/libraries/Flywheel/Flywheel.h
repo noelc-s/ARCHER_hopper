@@ -25,12 +25,20 @@ using quat_t = Eigen::Quaternion<float>;
 //use for the counication with the wheel motors
 //convert torques to amps with torque / 0.083 = currents [A]
 //for a range of -1.6Nm to 1.6 Nm
-float torque_to_current = 1.0 / 0.083;
-#define MAX_CURRENT 12   //  15
-#define MIN_CURRENT -12  // -15
+float torque_to_current = 1.0 / 0.083; // kinda confirmed
+// Sergio computed 0.0647 [Nm/Amp], based on analytical plots
+
+// 15 * 0.083  = 1.245 Nm
+// 12 * 0.083  = 1     Nm
+// 15 * 0.0647 = 0.97  Nm 
+// 12 * 0.0647 = 0.78  Nm 
+
+#define MAX_CURRENT 12   //  15   // confirmed
+#define MIN_CURRENT -12  // -15   // confirmed
+// Eric's thesis: Anti-Gravity MN7005, KV115 motor from T-Motor (T-Motor, 2021a)
+// https://store.tmotor.com/goods-461-Antigravity+MN7005+KV115.html
 
 //////////////////////////////////////////////////////////////////////////
-
 
 #define TIMEOUT_INTERVAL 100  // ms to timeout
 #define TEST_ / TEENSY
@@ -48,7 +56,7 @@ TripENC tENC(trip_CS1, trip_CS2, trip_CS3);
 Archer::ELMO_CANt4 elmo;
 
 // SD CARD Variables
-const byte NUMBER_OF_RECORDS = 6;
+const byte NUMBER_OF_RECORDS = 10; // number of vars in gain_config.txt
 char parameterArray[NUMBER_OF_RECORDS][30];
 char aRecord[30];
 byte recordNum;
@@ -57,6 +65,7 @@ byte charNum;
 // SD card location of gain config
 String gain_config = "gain_config.txt";
 File gainFile;
+// Note: add a dummy line at the end "dummy = 0" to gain_config.txt
 
 // For rotation about x and y (this is what Noel and I did the other day)
 // The proportional and derivative gain should both be the same since the dynamics are coupled
@@ -69,6 +78,11 @@ double kd_rp;
 double r_offset;
 double p_offset;
 
+// experiment settings
+double wifi_on;       // 1 ESP is on, 0 ESP off
+double foot_on;       // 1 foot is on, 0 foot is off. 
+double flywheel_on;   // 1 flywheels on, 0 flywheels off. 
+double debug_on;      // 1 if consant upright position, 0 if MPC trajs
 
 //=================================================================
 
