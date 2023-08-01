@@ -1,4 +1,4 @@
-#include <Archer_Config.h>
+rduino Fl#include <Archer_Config.h>
 #include <TripENC.h>
 #include <ELMO_CANt4.h>
 #include <Koios.h>
@@ -17,6 +17,8 @@ using namespace Eigen;
 
 Koios* koios;
 
+//====================================BEGIN SETUP============================================
+
 void setup() {
   //====================WIFI==============
   delay(100); //give time to open and print
@@ -31,7 +33,6 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
-  
   //==============LOAD IN FROM SD CARD=============
   
   // init SD card module, using built-in Teensy SD
@@ -78,43 +79,60 @@ void setup() {
   kd_rp =    atof(parameterArray[3]);
   r_offset = atof(parameterArray[4]);
   p_offset = atof(parameterArray[5]);
+  wifi_on  = atof(parameterArray[6]);
+  foot_on  = atof(parameterArray[7]);
+  flywheel_on  = atof(parameterArray[8]);
+  debug_on  = atof(parameterArray[9]);
 
   Serial.println("Loaded Parameters: ");
-  Serial.print("kp_y = ");     Serial.println(kp_y);
-  Serial.print("kp_rp = ");    Serial.println(kp_rp);
-  Serial.print("kd_y = ");     Serial.println(kd_y);
-  Serial.print("kd_rp = ");    Serial.println(kd_rp);
-  Serial.print("r_offset = "); Serial.println(r_offset);
-  Serial.print("p_offset = "); Serial.println(p_offset);
-
+  Serial.print("kp_y = ");     Serial.println(kp_y,2);
+  Serial.print("kp_rp = ");    Serial.println(kp_rp,2);
+  Serial.print("kd_y = ");     Serial.println(kd_y,2);
+  Serial.print("kd_rp = ");    Serial.println(kd_rp,2);
+  Serial.print("r_offset = "); Serial.println(r_offset,3);
+  Serial.print("p_offset = "); Serial.println(p_offset,3);
+  Serial.print("wifi_on = ");  Serial.println(wifi_on,0);
+  Serial.print("foot_on = ");  Serial.println(foot_on,0);
+  Serial.print("flywheel_on = "); Serial.println(flywheel_on,0);
+  Serial.print("debug_on = "); Serial.println(debug_on,0);
+ 
   //=================================================
 
-  //  //================Koios=============
+  // IMU and SD params loaded succesfully -- FLASH Teensy LED to nindicate this
+//  for (int i=0; i<=30; i++) {
+//      digitalWrite(LED_BUILTIN,HIGH); delay(50);
+//      digitalWrite(LED_BUILTIN,LOW); delay(50);
+//  }
+
+  //======================Koios==================
   koios = new Koios(tENC, elmo);
-  koios->initKoios1(1);
+  koios->initKoios1(1);                       // a ton of init stuff. Mostly comms.
+  Serial.println("Got passed initKoios1");
   data = SD.open(dFile.c_str(),FILE_WRITE);
 
 //#ifndef TEST_TEENSY
   // initKoios2
   delay(250);
-  koios->STO(1);
-  koios->waitSwitch(1); //manual switch on robot
-  koios->setSigB(1);
+  koios->STO(1);                        // set some _RelayK pin to high
+  koios->waitSwitch(1);                 // manual switch on robot
+  if (foot_on > 0) {koios->setSigB(1); // Turn on comms with Bia if foot_on is true
+      Serial.print("Foot is On");}
   delay(250);
-  rt = koios->motorsOn();
+  rt = koios->motorsOn();               // turn three flywheel motors ON
   delay(5000);
-  koios->resetStates();
-  koios->setLEDs("0100");
-  koios->waitSwitch(0);
-  koios->setSigB(0);
-  koios-> setLogo('A');
-  koios->flashG(2);
+  koios->resetStates();                 // reset flywheel encoder counts
+  koios->setLEDs("0100");               // hold yellow on PCB
+  koios->waitSwitch(0); 
+  if (foot_on > 0) {koios->setSigB(0);} // Turn on comms with Bia if foot_on is true
+  koios-> setLogo('A');                 // set logo to AMBER color
+  koios->flashG(2);                     // flash green on PCB twice
 //#endif
+  Serial.println("Got passed initKoios2");
 
   rt = threads.setSliceMicros(25);
 //#ifndef TEST_TEENSY
   threads.addThread(imuThread);
-  threads.addThread(BiaThread);
+  if (foot_on > 0) {threads.addThread(BiaThread);} // Turn on comms with Bia if foot_on is true
 //#endif
   threads.addThread(ESPthread);
   delay(5000);
@@ -122,12 +140,16 @@ void setup() {
   foot_state[1] = 0;
   foot_state[2] = 0;
 //#ifndef TEST_TEENSY
-  koios->setLEDs("0001");
+  koios->setLEDs("0001");       // set green on PCB
   Serial7.clear();
-  koios->setLogo('R');
+  koios->setLogo('R');          // set A logo back to RED
   delay(5000);
 //#endif
+  Serial.println("Got passed Arduino setup");
 }
+
+//===============================END SETUP===================================================
+
 //============= FUNCTIONS =========
 void exitProgram() {
   elmo.cmdTC(0.0, IDX_K1);
@@ -150,7 +172,7 @@ void parseRecord(byte index){
   strcpy(parameterArray[index], ptr + 2); //skip 2 characters and copy to array
 }  
 
-//==========================LOOP=============
+//==================================== BEGIN LOOFP===========================================
 
 void loop() {
   static float Q0 = 0;
@@ -166,13 +188,19 @@ void loop() {
 
   static int reset_cmd = 0;
 
+  // this is the reset command that slows down the flywheels. Just press 'Enter' into the line buffer.
   if (Serial.available() > 0) {
     while (Serial.available() > 0)
       Serial.read();
-    reset_cmd = 1;
+    reset_cmd = 1;      // flip reset_cmd to slow down motors
   };
 
   vector_4t state_tmp;
+
+  // init controller PD and ff vars
+  quat_t quat_d = quat_t(1,0,0,0);
+  vector_3t omega_d = vector_3t(0,0,0);
+  vector_3t tau_ff = vector_3t(0,0,0);
 
   while (!initialized) {
     rt = abs(q0) < 2 && abs(q1)<2 && abs(q2)<2 && abs(q3)<2 && abs(dY) < 1e5 && abs(dP) < 1e5 && abs(dR) < 1e5;
@@ -205,17 +233,16 @@ void loop() {
       state[11] = foot_state[1];
       state[12] = foot_state[2];
     }
-    state_tmp << (float)state[9], (float)state[6], (float)state[7], (float)state[8];
+    state_tmp << (float)state[9], (float)state[6], (float)state[7], (float)state[8]; // tmp actual quaternion value
     if (state_tmp.norm() > 0.95 && state_tmp.norm() < 1.05) {
 
       quat_a = quat_t((float)state[9], (float)state[6], (float)state[7], (float)state[8]); // assuming q_w is last.
 
       // yaw (z-axis rotation)
+      // from: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
       float siny_cosp = 2 * (quat_a.w() * quat_a.z() + quat_a.x() * quat_a.y());
       float cosy_cosp = 1 - 2 * (quat_a.y() * quat_a.y() + quat_a.z() * quat_a.z());
       float yaw = std::atan2(siny_cosp, cosy_cosp);
-
-    
 
       float cy = cos(-yaw * 0.5);
       float sy = sin(-yaw * 0.5);
@@ -230,7 +257,7 @@ void loop() {
       q.y() = cr * sp * cy + sr * cp * sy;
       q.z() = cr * cp * sy - sr * sp * cy;
 
-      quat_t q_flip;
+      quat_t q_flip;   // IMU sometimes initializes to weird frame -- temp fix
       q_flip.w() = 0;
       q_flip.x() = 1;
       q_flip.y() = 0;
@@ -248,7 +275,7 @@ void loop() {
 //        quat_init.z() = -quat_init.z();
 //      }
 //      
-    Serial.println(yaw); Serial.println("-------------------");
+      Serial.println(yaw); Serial.println("-------------------");
       quat_init_inverse = quat_init.inverse();
       initialized = true;
       koios->setLogo('G');
@@ -261,12 +288,17 @@ void loop() {
       state[8] = quat_a.y();
       state[9] = quat_a.z();
     }
+    Serial.print("Initiliazed quaternion.");
+  
   }
 
-  while (!ESP_connected) {threads.delay_us(100);}
+  // If wifi_on is false, debug without the whole network setup
+ // if (wifi_on > 0) {
+ //   while (!ESP_connected) {threads.delay_us(100); Serial.println("Waiting for ESP");}
+ // }
 
   //check if imu data is not corrupted
-//  int rt2 = koios->checkFrame(q0, q1, q2, q3, dY, dP, dR);
+  //  int rt2 = koios->checkFrame(q0, q1, q2, q3, dY, dP, dR);
   bool rt2 = abs(q0) < 2 && abs(q1)<2 && abs(q2)<2 && abs(q3)<2 && abs(dY) < 1e5 && abs(dP) < 1e5 && abs(dR) < 1e5;
   //  Serial.println(rt2);
   //based on imu upadate states
@@ -312,14 +344,12 @@ void loop() {
       quat_a = quat_t((float)state[9], (float)state[6], (float)state[7], (float)state[8]); // assuming q_w is last.
       quat_a = quat_init_inverse * quat_a;
       
-//      Serial.print(quat_a.w()); Serial.print(", ");
-//      Serial.print(quat_a.x()); Serial.print(", ");
-//      Serial.print(quat_a.y()); Serial.print(", ");
-//      Serial.print(quat_a.z()); Serial.print(",                    ");
+//      Serial.print(quat_a.w(), 3); Serial.print(", ");
+//      Serial.print(quat_a.x(), 3); Serial.print(", ");
+//      Serial.print(quat_a.y(), 3); Serial.print(", ");
+//      Serial.print(quat_a.z(), 3);
 //      Serial.println();
       
-      
-
       state[6] = quat_a.w();
       state[7] = quat_a.x();
       state[8] = quat_a.y();
@@ -339,16 +369,22 @@ void loop() {
   memcpy(state_d, receivedCharsESP, 10 * 4);
   vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
 
-  quat_d = quat_t(state_d[0], state_d[1], state_d[2], state_d[3]);
-  omega_d = vector_3t(state_d[4], state_d[5], state_d[6]);
-  tau_ff = vector_3t(state_d[7], state_d[8], state_d[9]);
-  ///// If you want to debug the low level controller, comment the above three lines, and uncomment the below three
-  //  quat_t quat_d = quat_t(1,0,0,0);
-  //  vector_3t omega_d = vector_3t(0,0,0);
-  //  vector_3t tau_ff = vector_3t(0,0,0);
+  // If you want to debug the low level controller, debug_on = 1. Else, get MPC inputs
+
+  if (debug_on > 0) {
+    quat_t quat_d = quat_t(1,0,0,0);
+    vector_3t omega_d = vector_3t(0,0,0);
+    vector_3t tau_ff = vector_3t(0,0,0);
+  }
+  else {
+    quat_d = quat_t(state_d[0], state_d[1], state_d[2], state_d[3]);
+    omega_d = vector_3t(state_d[4], state_d[5], state_d[6]);
+    tau_ff = vector_3t(state_d[7], state_d[8], state_d[9]);
+  }  
 
   vector_3t current;
   if (initialized) {
+    //Serial.println("Getting torque");
     getTorque(state, quat_d, omega_d, tau_ff, quat_a, current);
   } else {
     current[0] = 0;
@@ -373,17 +409,20 @@ void loop() {
       reset_cmd = 0;
     }
   } else {
-    elmo.cmdTC(current[0], IDX_K1);
-    elmo.cmdTC(current[1], IDX_K2);
-    elmo.cmdTC(current[2], IDX_K3);
-    ////// If you want to set the foot current to zero for debugging, comment the above three lines and uncomment the below three
-    //        current[0] = 0;
-    //        current[1] = 0;
-    //        current[2] = 0;
+    // If you want to set the foot current to zero for debugging, flywheel_on = false
+    if (flywheel_on > 0) {
+      elmo.cmdTC(current[0], IDX_K1);
+      elmo.cmdTC(current[1], IDX_K2);
+      elmo.cmdTC(current[2], IDX_K3);
+      }
+    else {
+      current[0] = 0;
+      current[1] = 0;
+      current[2] = 0;
+      }
   }
 
   writeData(data, micros(), quat_a, quat_d, omega_a, omega_d, foot_state, current);
-
 
   if (time_initialized) {
     current_ESP_message = millis();
@@ -394,8 +433,6 @@ void loop() {
     }
   }
    
-  //  Serial.println(Tc1-Tc0);
-
   // send u4 current command to leg over serial RX/TX between teensy boards
   delay(1);
 }
