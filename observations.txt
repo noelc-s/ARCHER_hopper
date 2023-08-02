@@ -1,0 +1,37 @@
+So what are the main tuning parameters?
+
+LOW LEVEL CONTROL:
+  Orientation gains:
+   - Original gains are (in sim):
+      - Kp: 50,50,50
+      - Kd: .15,.15,.15
+   - Kp should all be the same because we are dealing with euclidean projection of a quaternion
+   onto vector space? Is this reasonable?
+   - Kd should all be the same given the same reasoning as above.   
+   
+  Leg gains:
+   - Orignal gains are (in sim): 
+      - Kp: 1.0
+      - Kd: 0.005
+   - in theory the leg gains can be designed easly if we assume that the leg dynamics are
+   completely decoupled from the orientation dynmics. This gives rise to a linear system
+   for which stanard LTI control design methods can be used.
+   I think this is a safe assumption when we're not doing crazy dynmic maneuvers. I think mark raibert made the same assumption
+   - Just thinking mechanically here, but I think that strong 
+
+MPC WEIGHTS (i.e, scaling):
+  - the orginal weights are:
+      N: 20
+      stateScaling: 20   20 0   8   8   8 0 0 0 0  # px,py,pz,xix    ,xiy    ,xiz    ,th1    ,th2    ,th3    ,l
+                    2.5 2.5 0 .03 .03 .03 0 0 0 0  # vx,vy,vz,dot_xix,dot_xiy,dot_xiz,dot_th1,dot_th2,dot_th3,dot_l
+      inputScaling: .01 .01 .01 .01
+  
+  - nonzero cost on the flywheel pos or vel ---> MPC super unstable
+  - i feel like putting higher costs on the x-y positions yields smaller flywheel velocities.
+    But does this make sense? I'm definitely paying for this in some way.
+  
+
+
+Arduino Notes:
+  - How do I reduce the delays:
+    

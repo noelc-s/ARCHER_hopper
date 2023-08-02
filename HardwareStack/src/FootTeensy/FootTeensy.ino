@@ -19,7 +19,7 @@ Bia bia(dENC,elmo,cBia);
 
 uint32_t T1, Th;
 float tau_max = 10;
-int numHops = 200;
+int numHops = 1000;  // original was 200, changed by Sergio
 volatile uint32_t T0,nF,pF,rt;
 volatile float rb,wb,xf,vf,u;
 float d0 = 0.015; // spring deflection // 0.15

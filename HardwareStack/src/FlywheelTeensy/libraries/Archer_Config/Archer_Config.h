@@ -1,8 +1,6 @@
 #ifndef __ARCHER_CONFIG_H_INCLUDED__
 #define __ARCHER_CONFIG_H_INCLUDED__
 
-//#include <vector>
-
 union num32_t
 {
   int32_t i;
