@@ -34,6 +34,7 @@
 #include "../inc/Types.h"
 #include "../inc/MPC.h"
 
+#include "../inc/Graph.h"
 
 #define MAXLINE 1000
 #define MAX 48
@@ -258,9 +259,33 @@ void setupSocket() {
         sleep(1);
 }
 
-//
+/////////////////////////////////////////////////////////////////////////////////////////
 // Driver code
+
 int main(int argc, char **argv){
+
+    ////////////////////////// TRAJECTORY //////////////////
+    // follow trajecotry test
+    vector_array_t waypts;
+    scalar_array_t times;
+
+    vector_t tmp(12);
+    tmp.setZero();
+  
+    tmp.segment(0,2) << 0,0;
+    waypts.push_back(tmp);
+    tmp.segment(0,2) << 0.01, 0.01;
+    waypts.push_back(tmp);
+
+    for (int i=0; i<waypts.size(); i++) {
+      times.push_back(30.* (float) i);
+    }
+    
+    Traj trajectory = {waypts, times, waypts.size()};
+    Bezier_T tra(trajectory, 1.0);
+
+    /////////////////////////////////////////////////////////
+
     quat_t quat_a, quat_d;
     vector_3t omega_a, omega_d, torque;
     scalar_t Q_w, Q_x, Q_y, Q_z;
@@ -440,7 +465,7 @@ int main(int argc, char **argv){
 
 	  //std::cout << "State: " << state.transpose().format(CSVFormat) << std::endl;
 	  //std::cout << "dt: " << dt << std::endl;
-          opt.solve(hopper, sol, command, command_interp);
+          opt.solve(hopper, sol, command, command_interp, &tra);
 	  for (int i = 0; i < opt.p.N; i++) {
             sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
 	  }

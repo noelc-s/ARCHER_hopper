@@ -1,6 +1,0 @@
-Ping		KEYWORD1
-
-fire		KEYWORD2
-microseconds	KEYWORD2
-inches		KEYWORD2
-centemeters	KEYWORD2
