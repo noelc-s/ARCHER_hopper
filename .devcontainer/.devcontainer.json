@@ -1,0 +1,24 @@
+{
+  "name": "ARCHER Hopper 22.04 with CUDA",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "./",
+    "args": {
+      "USERID": "${localEnv:USERID}",
+      "GROUPID": "${localEnv:GROUPID}",
+      "USER_NAME": "docker"
+    }    
+  },
+  "remoteUser": "docker",
+  "mounts": [
+    {
+      "source": "/var/run/docker.sock",
+      "target": "/var/run/docker.sock",
+      "type": "bind"
+    }
+  ],
+  "runArgs": [],
+  "workspaceFolder": "/home/docker/ARCHER_hopper",
+  "workspaceMount": "source=/home/ivan/src/ARCHER_hopper,target=${containerWorkspaceFolder},type=bind,consistency=cached",
+  "postAttachCommand": "/home/docker/setup.bash"
+}

@@ -10,33 +10,20 @@ set(CMAKE_CXX_FLAGS "-O3 -pthread")
 
 # two arguments to be passed in -- the path to where the dependencies are installed, and the path 
 # to where the BezierTubes repository is located
-# TODO: Consolidate this into one path
-if (NOT DEFINED PATH_TO_REPOS)
-  set(PATH_TO_REPOS /home/sergio/repos)
-endif()
-if (NOT DEFINED PATH_TO_BEZIER)
-  set(PATH_TO_BEZIER /home/sergio/repos)
-endif()
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Option to build hardare support (requires ros to be installed, not needed for sim only results)
 option(HARDWARE "build with hardware support (ros)" OFF)
 
-# Set pat dependencies (can be set manually if they are in different locations)
-SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
-SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
-SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
-list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
-list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS}/eigenpy_install)
-
 # Find relevant packages
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(osqp REQUIRED HINTS ${PATH_TO_REPOS}/osqp_install)
-find_package(OsqpEigen REQUIRED HINTS ${PATH_TO_REPOS}/osqp-eigen_install)
-find_package(glfw3 REQUIRED HINTS ${PATH_TO_REPOS}/glfw_install)
-find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
-find_package(manif REQUIRED HINTS ${MANIF_DIR})
-find_library(MUJOCO_LIB mujoco REQUIRED HINTS ${MUJOCO_DIR}/lib)
+find_package(osqp REQUIRED)
+find_package(OsqpEigen REQUIRED)
+find_package(glfw3 REQUIRED )
+find_package(pinocchio REQUIRED)
+find_package(manif REQUIRED)
+find_library(MUJOCO_LIB mujoco REQUIRED)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
@@ -52,7 +39,7 @@ include_directories(
 	${PINOCCHIO_DIR}/include
 	${MUJOCO_DIR}/include
 	${MUJOCO_DIR}/include/mujoco
-	${PATH_TO_REPOS}/eigen-cddlib_install/include/eigen-cdd
+	# ${PATH_TO_REPOS}/eigen-cddlib_install/include/eigen-cdd
 )
 
 # Bezier Tubes
