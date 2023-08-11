@@ -95,15 +95,15 @@ add_library(CONTROLLER SHARED
 ) 
 target_link_libraries(CONTROLLER Eigen3::Eigen)
 target_link_libraries(CONTROLLER osqp::osqp)
+target_link_libraries(CONTROLLER MPC)
+target_link_libraries(CONTROLLER TRAJECTORY)
+target_link_libraries(CONTROLLER yaml-cpp)
+target_link_libraries(CONTROLLER GRAPH)
 
 ############################## Executables #################################
 ############################################################################
 add_executable(hopper_ctrl src/MpcSim.cpp)
-target_link_libraries(hopper_ctrl MPC)
 target_link_libraries(hopper_ctrl CONTROLLER)
-target_link_libraries(hopper_ctrl TRAJECTORY)
-target_link_libraries(hopper_ctrl yaml-cpp)
-target_link_libraries(hopper_ctrl GRAPH)
 
 if(HARDWARE)
 add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)
@@ -120,4 +120,9 @@ target_link_libraries(hopper_sim PUBLIC yaml-cpp)
 target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
 
-
+################ Pybind11 #########################
+add_subdirectory(pybind11)
+pybind11_add_module(hopper "../bindings/hopper.cpp")
+target_link_libraries(hopper PUBLIC Eigen3::Eigen)
+target_link_libraries(hopper PUBLIC CONTROLLER)
+target_link_libraries(hopper PUBLIC yaml-cpp)

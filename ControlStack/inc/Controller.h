@@ -32,6 +32,7 @@
 #include "../inc/MPC.h"
 #include "../inc/Graph.h"
 #include "pinocchio/algorithm/jacobian.hpp"
+
 //#include "pinocchio/algorithm/kinematics.hpp"
 //#define port 8080
 #define MAXLINE 1000
@@ -53,9 +54,19 @@ struct Parameters {
     int stop_index; 
 } p;
 
-class Controller {
+class C {
+public:
+    virtual ~C() { }
+    virtual void run() = 0;
+};
+
+void call_run(C *c) {
+    c->run();
+}
+
+class Controller : public C {
   public:
-    Controller() {}
+    Controller();
     // flag to pass to simulator
     // 1 = continue simulation as normal
     // 0 = stop simulation
@@ -66,15 +77,20 @@ class Controller {
     scalar_t dt_elapsed;
     scalar_t dt_elapsed_MPC;
 
-    void resetSimulation(vector_t x0, scalar_t* TX_torques);
+    scalar_t TX_torques[13+2*5+2+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+    void resetSimulation(vector_t x0);
     void stopSimulation();
     void startSimulation();
+
+    void run() override;
+
+    std::unique_ptr<uint16_t> port;
 };
 
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
-scalar_t TX_torques[13+2*5+2+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static vector_3t getInput();
