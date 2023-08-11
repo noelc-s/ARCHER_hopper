@@ -101,20 +101,20 @@ namespace Archer
       }
     }
     if (status1_ == ELMO_CANt4::STATUS::INIT) {
-      // Serial.println("Elmo1 has power, finding max current");
+       Serial.println("Elmo1 has power, finding max current");
       setMaxC(IDX_);
-      // Serial.println("Elmo1 has power, turing motor1 off");
+       Serial.println("Elmo1 has power, turing motor1 off");
       motorOff(IDX_);
       if (status1_ == ELMO_CANt4::STATUS::MOTOR_OFF) {
         rt = rt * 1;
       }
       else{
-        // Serial.println("Something went wrong during MC1 off");
+         Serial.println("Something went wrong during MC1 off");
         rt = 0;
       }
     }
     else{
-      // Serial.println("Something went wrong during MC1 init");
+       Serial.println("Something went wrong during MC1 init");
       rt = -1;
     }
     // Initialize K2
@@ -134,18 +134,18 @@ namespace Archer
       }
     }
     if (status2_ == ELMO_CANt4::STATUS::INIT) {
-      // Serial.println("Elmo2 has power, turing motor2 off");
+       Serial.println("Elmo2 has power, turing motor2 off");
       motorOff(IDX_);
       if (status2_ == ELMO_CANt4::STATUS::MOTOR_OFF) {
         rt = rt * 2;
       }
       else{
-        // Serial.println("Something went wrong during MC2 off");
+         Serial.println("Something went wrong during MC2 off");
         rt = 0;
       }
     }
     else{
-      // Serial.println("Something went wrong during MC2 init");
+       Serial.println("Something went wrong during MC2 init");
       rt = -1;
     }
     // Initialize K3
@@ -165,18 +165,18 @@ namespace Archer
       }
     }
     if (status3_ == ELMO_CANt4::STATUS::INIT) {
-      // Serial.println("Elmo2 has power, turing motor2 off");
+       Serial.println("Elmo2 has power, turing motor2 off");
       motorOff(IDX_);
       if (status3_ == ELMO_CANt4::STATUS::MOTOR_OFF) {
         rt = rt * 3;
       }
       else{
-        // Serial.println("Something went wrong during MC2 off");
+         Serial.println("Something went wrong during MC2 off");
         rt = 0;
       }
     }
     else{
-      // Serial.println("Something went wrong during MC2 init");
+       Serial.println("Something went wrong during MC2 init");
       rt = -1;
     }
     return rt;
@@ -262,7 +262,7 @@ namespace Archer
               status4_ = ELMO_CANt4::STATUS::MOTOR_ON;
               break;
           }
-          // Serial.println("Motor is started and ready to be commanded");
+           Serial.println("Motor is started and ready to be commanded");
           return 1;
         }
       }

@@ -1,3 +1,0 @@
-thread KEYWORD1
-multithreading KEYWORD2
-Teensy KEYWORD3
