@@ -59,12 +59,13 @@ ENV HOME /home/$USER_NAME
 ##  Copy bash_aliases
 ADD --chown=$USER_NAME:$USER_NAME setup/setup.bash $HOME/
 ADD --chown=$USER_NAME:$USER_NAME setup/.bashrc $HOME/
+ADD --chown=$USER_NAME:$USER_NAME setup/BezierTubes $HOME/libs/BezierTubes
 
 WORKDIR $HOME/libs 
 
 RUN sudo apt-get update && \
 sudo apt-get install -y libglfw3-dev liburdfdom-dev python3-numpy libeigen3-dev libxinerama-dev libxcursor-dev\
-                        libxi-dev
+                        libxi-dev texlive-latex-base
 
 # RUN git clone --branch 3.4.1 https://gitlab.com/libeigen/eigen.git && \
 #     cd eigen && \
@@ -116,12 +117,35 @@ RUN git clone --recursive --branch 2.3.7 https://github.com/deepmind/mujoco.git 
     cmake .. && \
     cmake --build . && \
     sudo cmake --install . 
+    
 RUN git clone --recursive https://github.com/artivis/manif.git && \
     cd manif && \
     mkdir build && \
     cd build && \
     cmake .. -G Ninja && \
     sudo ninja install
+
+RUN bash -c "ssh git@github.com"
+
+# RUN git clone --recursive https://github.com/noelc-s/cddlib.git && \
+#     cd cddlib && \
+#     mkdir build && \
+#     cd build && \
+#     cmake .. -G Ninja && \
+#     sudo ninja install
+
+# RUN git clone --recursive https://github.com/vsamy/eigen-cddlib.git && \
+#     cd eigen-cddlib && \
+#     mkdir build && \
+#     cd build && \
+#     cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja && \
+#     sudo ninja install
+
+# RUN cd BezierTubes && \
+#     mkdir build && \
+#     cmake .. -G Ninja && \
+#     sudo ninja install
+
 
 WORKDIR $HOME
 ENTRYPOINT ["/home/docker/setup.bash"]

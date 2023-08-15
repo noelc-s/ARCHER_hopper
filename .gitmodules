@@ -1,0 +1,3 @@
+[submodule ".devcontainer/setup/BezierTubes"]
+	path = .devcontainer/setup/BezierTubes
+	url = git@github.com:noelc-s/BezierTubes.git
