@@ -80,7 +80,6 @@ target_link_libraries(MPC TRAJECTORY)  ##############
 # add the executable
 add_executable(hopper_ctrl src/Controller.cpp)
 target_link_libraries(hopper_ctrl MPC)
-target_link_libraries(hopper_ctrl TRAJECTORY)
 target_link_libraries(hopper_ctrl yaml-cpp)
 target_link_libraries(hopper_ctrl GRAPH)  ##############
 

@@ -1,7 +1,12 @@
 %% Read Data
 clear;clc;%clf;
-% A = readmatrix('../data/data.csv');
-A = readmatrix('../data/data_hardware.csv');
+
+%%%%%%%%%%%%%%%%% Choose file here, MATLAB autofills
+A = readmatrix('../data/data_hw/1692168245_2023_8_15_23:44:5.csv');
+% A = readmatrix('../data/data_sim/1692158766_2023_8_15_21:6:6.csv');
+%  A = readmatrix('../data/data_hardware.csv');
+%%%%%%%%%%%%%%%%%
+
 % A = readmatrix('../data/data_hardware_test39.csv');
 sim = false;
 if sim
@@ -9,7 +14,6 @@ if sim
 else
     param = yaml.loadFile("../config/gains_hardware.yaml");
 end
-
 
 % dt = param.Debug.dt;
 dt = 0.01;
@@ -318,6 +322,7 @@ for i = 1:size(x,2)
     plot(t,x(:,i),'color',c(i,:));
     plot(t+dt*ph,x_pred(:,i),'--','color','k');
 end
+grid on;
 % for tau = 0:dt:t(end)
 %     line([tau tau],ax.YLim,'color',[0 0 0 .1])
 % %     xline(tau,'alpha',.1)
@@ -332,6 +337,7 @@ c = lines(size(x,2));
 for i = 1:size(x,2)
     plot(t,x(:,i),'color',c(i,:),'linewidth',3);
 end
+grid on;
 % for tau = 0:dt:t(end)
 %     line([tau tau],ax.YLim,'color',[0 0 0 .1])
 % %     xline(tau,'alpha',.1)

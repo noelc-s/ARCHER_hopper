@@ -25,7 +25,7 @@ using quat_t = Eigen::Quaternion<float>;
 //use for the counication with the wheel motors
 //convert torques to amps with torque / 0.083 = currents [A]
 //for a range of -1.6Nm to 1.6 Nm
-float torque_to_current = 1.0 / 0.083; // kinda confirmed
+float torque_to_current = 1.0 / 0.083; // kinda confirmed, Eric's was 0.083
 // Sergio computed 0.0647 [Nm/Amp], based on analytical plots
 
 // 15 * 0.083  = 1.245 Nm
@@ -137,8 +137,8 @@ float foot_state[3];
 
 //=================SETUP=============
 bool exit_state = false;
-File data;
 String dFile = "log.txt";
+File data;
 
 // Threads
 Threads::Mutex state_mtx;

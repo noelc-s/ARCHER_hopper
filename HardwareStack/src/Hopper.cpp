@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 
 	while(!ESP_initialized) {};
 
-        // ROS stuff
+  // ROS stuff
 	ros::init(argc, argv, "listener");
 	ros::NodeHandle n;
 	ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);

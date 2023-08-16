@@ -284,33 +284,55 @@ int main() {
 
   //***************************************************
   
-  // trajectory test
-  vector_array_t waypts;
-  scalar_array_t times;
+  // // trajectory test
+  // vector_array_t waypts;
+  // scalar_array_t times;
  
-  vector_t vec(12);
-  vec.setZero();
+  // vector_t vec(12);
+  // vec.setZero();
 
-  vec.segment(0,2) << 0,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << -1,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << -1,1;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 0,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 1.9,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 3.5,0;
-  waypts.push_back(vec);
+  // vec.segment(0,2) << 0,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << -1,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << -1,1;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 0,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 1.9,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 3.5,0;
+  // waypts.push_back(vec);
 
-  for (int i=0; i<waypts.size(); i++) {
-    times.push_back(10.* (float) i);
-  }
+  // for (int i=0; i<waypts.size(); i++) {
+  //   times.push_back(10.* (float) i);
+  // }
 
-  Traj trajectory = {waypts,times, waypts.size()};
+  // Traj trajectory = {waypts,times, waypts.size()};
 
-  Bezier_T tra(trajectory, 1.0);
+  // Bezier_T tra(trajectory, 1.0);
+
+  ////////////////////////// TRAJECTORY //////////////////
+    // follow trajecotry test
+    vector_array_t waypts;
+    scalar_array_t times;
+
+    vector_t tmp(12);
+    tmp.setZero();
+  
+    tmp.segment(0,2) << 0,0;
+    waypts.push_back(tmp);
+    tmp.segment(0,2) << 0.01, 0.01;
+    waypts.push_back(tmp);
+
+    for (int i=0; i<waypts.size(); i++) {
+      times.push_back(15.* (float) i);
+    }
+    
+    Traj trajectory = {waypts, times, waypts.size()};
+    Bezier_T tra(trajectory, 1.0);
+
+    /////////////////////////////////////////////////////////
 
   //***************************************************
   
@@ -365,7 +387,6 @@ int main() {
 
     // Read yaml
 
-
     vector_t state(20);
 
     Hopper hopper = Hopper();
@@ -381,17 +402,23 @@ int main() {
 
     // Set up Data logging
     bool fileWrite = true;
-    std::string dataLog = "../data/data.csv";
-    std::string predictionLog = "../data/prediction.csv";
+    time_t now = time(0);  // current date/time based on current system
+    tm *ltm = localtime(&now);
+    std::string tot_time = std::to_string(now);
+    std::string yr = std::to_string(1900+ltm->tm_year);
+    std::string mn = std::to_string(1+ltm->tm_mon);
+    std::string dy = std::to_string(ltm->tm_mday);
+    std::string tm = std::to_string(ltm->tm_hour) + ":" +
+                     std::to_string(ltm->tm_min) + ":" + 
+                     std::to_string(ltm->tm_sec); 
+    std::string time_now = tot_time + "_" + yr + "_" + mn + "_" + dy + "_" + tm;
+
+    std::string dataLog = "../data/data_sim/" + time_now + ".csv";
     std::ofstream fileHandle;
     fileHandle.open(dataLog);
     fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
-    std::ofstream fileHandleDebug;
-    fileHandleDebug.open(predictionLog);
-    fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
     int index = 1;
-    
     
     // for counting number of hops based on z velocity
     hopper.num_hops = 0;
@@ -571,17 +598,18 @@ int main() {
       hopper.num_hops++;
   }
 
-  std::cout << "Index: " << index << std::endl;
-  std::cout << "Stop Index: " << p.stop_index << std::endl;
-  std::cout << "Time: " << hopper.t << std::endl;
-  std::cout << "Contact: " << hopper.contact << std::endl;
-  std::cout << "Pos Sign: " << pos_sign << std::endl;
-  std::cout << "Sign Flips: " << sign_flips << std::endl;
-  std::cout << "Num hops: " << hopper.num_hops << std::endl;
+  
+ // std::cout << "Index: " << index << std::endl;
+ // std::cout << "Stop Index: " << p.stop_index << std::endl;
+ // std::cout << "Time: " << hopper.t << std::endl;
+ // std::cout << "Contact: " << hopper.contact << std::endl;
+ // std::cout << "Pos Sign: " << pos_sign << std::endl;
+ // std::cout << "Sign Flips: " << sign_flips << std::endl;
+ // std::cout << "Num hops: " << hopper.num_hops << std::endl;
 
 
   send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
-	if (index == p.stop_index || hopper.num_hops==50){
+	if (index == p.stop_index || hopper.num_hops==500){
 		exit(2);
 	}
 	index++;

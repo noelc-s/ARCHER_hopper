@@ -1,8 +1,9 @@
 % plot Arduino low level from log.txt -- Koios only
 clear all; clc; 
 
-% import recorded data
-A = readmatrix('~/log.csv');
+% import recorded data from USB / micro sd card
+USER = getenv("USERNAME");
+A = readmatrix("/media/"+USER+"/KOIOS/log.txt");
 [data_pts, data_size] = size(A);
 
 % sizes of each data type
@@ -40,7 +41,7 @@ titles = ["Time";
 %           ["Motor Currents"]];
 
 % ensure that CSV data is the same as expected data
-assert(size_tot == data_size, "The recorded data is not .." + ...
+assert(size_tot == data_size, "The recorded data is not " + ...
     "the expected size of the data");
 
 % set indeces of each data type

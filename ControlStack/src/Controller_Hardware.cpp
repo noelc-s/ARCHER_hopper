@@ -1,3 +1,9 @@
+// for joystick inputs
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/joystick.h>
+
 // server program for udp connection
 #include <stdio.h>
 #include <fstream>
@@ -51,6 +57,7 @@ using namespace pinocchio;
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
+
 int sockfd, connfd;
 char buff[60];
 char send_buff[46];
@@ -60,6 +67,10 @@ float desstate[10];
 std::mutex state_mtx;
 std::mutex des_state_mtx;
 
+//////////////////////////////////////////////////////////////////////////////////////
+
+// command is the floating object that needs to be altered within the function
+// Need to append here to get PS4 inputs
 static vector_3t getInput() {
   vector_3t input;
   std::string line;
@@ -87,6 +98,120 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+
+// Reads a joystick event from the joystick device.
+// Returns 0 on success. Otherwise -1 is returned.
+//int read_event(int dev, struct js_event *event)
+//{
+//    ssize_t bytes;
+//    bytes = read(dev, event, sizeof(*event)); // read bytes sent by controller
+//
+//    if (bytes == sizeof(*event))
+//        return 0;
+//
+//    /* Error, could not read full event. */
+//    return -1;
+//}
+//
+//// Current state of an axis.
+//struct axis_state {
+//    short x, y;
+//};
+//
+//// simple list for button map
+//char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
+//
+//// get PS4 LS and RS joystick axis information
+//size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
+//{
+//  /* hard code for PS4 controller
+//     Left Stick:  +X is Axis 0 and right, +Y is Axis 1 and down
+//     Right Stick: +X is Axis 3 and right, +Y is Axis 4 and down 
+//  */
+//  size_t axis;
+//
+//  // Left Stick (LS)
+//  if (event->number==0 || event->number==1) {
+//    axis = 0;  // arbitrarily call LS Axis 0
+//    if (event->number == 0)
+//      axes[axis].x = event->value;
+//    else
+//      axes[axis].y = event->value;
+//  }
+//
+//  // Right Stick (RS)
+//  else {
+//    axis = 1;  // arbitrarily call RS Axis 1
+//    if (event->number == 3)
+//      axes[axis].x = event->value;
+//    else 
+//      axes[axis].y = event->value;
+//  }
+//
+//  return axis;
+//}
+//
+//void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
+//{
+//  vector_3t input; input.setZero();
+//  std::chrono::seconds timeout(50000);
+//  const char *device;
+//  int js;
+//  struct js_event event;
+//  struct axis_state axes[3] = {0};
+//  size_t axis;
+//  dist.setZero();
+//
+//  // if only one joystick input, almost always "/dev/input/js0"
+//  device = "/dev/input/js0";
+//
+//  // joystick device index
+//  js = open(device, O_RDONLY); 
+//  if (js == -1)
+//      perror("Could not open joystick");
+//
+//  //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
+//  double comm_scale = 10000.;
+//  double dist_scale = 7000.;
+//
+//  /* This loop will exit if the controller is unplugged. */
+//  while (read_event(js, &event) == 0)
+//  {
+//    switch(event.type) {
+//      
+//      // moving a joystick
+//      case JS_EVENT_AXIS:
+//        axis = get_axis_state(&event, axes);
+//        if (axis == 0) { 
+//          command << axes[axis].x / comm_scale, -axes[axis].y / comm_scale, 0; // Left Joy Stick
+//          std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
+//        }
+//        if (axis == 1) {
+//          dist << axes[axis].x / dist_scale, -axes[axis].y / dist_scale; // Right Joy Stick
+//          std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
+//        }
+//        break;
+//
+//      // pressed a button
+//      case JS_EVENT_BUTTON:
+//        if (event.number == 0 && event.value == 1){ //pressed 'X'
+//          command << 0,0,1;
+//          std::cout << "Flip: " << std::endl;
+//          }
+//        break;
+//      
+//      // ignore init events
+//      default:
+//        break;
+//    }
+//  }
+//
+//  close(js);
+//}
+
+//////////////////////////////////////////////////////////////////////////////////////
+
 struct Parameters {
     std::vector<scalar_t> orientation_kp;
     std::vector<scalar_t> orientation_kd;
@@ -105,7 +230,7 @@ struct Parameters {
 } p;
 
 void signal_callback_handler(int signum) {
-        std::cout << "Caught signal " << signum << std::endl;
+   std::cout << "Caught signal " << signum << std::endl;
    // Terminate program
    exit(signum);
 }
@@ -157,7 +282,7 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
             p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
             p.leg_kp, p.leg_kd;
 
-        // Read gain yaml
+    // Read gain yaml
     mpc_p.N = config["MPC"]["N"].as<int>();
     mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
     mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
@@ -209,7 +334,9 @@ void getStateFromESP() {
   ESPstate << states[0], states[1], states[2], states[3], states[4], states[5], quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), states[10], states[11], states[12];
   }
 
-  // encode send_buff
+  std::cout << "received data to ESP" << std::endl; //---
+
+    // encode send_buff
   {std::lock_guard<std::mutex> lck(des_state_mtx);
   memcpy(send_buff, desstate, 10*4);
   }
@@ -226,37 +353,40 @@ void getStateFromESP() {
 
   write(sockfd, send_buff, sizeof(send_buff));
   ESP_initialized = true;
+
+  std::cout << "sent data to ESP" << std::endl; //---
+
   }
 
 }
 
 void setupSocket() {
-        // socket stuff
-        struct sockaddr_in servaddr, cli;
+  // socket stuff
+  struct sockaddr_in servaddr, cli;
 
-        // socket create and verification
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sockfd == -1) {
-                printf("socket creation failed...\n");
-                exit(0);
-        }
-        else
-                printf("Socket successfully created..\n");
-        bzero(&servaddr, sizeof(servaddr));
+  // socket create and verification
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1) {
+          printf("socket creation failed...\n");
+          exit(0);
+  }
+  else
+          printf("Socket successfully created..\n");
+  bzero(&servaddr, sizeof(servaddr));
 
-        // assign IP, PORT
-        servaddr.sin_family = AF_INET;
-        servaddr.sin_addr.s_addr = inet_addr("192.168.1.4");
-        servaddr.sin_port = htons(PORT);
+  // assign IP, PORT
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = inet_addr("192.168.1.4");
+  servaddr.sin_port = htons(PORT);
 
-        // connect the client socket to server socket
-        if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
-                printf("connection with the server failed...\n");
-                exit(0);
-        }
-        else
-                printf("connected to the server..\n");
-        sleep(1);
+  // connect the client socket to server socket
+  if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
+          printf("connection with the server failed...\n");
+          exit(0);
+  }
+  else
+          printf("connected to the server..\n");
+  sleep(1);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -296,10 +426,10 @@ int main(int argc, char **argv){
     vector_t state_init(3);
     ESPstate.setZero();
 
-    bool fileWrite = true;
-    std::string dataLog = "../data/data_hardware.csv";
-    std::ofstream fileHandle;
-    fileHandle.open(dataLog);
+ //   bool fileWrite = true;
+ //   std::string dataLog = "../data/data_hardware.csv";
+ //   std::ofstream fileHandle;
+ //   fileHandle.open(dataLog);
 
     desstate[0] = 1;
     desstate[1] = 0;
@@ -322,7 +452,6 @@ int main(int argc, char **argv){
     std::chrono::high_resolution_clock::time_point tstart;
 
     ////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////
 
     // Read yaml
     MPC::MPC_Params mpc_p;
@@ -342,15 +471,24 @@ int main(int argc, char **argv){
     // Pinocchio states: pos, quat, leg, flywheeels
 
     // Set up Data logging
-    //bool fileWrite = true;
-    //std::string dataLog = "../data/data.csv";
-    //std::string predictionLog = "../data/prediction.csv";
-    //std::ofstream fileHandle;
-    //fileHandle.open(dataLog);
-    //fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
-    //std::ofstream fileHandleDebug;
-    //fileHandleDebug.open(predictionLog);
-    //fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+    bool fileWrite = true;
+    time_t now = time(0);
+    tm *ltm = localtime(&now); // current date/time based on current system
+    std::string tot_time = std::to_string(now);
+    std::string yr = std::to_string(1900+ltm->tm_year);
+    std::string mn = std::to_string(1+ltm->tm_mon);
+    std::string dy = std::to_string(ltm->tm_mday);
+    std::string tm = std::to_string(ltm->tm_hour) + ":" +
+                     std::to_string(ltm->tm_min) + ":" + 
+                     std::to_string(ltm->tm_sec);   
+    std::string time_now = tot_time + "_" + yr + "_" + mn + "_" + dy + "_" + tm;
+
+    std::string dataLog = "../data/data_hw/" + time_now + ".csv";
+    std::ofstream fileHandle;
+    fileHandle.open(dataLog);
+    fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+    
+    std::cout << "got passed dataLog setup" << std::endl; //---
 
     int index = 1;
 
@@ -388,13 +526,12 @@ int main(int argc, char **argv){
 
     vector_3t last_state;
 
-
     // ROS stuff
     ros::init(argc, argv, "listener");
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
 
-    while(!ESP_initialized) {};
+    while(!ESP_initialized) {std::cout << "waiting to init ESP" <<std::endl;}; //---
 
     vector_3t current_vel, previous_vel;
     scalar_t dt = 1;
@@ -403,7 +540,7 @@ int main(int argc, char **argv){
     tstart = std::chrono::high_resolution_clock::now();
     while(ros::ok()){
         ros::spinOnce();
-	t1 = std::chrono::high_resolution_clock::now();
+    t1 = std::chrono::high_resolution_clock::now();
 
 	if (!init) {
           state_init << OptiState.x,OptiState.y,OptiState.z;
@@ -412,6 +549,7 @@ int main(int argc, char **argv){
 	  previous_vel << 0,0,0;
           dt = p.MPC_dt_replan;
           init = true;
+      std::cout << "!init and now init = true" << std::endl;
         } else {
 	  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-last_t_state_log).count()*1e-9;
 	}
@@ -426,7 +564,6 @@ int main(int argc, char **argv){
 	      ESPstate(3),ESPstate(4),ESPstate(5),
 	      ESPstate(10),ESPstate(11),ESPstate(12),ESPstate(0),ESPstate(1),ESPstate(2);
 	}
-
 
         // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed
         //ESPstate: wheel speed, omega, quat;
@@ -535,9 +672,26 @@ int main(int argc, char **argv){
 	v_local = x_local.segment(11,6);
         // Log data
 	t2 = std::chrono::high_resolution_clock::now();
+
 	if (replan)
     if (fileWrite)
-	    fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+	    fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," 
+                 << hopper.contact << "," 
+                 << hopper.q.transpose().format(CSVFormat) << "," 
+                 << hopper.v.transpose().format(CSVFormat) << "," 
+                 << hopper.torque.transpose().format(CSVFormat) << "," 
+                 << t_last_MPC << "," 
+                 << sol_g.transpose().format(CSVFormat)<< "," 
+                 << replan << "," 
+                 << opt.elapsed_time.transpose().format(CSVFormat) << "," 
+                 << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," 
+                 << desstate[0] <<"," 
+                 << desstate[1]<< "," 
+                 << desstate[2]<< ","
+                 << desstate[3] << "," 
+                 << desstate[4] << "," 
+                 << desstate[5] << "," 
+                 << desstate[6] << std::endl;
 
     }
 

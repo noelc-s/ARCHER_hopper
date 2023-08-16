@@ -70,7 +70,7 @@ void setup() {
       {
         aRecord[charNum] = inChar;  //add character to record
         charNum++;  //increment character index
-        aRecord[charNum] = '\0';  //terminate the record
+        aRecord[charNum] = '\0';  //terminate the recordBUILT
       }
     }
     gainFile.close();
@@ -90,32 +90,34 @@ void setup() {
   foot_on  = atof(parameterArray[7]);
   flywheel_on  = atof(parameterArray[8]);
   debug_on  = atof(parameterArray[9]);
-
-  Serial.println("Loaded Parameters: ");
-  Serial.print("kp_y = ");     Serial.println(kp_y,2);
-  Serial.print("kp_rp = ");    Serial.println(kp_rp,2);
-  Serial.print("kd_y = ");     Serial.println(kd_y,2);
-  Serial.print("kd_rp = ");    Serial.println(kd_rp,2);
-  Serial.print("r_offset = "); Serial.println(r_offset,3);
-  Serial.print("p_offset = "); Serial.println(p_offset,3);
-  Serial.print("wifi_on = ");  Serial.println(wifi_on,0);
-  Serial.print("foot_on = ");  Serial.println(foot_on,0);
-  Serial.print("flywheel_on = "); Serial.println(flywheel_on,0);
-  Serial.print("debug_on = "); Serial.println(debug_on,0);
  
   //=================================================
-
-  // IMU and SD params loaded succesfully -- FLASH Teensy LED to nindicate this
-//  for (int i=0; i<=30; i++) {
-//      digitalWrite(LED_BUILTIN,HIGH); delay(50);
-//      digitalWrite(LED_BUILTIN,LOW); delay(50);
-//  }
+  data = SD.open(dFile.c_str(),FILE_WRITE);
+  if (data) {
+    data.println("------------------------------");
+    data.println("Loaded Parameters: ");
+    data.print("kp_y = ");     data.println(kp_y,2);
+    data.print("kp_rp = ");    data.println(kp_rp,2);
+    data.print("kd_y = ");     data.println(kd_y,2);
+    data.print("kd_rp = ");    data.println(kd_rp,2);
+    data.print("r_offset = "); data.println(r_offset,3);
+    data.print("p_offset = "); data.println(p_offset,3);
+    data.print("wifi_on = ");  data.println(wifi_on,0);
+    data.print("foot_on = ");  data.println(foot_on,0);
+    data.print("flywheel_on = "); data.println(flywheel_on,0);
+    data.print("debug_on = "); data.println(debug_on,0);
+    delay(500);
+  }
+  else {
+    Serial.print("Failed to Load "); Serial.println(data);
+  }
+  delay(20);
 
   //======================Koios==================
   koios = new Koios(tENC, elmo);
   koios->initKoios1(1);                       // a ton of init stuff. Mostly comms.
   Serial.println("Got passed initKoios1");
-  data = SD.open(dFile.c_str(),FILE_WRITE);
+
 
 //#ifndef TEST_TEENSY
   // initKoios2
@@ -164,7 +166,7 @@ void exitProgram() {
   elmo.cmdTC(0.0, IDX_K3);
   koios->motorsOff(0);
   koios->setSigB(1);
-  data.close();
+ // data.close();
   threads.delay(100);
   koios->setLEDs("1000");
   koios->setLogo('R');
@@ -179,7 +181,7 @@ void parseRecord(byte index){
   strcpy(parameterArray[index], ptr + 2); //skip 2 characters and copy to array
 }  
 
-//==================================== BEGIN LOOFP===========================================
+//==================================== BEGIN LOOP===========================================
 
 void loop() {
   static float Q0 = 0;
@@ -345,6 +347,7 @@ void loop() {
     if (state_tmp.norm() > 1.05 || state_tmp.norm() < 0.95) {
       Serial.print("Exiting because state norm was: ");
       Serial.println(state_tmp.norm());
+      data.close();
       exitProgram();
     }      
       // -1 on w so that the double cover is resolved.
@@ -435,6 +438,7 @@ void loop() {
     if (current_ESP_message - last_ESP_message > TIMEOUT_INTERVAL) {
       Serial.print("Exiting because ESP message took: ");
       Serial.println(current_ESP_message - last_ESP_message);
+      data.close();
       exitProgram();
     }
   }
