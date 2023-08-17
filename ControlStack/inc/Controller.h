@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <linux/joystick.h>
+#include <Python.h>
 
 // server program for udp connection
 #include <stdio.h>

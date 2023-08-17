@@ -37,6 +37,7 @@ find_package(glfw3 REQUIRED HINTS ${PATH_TO_REPOS}/glfw_install)
 find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
 find_package(manif REQUIRED HINTS ${MANIF_DIR})
 find_library(MUJOCO_LIB mujoco REQUIRED HINTS ${MUJOCO_DIR}/lib)
+find_package(Python COMPONENTS Interpreter Development REQUIRED)
 add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 if(HARDWARE)
@@ -99,6 +100,9 @@ target_link_libraries(CONTROLLER MPC)
 target_link_libraries(CONTROLLER TRAJECTORY)
 target_link_libraries(CONTROLLER yaml-cpp)
 target_link_libraries(CONTROLLER GRAPH)
+target_link_libraries(CONTROLLER python3.8)
+include_directories(${PYTHON_INCLUDE_DIRS})
+target_link_libraries(CONTROLLER ${PYTHON_LIBRARIES})
 
 ############################## Executables #################################
 ############################################################################

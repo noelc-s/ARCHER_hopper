@@ -1,7 +1,32 @@
 
 #include "Controller.h"
 
+class GilManager
+{
+public:
+   GilManager()
+   {
+      mThreadState = PyEval_SaveThread();
+   }
+
+   ~GilManager()
+   {
+      if (mThreadState)
+         PyEval_RestoreThread(mThreadState);
+   }
+
+   GilManager(const GilManager&) = delete;
+   GilManager& operator=(const GilManager&) = delete;
+private:
+   PyThreadState* mThreadState;
+};
+
+
+
 void Controller::resetSimulation(vector_t x0) {
+
+  GilManager g;
+
   programState_ = RESET;
   t_last = -1;
   t_last_MPC = -1;
@@ -246,6 +271,9 @@ Controller::Controller() {
 void Controller::run() {
 
 
+  int stopIndex = 0;
+  GilManager g;
+
   ///////////// Variable Initialization ///////////////////////////
   /////////////////////////////////////////////////////////////////
   // Socket related variables
@@ -433,6 +461,8 @@ void Controller::run() {
             // Global
 	    fileHandle <<state[0] << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;
 
+
+	if (stopIndex ==0) {
         for (int i = 0; i < 4; i++) {
             TX_torques[i] = hopper.torque[i];
         }
@@ -462,18 +492,23 @@ void Controller::run() {
 	TX_torques[23] = dist(0);
 	TX_torques[24] = dist(1);
 
+	TX_torques[25] = (scalar_t) programState_;
+	} else {
+	stopIndex = 0;
+	programState_ = RESET;
+	}
+
 	// reset MPC
 	// NOTICE: time gets reset, so this loops. Do not use state(0) [time] as a flag,
 	// becuase it will be reset by the simulator
-  //if (state(0) > 1.) {
+ // if (state(0) > 3.) {
 	  //startSimulation();
 	  //stopSimulation();
-	  //vector_t x0(12);
-	  //x0 << 0,0,1.5,0,0,0,0,0,0,0,0,0;
-	  //resetSimulation(x0);
- // }
+//	  vector_t x0(12);
+//	  x0 << 0,0,15,0,0,0,0,0,0,0,0,0;
+//	  resetSimulation(x0);
+//  }
 
-	TX_torques[25] = (scalar_t) programState_;
 
   // count number of hops based on changing directions of z velocity
   pos_sign_check = hopper.vel(2) > 0;
@@ -498,7 +533,9 @@ void Controller::run() {
   do {
     send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     read(*new_socket, &RX_state, sizeof(RX_state));
+    stopIndex++;
   } while (programState_ == STOPPED);
+  stopIndex--;
   if (index == p.stop_index || hopper.num_hops==50){
     exit(2);
   }
