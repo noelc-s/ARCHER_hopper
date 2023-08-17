@@ -632,26 +632,26 @@ int main(int argc, char **argv){
 	pos_term << x_term(0), x_term(1), x_term(2);
 
         {std::lock_guard<std::mutex> lck(des_state_mtx);
-		desstate[0] = quat_des.w();
-		desstate[1] = quat_des.x();
-		desstate[2] = quat_des.y();
-		desstate[3] = quat_des.z();
-		desstate[4] = omega_des(0);
-		desstate[5] = omega_des(1);
-		desstate[6] = omega_des(2);
-		desstate[7] = u_des(1);
-		desstate[8] = u_des(2);
-		desstate[9] = u_des(3);
-		//desstate[0] = 1;
-		//desstate[1] = 0;
-		//desstate[2] = 0;
-		//desstate[3] = 0;
-		//desstate[4] = 0;
-		//desstate[5] = 0;
-		//desstate[6] = 0;
-		//desstate[7] = 0;
-		//desstate[8] = 0;
-		//desstate[9] = 0;
+		//desstate[0] = quat_des.w();
+		//desstate[1] = quat_des.x();
+		//desstate[2] = quat_des.y();
+		//desstate[3] = quat_des.z();
+		//desstate[4] = omega_des(0);
+		//desstate[5] = omega_des(1);
+		//desstate[6] = omega_des(2);
+		//desstate[7] = u_des(1);
+		//desstate[8] = u_des(2);
+		//desstate[9] = u_des(3);
+		desstate[0] = 1;
+		desstate[1] = 0;
+		desstate[2] = 0;
+		desstate[3] = 0;
+		desstate[4] = 0;
+		desstate[5] = 0;
+		desstate[6] = 0;
+		desstate[7] = 0;
+		desstate[8] = 0;
+		desstate[9] = 0;
 	}
 
 	//if (dt_elapsed > p.dt) {
