@@ -270,6 +270,14 @@ Controller::Controller() {
 
 void Controller::run() {
 
+  state.resize(20);
+  q.resize(11);
+  v.resize(10);
+  q_local.resize(11);
+  v_local.resize(10);
+  q_global.resize(11);
+  v_global.resize(10);
+  tau.resize(10);
 
   int stopIndex = 0;
   GilManager g;
@@ -296,16 +304,6 @@ void Controller::run() {
   matrix_t x_pred(21,2);
   matrix_t u_pred(4,1);
 
-  // State variables
-  vector_t state(20);
-  vector_t q(11);
-  vector_t v(10);
-  vector_t q_local(11);
-  vector_t v_local(10);
-  vector_t q_global(11);
-  vector_t v_global(10);
-  vector_t tau(10);
-  // Pinocchio states: pos, quat, leg, flywheeels
 
   // Data logging related variables
   bool fileWrite = true;
@@ -322,6 +320,8 @@ void Controller::run() {
   int index = 1;
   std::chrono::high_resolution_clock::time_point t1;
   std::chrono::high_resolution_clock::time_point t2;
+  std::chrono::high_resolution_clock::time_point t_start;
+  std::chrono::high_resolution_clock::time_point t_diff;
   
   // Mutex
   std::condition_variable cv;
@@ -383,12 +383,12 @@ void Controller::run() {
     u_des.setZero();
 
     read(*new_socket, &RX_state, sizeof(RX_state));
+    t_start = std::chrono::high_resolution_clock::now();
+
+    programState_ == RESET; // reset on first execution
 
     for (;;) {
 	// If the reset flag has been set, return the program state to running
-        if (programState_ == RESET) {
-                programState_ = RUNNING;
-        }
 	t1 = std::chrono::high_resolution_clock::now();
 
         Map<vector_t> state(RX_state, 20);
@@ -462,7 +462,7 @@ void Controller::run() {
 	    fileHandle <<state[0] << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;
 
 
-	if (stopIndex ==0) {
+	// if (stopIndex ==0) {
         for (int i = 0; i < 4; i++) {
             TX_torques[i] = hopper.torque[i];
         }
@@ -493,10 +493,10 @@ void Controller::run() {
 	TX_torques[24] = dist(1);
 
 	TX_torques[25] = (scalar_t) programState_;
-	} else {
-	stopIndex = 0;
-	programState_ = RESET;
-	}
+	// } else {
+	// stopIndex = 0;
+	// programState_ = RESET;
+	// }
 
 	// reset MPC
 	// NOTICE: time gets reset, so this loops. Do not use state(0) [time] as a flag,
@@ -537,8 +537,14 @@ void Controller::run() {
   } while (programState_ == STOPPED);
   stopIndex--;
   if (index == p.stop_index || hopper.num_hops==50){
-    exit(2);
+    return;
   }
+  if (duration > 0 && (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t_start).count()) > duration) {
+	  return;
+  }
+  // if (programState_ == RESET) {
+  //   programState_ = RUNNING;
+  // }
   index++;
 
   }

@@ -85,8 +85,20 @@ class Controller : public C {
     void startSimulation();
 
     void run() override;
+    scalar_t duration = -1;
 
     std::unique_ptr<uint16_t> port;
+  // State variables
+  vector_t state;
+  vector_t q;
+  vector_t v;
+  vector_t q_local;
+  vector_t v_local;
+  vector_t q_global;
+  vector_t v_global;
+  vector_t tau;
+  // Pinocchio states: pos, quat, leg, flywheeels
+
 };
 
 
