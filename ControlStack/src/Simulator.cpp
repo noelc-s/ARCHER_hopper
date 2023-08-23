@@ -1,6 +1,6 @@
-#include<stdlib.h>
+#include <stdlib.h>
 #include <iostream>
-#include<stdbool.h> //for bool
+#include <stdbool.h> //for bool
 
 #include "mujoco.h"
 #include "GLFW/glfw3.h"
@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include<netinet/in.h>
-#include<unistd.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 #include "../inc/Types.h"
 #include "yaml-cpp/yaml.h"
@@ -30,18 +30,18 @@ IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 ////////////////// All of this first stuff is just Mujoco example code ////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 
-//simulation end time
+// simulation end time
 char path[] = "../rsc/";
 char xmlfile[] = "hopper.xml";
 
 // MuJoCo data structures
-mjModel *m = NULL;                  // MuJoCo model
-mjData *d = NULL;                   // MuJoCo data
-mjContact *c = NULL;                // MuJoCo contact
-mjvCamera cam;                      // abstract camera
-mjvOption opt;                      // visualization options
-mjvScene scn;                       // abstract scene
-mjrContext con;                     // custom GPU context
+mjModel *m = NULL;   // MuJoCo model
+mjData *d = NULL;    // MuJoCo data
+mjContact *c = NULL; // MuJoCo contact
+mjvCamera cam;       // abstract camera
+mjvOption opt;       // visualization options
+mjvScene scn;        // abstract scene
+mjrContext con;      // custom GPU context
 mjfSensor sens;
 
 // mouse interaction
@@ -61,16 +61,19 @@ mjtNum last_update = 0.0;
 mjtNum ctrl;
 
 // keyboard callback
-void keyboard(GLFWwindow *window, int key, int scancode, int act, int mods) {
+void keyboard(GLFWwindow *window, int key, int scancode, int act, int mods)
+{
     // backspace: reset simulation
-    if (act == GLFW_PRESS && key == GLFW_KEY_BACKSPACE) {
+    if (act == GLFW_PRESS && key == GLFW_KEY_BACKSPACE)
+    {
         mj_resetData(m, d);
         mj_forward(m, d);
     }
 }
 
 // mouse button callback
-void mouse_button(GLFWwindow *window, int button, int act, int mods) {
+void mouse_button(GLFWwindow *window, int button, int act, int mods)
+{
     // update button state
     button_left = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
     button_middle = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS);
@@ -80,9 +83,9 @@ void mouse_button(GLFWwindow *window, int button, int act, int mods) {
     glfwGetCursorPos(window, &lastx, &lasty);
 }
 
-
 // mouse move callback
-void mouse_move(GLFWwindow *window, double xpos, double ypos) {
+void mouse_move(GLFWwindow *window, double xpos, double ypos)
+{
     // no buttons down: nothing to do
     if (!button_left && !button_middle && !button_right)
         return;
@@ -114,15 +117,15 @@ void mouse_move(GLFWwindow *window, double xpos, double ypos) {
     mjv_moveCamera(m, action, dx / height, dy / height, &scn, &cam);
 }
 
-
 // scroll callback
-void scroll(GLFWwindow *window, double xoffset, double yoffset) {
+void scroll(GLFWwindow *window, double xoffset, double yoffset)
+{
     // emulate vertical mouse motion = 5% of window height
     mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05 * yoffset, &scn, &cam);
 }
 
-
-void set_torque_control(const mjModel *m, int actuator_no, int flag) {
+void set_torque_control(const mjModel *m, int actuator_no, int flag)
+{
     if (flag == 0)
         m->actuator_gainprm[10 * actuator_no + 0] = 0;
     else
@@ -130,32 +133,75 @@ void set_torque_control(const mjModel *m, int actuator_no, int flag) {
 }
 /******************************/
 
-
 /******************************/
-void set_position_servo(const mjModel *m, int actuator_no, double kp) {
+void set_position_servo(const mjModel *m, int actuator_no, double kp)
+{
     m->actuator_gainprm[10 * actuator_no + 0] = kp;
     m->actuator_biasprm[10 * actuator_no + 1] = -kp;
 }
 /******************************/
 
 /******************************/
-void set_velocity_servo(const mjModel *m, int actuator_no, double kv) {
+void set_velocity_servo(const mjModel *m, int actuator_no, double kv)
+{
     m->actuator_gainprm[10 * actuator_no + 0] = kv;
     m->actuator_biasprm[10 * actuator_no + 2] = -kv;
 }
 
-
-void init_controller(const mjModel *m, mjData *d) {
-
+void init_controller(const mjModel *m, mjData *d)
+{
 }
 
 //**********************COMMUNICATION PROTOCOLS**************
-void mycontroller(const mjModel *m, mjData *d) {
-
+void mycontroller(const mjModel *m, mjData *d)
+{
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+// setup socket just to receive intial condition
+void setupSocket_receiveIC(scalar_t* init_conds, int n) {
+
+    #define PORT_ 8081
+    int client_IC;
+    int status;
+    struct sockaddr_in address_receiver;
+
+    scalar_t init_cond[n];
+
+    if ((client_IC = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Socket creation error \n");
+    }
+
+    address_receiver.sin_family = AF_INET;
+    address_receiver.sin_port = htons(PORT_);
+
+    if (inet_pton(AF_INET, "127.0.0.3", &address_receiver.sin_addr) <= 0) {
+        printf("\nInvalid address/ Address not supported \n");
+    }
+
+    if ((status = connect(client_IC, (struct sockaddr *)&address_receiver, sizeof(address_receiver))) < 0) {
+        printf("\nConnection Failed: socket IC \n");
+    }
+
+    read(client_IC, &init_cond, sizeof(init_cond));
+
+    std::cout << "Initial Conditions: \n";
+    for (int i=0; i<n; i++) {
+        init_conds[i] = init_cond[i];
+        std::cout << init_conds[i] << std::endl;
+    }
+
+    close(client_IC);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
 // main function
-int main(int argc, const char **argv) {
+int main(int argc, const char **argv)
+{
 
     // activate software
     mj_activate("mjkey.txt");
@@ -167,7 +213,6 @@ int main(int argc, const char **argv) {
     strcat(xmlpath, xmlfile);
 
     strcat(datapath, path);
-
 
     // load and compile model
     char error[1000] = "Could not load binary model";
@@ -186,7 +231,6 @@ int main(int argc, const char **argv) {
     // make data
     d = mj_makeData(m);
 
-
     // init GLFW
     if (!glfwInit())
         mju_error("Could not initialize GLFW");
@@ -201,8 +245,8 @@ int main(int argc, const char **argv) {
     mjv_defaultOption(&opt);
     mjv_defaultScene(&scn);
     mjr_defaultContext(&con);
-    mjv_makeScene(m, &scn, 2000);                // space for 2000 objects
-    mjr_makeContext(m, &con, mjFONTSCALE_150);   // model-specific context
+    mjv_makeScene(m, &scn, 2000);              // space for 2000 objects
+    mjr_makeContext(m, &con, mjFONTSCALE_150); // model-specific context
 
     // install GLFW mouse and keyboard callbacks
     glfwSetKeyCallback(window, keyboard);
@@ -211,7 +255,7 @@ int main(int argc, const char **argv) {
     glfwSetScrollCallback(window, scroll);
 
     double arr_view[] = {89.608063, -11.588379, 2, 0.000000, 0.000000,
-                         0.500000}; //view the left side (for ll, lh, left_side)
+                         0.500000}; // view the left side (for ll, lh, left_side)
     cam.azimuth = arr_view[0];
     cam.elevation = arr_view[1];
     cam.distance = arr_view[2];
@@ -231,37 +275,27 @@ int main(int argc, const char **argv) {
     ////////////// This is where custom code deviates from Mujoco examples ///////////////
     //////////////////////////////////////////////////////////////////////////////////////
 
-    // Setup the socket to communicate between the simulator and the controller
-    int *new_socket = new int;
-    int valread;
-    struct sockaddr_in serv_addr;
-    // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[25] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
-    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    // Set the initial condition [pos, orientation, vel, angular rate]
+    scalar_t init_conds[12];
+    setupSocket_receiveIC(init_conds, 12);
 
-    if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        return -1;
-    }
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    // Convert IPv4 and IPv6 addresses from text to binary form
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        printf("\nInvalid address/ Address not supported \n");
-        return -1;
-    }
-    if (connect(*new_socket, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        printf("\nConnection Failed \n");
-        return -1;
-    }
+    d->qpos[0] = init_conds[0];
+    d->qpos[1] = init_conds[1];
+    d->qpos[2] = init_conds[2];
+    d->qpos[3] = init_conds[3];
+    d->qpos[4] = init_conds[4];
+    d->qpos[5] = init_conds[5];
+
+    d->qvel[0] = init_conds[6];
+    d->qvel[1] = init_conds[7];
+    d->qvel[2] = init_conds[8];
+    d->qvel[3] = init_conds[9];
+    d->qvel[4] = init_conds[10];
+    d->qvel[5] = init_conds[11];
 
     // Read the gain matrix from the yaml file
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
-    std::vector<scalar_t> p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> v0 = config["Simulator"]["v0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> rpy0 = config["Simulator"]["rpy0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> w0 = config["Simulator"]["w0"].as<std::vector<scalar_t>>();
+
     scalar_t pauseBeforeStart = config["Simulator"]["pauseBeforeStart"].as<scalar_t>();
     scalar_t speed = config["Simulator"]["speed"].as<scalar_t>();
     std::vector<scalar_t> pert_force_x = config["Simulator"]["pert_force_x"].as<std::vector<scalar_t>>();
@@ -270,19 +304,35 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
 
-    // Set the initial condition [pos, orientation, vel, angular rate]
-    d->qpos[0] = p0[0];
-    d->qpos[1] = p0[1];
-    d->qpos[2] = p0[2];
-    d->qpos[4] = rpy0[0];
-    d->qpos[5] = rpy0[1];
-    d->qpos[6] = rpy0[2];
-    d->qvel[0] = v0[0];
-    d->qvel[1] = v0[1];
-    d->qvel[2] = v0[2];
-    d->qvel[3] = w0[0];
-    d->qvel[4] = w0[1];
-    d->qvel[5] = w0[2];
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    // Setup the socket to communicate between the simulator and the controller
+    int *new_socket = new int;
+    int valread;
+    struct sockaddr_in serv_addr;
+    // [receive - RX] Torques and horizon states: TODO: Fill in
+    scalar_t RX_torques[25] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
+    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("\n Socket creation error \n");
+        return -1;
+    }
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0)
+    {
+        printf("\nInvalid address/ Address not supported \n");
+        return -1;
+    }
+    if (connect(*new_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        printf("\nConnection Failed \n");
+        return -1;
+    }
 
     //////////////////////////////// Standard Mujoco Setup //////////////////////////////////////
     // get framebuffer viewport
@@ -290,7 +340,7 @@ int main(int argc, const char **argv) {
     mjrRect viewport = {0, 0, 0, 0};
     glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
     // update scene and render
-    //cam.lookat[0] = d->qpos[0];
+    // cam.lookat[0] = d->qpos[0];
     mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
     mjr_render(viewport, &scn, &con);
     // swap OpenGL buffers (blocking call due to v-sync)
@@ -300,54 +350,61 @@ int main(int argc, const char **argv) {
     sleep(pauseBeforeStart);
     c = d->contact;
     // Instantiate perturbation object
-    mjvPerturb* pert = new mjvPerturb();
+    mjvPerturb *pert = new mjvPerturb();
     pert->select = 1;
     pert->active = 1;
     opt.flags[mjVIS_PERTFORCE] = 1;
     int iter = 0;
 
     // use the first while condition if you want to simulate for a period.
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(window))
+    {
         // advance interactive simulation for 1/60 sec
         //  Assuming MuJoCo can simulate faster than real-time, which it usually can,
         //  this loop will finish on time for the next frame to be rendered at 60 fps.
         //  Otherwise add a cpu timer and exit this loop when it is time to render.
         mjtNum simstart = d->time;
-	
-        while (d->time - simstart < speed / 60.0) {
-            //use this for sending actual states
+
+        while (d->time - simstart < speed / 60.0)
+        {
+            // use this for sending actual states
             mjtNum *quat;
             mjtNum *pos;
             quat = d->xquat;
             pos = d->xpos;
-	    d->xfrc_applied[6] = 0;
-	    d->xfrc_applied[7] = 0;
-	    for (int i = 0; i < pert_force_x.size(); i++) {
-		if (iter>pert_start[i] && iter < pert_end[i]) {
-		  d->xfrc_applied[6] += pert_force_x[i];
-		  d->xfrc_applied[7] += pert_force_y[i];
-		}
-	    }
+            d->xfrc_applied[6] = 0;
+            d->xfrc_applied[7] = 0;
+            for (int i = 0; i < pert_force_x.size(); i++)
+            {
+                if (iter > pert_start[i] && iter < pert_end[i])
+                {
+                    d->xfrc_applied[6] += pert_force_x[i];
+                    d->xfrc_applied[7] += pert_force_y[i];
+                }
+            }
 
             // Pack the state message:
             // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
             int ind = 0;
             TX_state[0] = d->time;
             ind++;
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 3; i++)
+            {
                 TX_state[ind] = pos[i + 3];
                 ind++;
             }
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 4; i++)
+            {
                 TX_state[ind] = quat[i + 4];
                 ind++;
             }
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < 6; i++)
+            {
                 TX_state[ind] = d->qvel[i];
                 ind++;
             }
 
-	    // Threshold for registering contact
+            // Threshold for registering contact
             scalar_t contact_threshold = -0.003;
             TX_state[ind] = (c[0].dist < contact_threshold);
             ind++;
@@ -363,50 +420,49 @@ int main(int argc, const char **argv) {
             TX_state[ind] = d->qvel[8];
             ind++;
 
-            //send current states to the controller
+            // send current states to the controller
             send(*new_socket, &TX_state, sizeof(TX_state), 0);
             read(*new_socket, &RX_torques, sizeof(RX_torques));
 
-            //override the communication based on the received toruqe comands from ctrl
+            // override the communication based on the received toruqe comands from ctrl
             d->ctrl = RX_torques;
 
-	    d->xfrc_applied[6] = RX_torques[23];
-	    d->xfrc_applied[7] = RX_torques[24];
+            d->xfrc_applied[6] = RX_torques[23];
+            d->xfrc_applied[7] = RX_torques[24];
 
             // Take integrator step
             mj_step(m, d);
-	    iter++;
-        } 
+            iter++;
+        }
 
-	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
-	static int body_offset = 11;
-	static int vel_offset = 10;
-	d->qpos[body_offset+0] = RX_torques[4];
- 	d->qpos[body_offset+1] = RX_torques[5];
-	d->qpos[body_offset+2] = RX_torques[6];
-	d->qvel[vel_offset+0] = 0;
-	d->qvel[vel_offset+1] = 0;
-	d->qvel[vel_offset+2] = 0;
-	d->qpos[body_offset+3] = RX_torques[7];
-	d->qpos[body_offset+4] = RX_torques[8];
-	d->qpos[body_offset+5] = RX_torques[9];
-	d->qpos[body_offset+6] = RX_torques[10];
+        ///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
+        static int body_offset = 11;
+        static int vel_offset = 10;
+        d->qpos[body_offset + 0] = RX_torques[4];
+        d->qpos[body_offset + 1] = RX_torques[5];
+        d->qpos[body_offset + 2] = RX_torques[6];
+        d->qvel[vel_offset + 0] = 0;
+        d->qvel[vel_offset + 1] = 0;
+        d->qvel[vel_offset + 2] = 0;
+        d->qpos[body_offset + 3] = RX_torques[7];
+        d->qpos[body_offset + 4] = RX_torques[8];
+        d->qpos[body_offset + 5] = RX_torques[9];
+        d->qpos[body_offset + 6] = RX_torques[10];
 
-	d->qpos[22] = RX_torques[11];
-	d->qpos[23] = RX_torques[12];
-	d->qpos[24] = RX_torques[13];
-	d->qpos[25] = RX_torques[14];
-	d->qpos[26] = RX_torques[15];
-	d->qpos[27] = RX_torques[16];
-	d->qpos[28] = RX_torques[17];
-	d->qpos[29] = RX_torques[18];
-	d->qpos[30] = RX_torques[19];
-	d->qpos[31] = RX_torques[20];
-	d->qpos[32] = RX_torques[21];
-	d->qpos[33] = RX_torques[22];
+        d->qpos[22] = RX_torques[11];
+        d->qpos[23] = RX_torques[12];
+        d->qpos[24] = RX_torques[13];
+        d->qpos[25] = RX_torques[14];
+        d->qpos[26] = RX_torques[15];
+        d->qpos[27] = RX_torques[16];
+        d->qpos[28] = RX_torques[17];
+        d->qpos[29] = RX_torques[18];
+        d->qpos[30] = RX_torques[19];
+        d->qpos[31] = RX_torques[20];
+        d->qpos[32] = RX_torques[21];
+        d->qpos[33] = RX_torques[22];
 
-
-	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
+        ////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
         mjrRect viewport = {0, 0, 0, 0};
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);

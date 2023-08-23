@@ -1,10 +1,11 @@
 %% Read Data
 clear;clc;%clf;
 
-%%%%%%%%%%%%%%%%% Choose file here, MATLAB autofills
-A = readmatrix('../data/data_hw/1692168245_2023_8_15_23:44:5.csv');
+%%%%%%%%%%%%%%%%% Choose file here, MATLAB autofills/
+% A = readmatrix('/home/sergio/code/test/ARCHER_hopper_PostICRA/ControlStack/data/data_hw/1692264244_2023_8_17_2:24:4.csv');
 % A = readmatrix('../data/data_sim/1692158766_2023_8_15_21:6:6.csv');
-%  A = readmatrix('../data/data_hardware.csv');
+ A = readmatrix('../data/data_sim/1692330598_2023_8_17_20:49:58.csv');
+% A = readmatrix('../data/data_hardware.csv');
 %%%%%%%%%%%%%%%%%
 
 % A = readmatrix('../data/data_hardware_test39.csv');
