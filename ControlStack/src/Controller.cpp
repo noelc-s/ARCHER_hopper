@@ -188,7 +188,6 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT) {
 int opt_socket = 1;
 int addrlen = sizeof(*address);
@@ -223,6 +222,75 @@ int addrlen = sizeof(*address);
         perror("accept");
         exit(EXIT_FAILURE);
     }
+}
+
+// read IC from YAML ab and send to simulator
+void setupSocket_sendIC(){
+
+  // read the intial conditions from YAML
+  YAML::Node config = YAML::LoadFile("../config/gains.yaml");
+  std::vector<scalar_t> p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
+  std::vector<scalar_t> v0 = config["Simulator"]["v0"].as<std::vector<scalar_t>>();
+  std::vector<scalar_t> rpy0 = config["Simulator"]["rpy0"].as<std::vector<scalar_t>>();
+  std::vector<scalar_t> w0 = config["Simulator"]["w0"].as<std::vector<scalar_t>>();
+
+  scalar_t init_cond[12];
+  init_cond[0]  = p0[0];
+  init_cond[1]  = p0[1];
+  init_cond[2]  = p0[2];
+  init_cond[3]  = v0[0];
+  init_cond[4]  = v0[1];
+  init_cond[5]  = v0[2];
+  init_cond[6]  = rpy0[0];
+  init_cond[7]  = rpy0[1];
+  init_cond[8]  = rpy0[2];
+  init_cond[9]  = w0[0];
+  init_cond[10] = w0[1];
+  init_cond[11] = w0[2];
+
+  // regular socket stuff
+  #define PORT_ 8081
+
+  int server_IC;
+  int new_socket_sim;
+  struct sockaddr_in address_sender;
+  int opt_sender = 1;
+  int addrlen_sender = sizeof(address_sender);
+
+  if ((server_IC = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	}
+
+  if (setsockopt(server_IC, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt_sender, sizeof(opt_sender))) {
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
+
+  address_sender.sin_family = AF_INET;
+	address_sender.sin_addr.s_addr = INADDR_ANY;
+	address_sender.sin_port = htons(PORT_);
+
+  if (bind(server_IC, (struct sockaddr*)&address_sender, sizeof(address_sender))< 0) {
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	}
+
+  if (listen(server_IC, 3) < 0) {
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+  if ((new_socket_sim = accept(server_IC, (struct sockaddr*)&address_sender, (socklen_t*)&addrlen_sender)) < 0) {
+		perror("accept");
+		exit(EXIT_FAILURE);
+	}
+
+  send(new_socket_sim, &init_cond, sizeof(init_cond), 0);
+
+  close(new_socket_sim);
+	shutdown(server_IC, SHUT_RDWR);
+
 }
 
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
@@ -365,6 +433,7 @@ void Controller::run() {
 
  //////////////////////// Main Loop /////////////////////////////////
  ////////////////////////////////////////////////////////////////////
+    setupSocket_sendIC();
     setupSocket(new_socket, server_fd, address, *port);    
 
     

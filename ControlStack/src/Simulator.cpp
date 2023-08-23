@@ -153,6 +153,47 @@ void mycontroller(const mjModel *m, mjData *d) {
 
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+// setup socket to receive intial condition from Controller
+void setupSocket_receiveIC(scalar_t* init_conds, int n) {
+
+    #define PORT_ 8081
+    int client_IC;
+    int status;
+    struct sockaddr_in address_receiver;
+
+    scalar_t init_cond[n];
+
+    if ((client_IC = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Socket creation error \n");
+    }
+
+    address_receiver.sin_family = AF_INET;
+    address_receiver.sin_port = htons(PORT_);
+
+    if (inet_pton(AF_INET, "127.0.0.3", &address_receiver.sin_addr) <= 0) {
+        printf("\nInvalid address/ Address not supported \n");
+    }
+
+    if ((status = connect(client_IC, (struct sockaddr *)&address_receiver, sizeof(address_receiver))) < 0) {
+        printf("\nConnection Failed: socket IC \n");
+    }
+
+    read(client_IC, &init_cond, sizeof(init_cond));
+
+    std::cout << "Initial Conditions: \n";
+    for (int i=0; i<n; i++) {
+        init_conds[i] = init_cond[i];
+        std::cout << init_conds[i] << std::endl;
+    }
+
+    close(client_IC);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // main function
 int main(int argc, const char **argv) {
 
@@ -221,6 +262,35 @@ int main(int argc, const char **argv) {
     ////////////// This is where custom code deviates from Mujoco examples ///////////////
     //////////////////////////////////////////////////////////////////////////////////////
 
+    // Set the initial condition [pos, orientation, vel, angular rate]
+    scalar_t init_conds[12];
+    setupSocket_receiveIC(init_conds, 12);
+
+    d->qpos[0] = init_conds[0];
+    d->qpos[1] = init_conds[1];
+    d->qpos[2] = init_conds[2];
+    d->qpos[3] = init_conds[3];
+    d->qpos[4] = init_conds[4];
+    d->qpos[5] = init_conds[5];
+
+    d->qvel[0] = init_conds[6];
+    d->qvel[1] = init_conds[7];
+    d->qvel[2] = init_conds[8];
+    d->qvel[3] = init_conds[9];
+    d->qvel[4] = init_conds[10];
+    d->qvel[5] = init_conds[11];
+
+    // Read the gain matrix from the yaml file
+    YAML::Node config = YAML::LoadFile("../config/gains.yaml");
+
+    scalar_t pauseBeforeStart = config["Simulator"]["pauseBeforeStart"].as<scalar_t>();
+    scalar_t speed = config["Simulator"]["speed"].as<scalar_t>();
+    std::vector<scalar_t> pert_force_x = config["Simulator"]["pert_force_x"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> pert_force_y = config["Simulator"]["pert_force_y"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
+    scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
+
     // Setup the socket to communicate between the simulator and the controller
     int *new_socket = new int;
     int valread;
@@ -252,34 +322,6 @@ int main(int argc, const char **argv) {
         printf("\nConnection Failed \n");
         return -1;
     }
-
-    // Read the gain matrix from the yaml file
-    YAML::Node config = YAML::LoadFile("../config/gains.yaml");
-    std::vector<scalar_t> p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> v0 = config["Simulator"]["v0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> rpy0 = config["Simulator"]["rpy0"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> w0 = config["Simulator"]["w0"].as<std::vector<scalar_t>>();
-    scalar_t pauseBeforeStart = config["Simulator"]["pauseBeforeStart"].as<scalar_t>();
-    scalar_t speed = config["Simulator"]["speed"].as<scalar_t>();
-    std::vector<scalar_t> pert_force_x = config["Simulator"]["pert_force_x"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> pert_force_y = config["Simulator"]["pert_force_y"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
-    scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
-
-    // Set the initial condition [pos, orientation, vel, angular rate]
-    d->qpos[0] = p0[0];
-    d->qpos[1] = p0[1];
-    d->qpos[2] = p0[2];
-    d->qpos[4] = rpy0[0];
-    d->qpos[5] = rpy0[1];
-    d->qpos[6] = rpy0[2];
-    d->qvel[0] = v0[0];
-    d->qvel[1] = v0[1];
-    d->qvel[2] = v0[2];
-    d->qvel[3] = w0[0];
-    d->qvel[4] = w0[1];
-    d->qvel[5] = w0[2];
 
     //////////////////////////////// Standard Mujoco Setup //////////////////////////////////////
     // get framebuffer viewport

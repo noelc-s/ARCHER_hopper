@@ -114,6 +114,8 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p);
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT);
 
+void setupSocket_sendIC();
+
 // Current state of an axis.
 struct axis_state {
     short x, y;
