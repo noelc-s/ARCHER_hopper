@@ -21,10 +21,8 @@ private:
    PyThreadState* mThreadState;
 };
 
-void Controller::setInitialState(scalar_t *init_cond) {
-
-  // do something
-
+void Controller::setInitialState(vector_t initialCondition) {
+  initialCondition_ = initialCondition; 
 }
 
 void Controller::resetSimulation(vector_t x0) {
@@ -229,7 +227,7 @@ int addrlen = sizeof(*address);
 }
 
 // get initial conditions from YAML
-scalar_t *get_configIC() {
+vector_t get_configIC() {
   
   // read the intial conditions from YAML
   YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -238,7 +236,7 @@ scalar_t *get_configIC() {
   std::vector<scalar_t> rpy0 = config["Simulator"]["rpy0"].as<std::vector<scalar_t>>();
   std::vector<scalar_t> w0 = config["Simulator"]["w0"].as<std::vector<scalar_t>>();
 
-  static scalar_t init_cond[12];
+  vector_t init_cond(12);
   init_cond[0]  = p0[0];
   init_cond[1]  = p0[1];
   init_cond[2]  = p0[2];
@@ -256,12 +254,13 @@ scalar_t *get_configIC() {
 }
 
 // read IC from YAML ab and send to simulator
-void setupSocket_sendIC(scalar_t *init_conds, int n){
+void setupSocket_sendIC(vector_t initialCondition){
 
+  int n = initialCondition.size();
   scalar_t init_cond[n];
   for (int i=0; i<n; i++) {
-        init_cond[i] = init_conds[i];
-        std::cout << init_conds[i] << std::endl;
+        init_cond[i] = initialCondition[i];
+        std::cout << initialCondition[i] << std::endl;
   }
 
   // regular socket stuff
@@ -451,18 +450,11 @@ void Controller::run() {
  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // get intial conditions from YAML
-    scalar_t *ic;
-    
-    bool configIC = true;
-    
-    if (configIC) {
-      ic = get_configIC();
-    }
-    else { 
-      ic = get_configIC();
+    if (initialCondition_.size() == 0) {
+      initialCondition_ = get_configIC();
     }
     
-    setupSocket_sendIC(ic, 12);
+    setupSocket_sendIC(initialCondition_);
     
     // setup socket comms
     setupSocket(new_socket, server_fd, address, *port);    

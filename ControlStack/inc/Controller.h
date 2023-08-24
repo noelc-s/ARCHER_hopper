@@ -80,9 +80,9 @@ class Controller : public C {
 
     scalar_t TX_torques[13+2*5+2+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-    scalar_t initial_conds[12] = {0,0,0.5,0,0,0,0,0,0,0,0,0}; // p0[3], v0[3], rpy0[3], w0[3]
+    vector_t initialCondition_;
 
-    void setInitialState(scalar_t *init_cond);
+    void setInitialState(vector_t initialCondition);
     void resetSimulation(vector_t x0);
     void stopSimulation();
     void startSimulation();
@@ -117,8 +117,8 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p);
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT);
 
-scalar_t *get_condfigIC();
-void setupSocket_sendIC(scalar_t *init_conds, int n);
+vector_t get_condfigIC();
+void setupSocket_sendIC(vector_t initialCondition);
 
 // Current state of an axis.
 struct axis_state {

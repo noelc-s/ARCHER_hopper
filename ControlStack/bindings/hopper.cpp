@@ -35,13 +35,15 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("t_last_MPC", &Controller::t_last_MPC)
   .def_readwrite("duration", &Controller::duration)
   .def_readwrite("state", &Controller::state)
-.def_readwrite("programState_", &Controller::programState_)
+  .def_readwrite("initialCondition_", &Controller::initialCondition_)
+  .def_readwrite("programState_", &Controller::programState_)
   .def_property_readonly("TX_torques", [](py::object&obj) {
         Controller& o = obj.cast<Controller&>();
         return py::array{26,o.TX_torques,obj};})
   .def("startSimulation", &Controller::startSimulation)
   .def("stopSimulation", &Controller::stopSimulation)
   .def("resetSimulation", py::overload_cast<vector_t>(&Controller::resetSimulation))
+  .def("setInitialState", py::overload_cast<vector_t>(&Controller::setInitialState))
  ;
 
   m.def("call_run", [](C *c) -> void {

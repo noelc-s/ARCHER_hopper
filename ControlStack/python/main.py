@@ -11,14 +11,16 @@ c = hopper.Controller()
 x1 = threading.Thread(target=c.run)
 
 sim_duration = 5
-# c.resetSimulation([0.,0.,10.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
-# above should set the initial state of mujoco, but it's broken
-# (there is some janky programState_ state machine logic)
-# solution: add a send (over socket) command to the start of the controller,
-# before the for loop, and a read to the start of the simulator.cpp, before the simulation
-# step 1: make the controller read the initial condition from yaml
-# step 2: get controller to send IC to simulator (over socket), and have the simulator run as normal
-# step 3: use python to set the state of controller (instead of reading from yaml)
+c.setInitialState([0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
+# step 1: turn the Simulator.cpp into a class (the same way Controller was turned into a class). This means that the "main" script should just run simulator.run()
+# step 2: make a simulator python class that can call the run
+# step 3: instantiate that here, and call the run function
+# pseudo-code (python): 
+# s = hopper.Simulator()
+# x2 = threading.Thread(target=s.run)
+# c.setInitialState(...)
+# x1.start()
+# x2.start()
 
 # print(c.TX_torques)
 x1.start()
