@@ -157,7 +157,7 @@ void mycontroller(const mjModel *m, mjData *d) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 // setup socket to receive intial condition from Controller
-void setupSocket_receiveIC(scalar_t* init_conds, int n) {
+void setupSocket_receiveIC(scalar_t *init_conds, int n) {
 
     #define PORT_ 8081
     int client_IC;
@@ -183,7 +183,7 @@ void setupSocket_receiveIC(scalar_t* init_conds, int n) {
 
     read(client_IC, &init_cond, sizeof(init_cond));
 
-    std::cout << "Initial Conditions: \n";
+    std::cout << "Simulator Initial Conditions: \n";
     for (int i=0; i<n; i++) {
         init_conds[i] = init_cond[i];
         std::cout << init_conds[i] << std::endl;

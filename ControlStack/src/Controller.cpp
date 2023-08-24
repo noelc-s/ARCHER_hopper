@@ -21,7 +21,11 @@ private:
    PyThreadState* mThreadState;
 };
 
+void Controller::setInitialState(scalar_t *init_cond) {
 
+  // do something
+
+}
 
 void Controller::resetSimulation(vector_t x0) {
 
@@ -224,9 +228,9 @@ int addrlen = sizeof(*address);
     }
 }
 
-// read IC from YAML ab and send to simulator
-void setupSocket_sendIC(){
-
+// get initial conditions from YAML
+scalar_t *get_configIC() {
+  
   // read the intial conditions from YAML
   YAML::Node config = YAML::LoadFile("../config/gains.yaml");
   std::vector<scalar_t> p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
@@ -234,7 +238,7 @@ void setupSocket_sendIC(){
   std::vector<scalar_t> rpy0 = config["Simulator"]["rpy0"].as<std::vector<scalar_t>>();
   std::vector<scalar_t> w0 = config["Simulator"]["w0"].as<std::vector<scalar_t>>();
 
-  scalar_t init_cond[12];
+  static scalar_t init_cond[12];
   init_cond[0]  = p0[0];
   init_cond[1]  = p0[1];
   init_cond[2]  = p0[2];
@@ -247,6 +251,18 @@ void setupSocket_sendIC(){
   init_cond[9]  = w0[0];
   init_cond[10] = w0[1];
   init_cond[11] = w0[2];
+
+  return init_cond;
+}
+
+// read IC from YAML ab and send to simulator
+void setupSocket_sendIC(scalar_t *init_conds, int n){
+
+  scalar_t init_cond[n];
+  for (int i=0; i<n; i++) {
+        init_cond[i] = init_conds[i];
+        std::cout << init_conds[i] << std::endl;
+  }
 
   // regular socket stuff
   #define PORT_ 8081
@@ -431,11 +447,25 @@ void Controller::run() {
   Traj trajectory = {waypts,times, waypts.size()};
   Bezier_T tra(trajectory, 1.0);
 
- //////////////////////// Main Loop /////////////////////////////////
- ////////////////////////////////////////////////////////////////////
-    setupSocket_sendIC();
-    setupSocket(new_socket, server_fd, address, *port);    
+ //////////////////////// Main Loop /////////////////////////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    // get intial conditions from YAML
+    scalar_t *ic;
+    
+    bool configIC = true;
+    
+    if (configIC) {
+      ic = get_configIC();
+    }
+    else { 
+      ic = get_configIC();
+    }
+    
+    setupSocket_sendIC(ic, 12);
+    
+    // setup socket comms
+    setupSocket(new_socket, server_fd, address, *port);    
     
     // for counting number of hops based on z velocity
     hopper.num_hops = 0;
