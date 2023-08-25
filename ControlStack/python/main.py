@@ -7,27 +7,42 @@ import threading
 import numpy as np
 import networkx as networkx
 
-c = hopper.Controller()
-x1 = threading.Thread(target=c.run)
-
-sim_duration = 5
-c.setInitialState([0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.])
+########################################################################
 # step 1: turn the Simulator.cpp into a class (the same way Controller was turned into a class). This means that the "main" script should just run simulator.run()
 # step 2: make a simulator python class that can call the run
 # step 3: instantiate that here, and call the run function
 # pseudo-code (python): 
-# s = hopper.Simulator()
-# x2 = threading.Thread(target=s.run)
-# c.setInitialState(...)
-# x1.start()
-# x2.start()
+#   s = hopper.Simulator()
+#   x2 = threading.Thread(target=s.run)
+#   c.setInitialState(...)
+#   x1.start()
+#   x2.start()
+########################################################################
 
-# print(c.TX_torques)
-x1.start()
+# create controller and sim objects
+c = hopper.Controller()
+s = hopper.Simulator()
+
+# instantiate thread for controller and sim
+control_thread = threading.Thread(target=c.run)
+sim_thread = threading.Thread(target=s.run)
+
+# set simulation duration
+sim_duration = 5
+
+# set inital state
+c.setInitialState([0.,0.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0.])
+
+# start control and sim threads
+control_thread.start()
+sim_thread.start()
+
+# simulate until sim_duration 
 while c.t_last < sim_duration:
     pass
 c.stopSimulation()
 print(c.state)
+
 # state dimensionality: 21
 # input dimensionality: 4
 

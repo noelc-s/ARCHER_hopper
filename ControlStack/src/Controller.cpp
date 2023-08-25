@@ -1,4 +1,3 @@
-
 #include "Controller.h"
 
 class GilManager
@@ -260,7 +259,7 @@ void setupSocket_sendIC(vector_t initialCondition){
   scalar_t init_cond[n];
   for (int i=0; i<n; i++) {
         init_cond[i] = initialCondition[i];
-        std::cout << initialCondition[i] << std::endl;
+        // std::cout << initialCondition[i] << std::endl;
   }
 
   // regular socket stuff
@@ -599,7 +598,6 @@ void Controller::run() {
 //	  x0 << 0,0,15,0,0,0,0,0,0,0,0,0;
 //	  resetSimulation(x0);
 //  }
-
 
   // count number of hops based on changing directions of z velocity
   pos_sign_check = hopper.vel(2) > 0;

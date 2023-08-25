@@ -1,39 +1,30 @@
-#include<stdlib.h>
-#include <iostream>
-#include<stdbool.h> //for bool
+#include "Simulator.h"
 
-#include "mujoco.h"
-#include "GLFW/glfw3.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
+class GilManager
+{
+public:
+   GilManager()
+   {
+      mThreadState = PyEval_SaveThread();
+   }
 
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include<netinet/in.h>
-#include<unistd.h>
+   ~GilManager()
+   {
+      if (mThreadState)
+         PyEval_RestoreThread(mThreadState);
+   }
 
-#include "../inc/Types.h"
-#include "yaml-cpp/yaml.h"
+   GilManager(const GilManager&) = delete;
+   GilManager& operator=(const GilManager&) = delete;
+private:
+   PyThreadState* mThreadState;
+};
 
-#define MAXLINE 1000
-#define mjUSEDOUBLE
+//////////////////////////////////////////////////////////////////////////////////////
 
-using namespace Hopper_t;
-using namespace Eigen;
-
-IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-
-///////////////////////////////////////////////////////////////////////////////////////
-////////////////// All of this first stuff is just Mujoco example code ////////////////
-///////////////////////////////////////////////////////////////////////////////////////
-
-//simulation end time
+const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 char path[] = "../rsc/";
 char xmlfile[] = "hopper.xml";
-
-// MuJoCo data structures
 mjModel *m = NULL;                  // MuJoCo model
 mjData *d = NULL;                   // MuJoCo data
 mjContact *c = NULL;                // MuJoCo contact
@@ -42,22 +33,20 @@ mjvOption opt;                      // visualization options
 mjvScene scn;                       // abstract scene
 mjrContext con;                     // custom GPU context
 mjfSensor sens;
-
-// mouse interaction
 bool button_left = false;
 bool button_middle = false;
 bool button_right = false;
 double lastx = 0;
 double lasty = 0;
-
-// holders of one step history of time and position to calculate dertivatives
 mjtNum position_history = 0;
 mjtNum previous_time = 0;
-
-// controller related variables
 float_t ctrl_update_freq = 100;
 mjtNum last_update = 0.0;
 mjtNum ctrl;
+
+///////////////////////////////////////////////////////////////////////////////////////
+////////////////// All of this first stuff is just Mujoco example code ////////////////
+///////////////////////////////////////////////////////////////////////////////////////
 
 // keyboard callback
 void keyboard(GLFWwindow *window, int key, int scancode, int act, int mods) {
@@ -194,8 +183,14 @@ void setupSocket_receiveIC(scalar_t *init_conds, int n) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+Simulator::Simulator() {
+    // anything special I need to do?
+}
+
 // main function
-int main(int argc, const char **argv) {
+void Simulator::run() {
+
+    GilManager g; ///
 
     // activate software
     mj_activate("mjkey.txt");
@@ -296,11 +291,11 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     std::unique_ptr<uint16_t> port;
-    if (argc < 2) {
+    // if (argc < 2) {
       port.reset(new uint16_t(8080));
-    } else {
-      port.reset(new uint16_t(static_cast<uint16_t>(std::stoul(argv[1]))));
-    }
+    // } else {
+    //   port.reset(new uint16_t(static_cast<uint16_t>(std::stoul(argv[1]))));
+    // }
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[26] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -309,18 +304,18 @@ int main(int argc, const char **argv) {
 
     if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
-        return -1;
+        // return -1;
     }
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(*port);
     // Convert IPv4 and IPv6 addresses from text to binary form
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("\nInvalid address/ Address not supported \n");
-        return -1;
+        // return -1;
     }
     if (connect(*new_socket, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         printf("\nConnection Failed \n");
-        return -1;
+        // return -1;
     }
 
     //////////////////////////////// Standard Mujoco Setup //////////////////////////////////////
@@ -366,19 +361,6 @@ int main(int argc, const char **argv) {
         d->qvel[4] = RX_torques[10];
         d->qvel[5] = RX_torques[11];
 
-        //d->qpos[0] = p0[0];
-
-        //d->qpos[1] = p0[1];
-        //d->qpos[2] = p0[2];
-        //d->qpos[4] = rpy0[0];
-        //d->qpos[5] = rpy0[1];
-        //d->qpos[6] = rpy0[2];
-        //d->qvel[0] = v0[0];
-        //d->qvel[1] = v0[1];
-        //d->qvel[2] = v0[2];
-        //d->qvel[3] = w0[0];
-        //d->qvel[4] = w0[1];
-        //d->qvel[5] = w0[2];
        }
 
         // advance interactive simulation for 1/60 sec
@@ -511,9 +493,7 @@ int main(int argc, const char **argv) {
     mj_deactivate();
 
     // terminate GLFW (crashes with Linux NVidia drivers)
-#if defined(__APPLE__) || defined(_WIN32)
-    glfwTerminate();
-#endif
-
-    return 1;
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
 }

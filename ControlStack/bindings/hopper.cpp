@@ -2,9 +2,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include "../inc/Controller.h"
+#include "../inc/Simulator.h"
 
 namespace py = pybind11;
 
+// python class for controller
 class PyController : public C {
         public:
                 using C::C;
@@ -16,7 +18,23 @@ class PyController : public C {
                 }
 };
 
+// python class for simulator
+class PySimulator : public S {
+        public:
+                using S::S;
+                void run() {
+                        PYBIND11_OVERRIDE_PURE(
+                                        void,
+                                        S,
+                                        run,);
+                }
+};
+
 PYBIND11_MODULE(hopper, m) {
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Controller Class
   py::class_<C, PyController> c(m, "C");
   c
           .def(py::init<>())
@@ -49,6 +67,24 @@ PYBIND11_MODULE(hopper, m) {
   m.def("call_run", [](C *c) -> void {
                   py::gil_scoped_release release;
                   call_run(c);
+                  py::gil_scoped_acquire acquire;
+                  });
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Simulator Class
+  py::class_<S, PySimulator> s(m, "S");
+  s
+          .def(py::init<>())
+          .def("run",&S::run);
+  
+  py::class_<Simulator> simulator(m, "Simulator",s);
+  simulator 
+      .def(py::init<>()); // constructor
+
+  m.def("call_run_sim", [](S *s) -> void {
+                  py::gil_scoped_release release;
+                  call_run_sim(s);
                   py::gil_scoped_acquire acquire;
                   });
 }

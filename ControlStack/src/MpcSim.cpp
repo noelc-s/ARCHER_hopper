@@ -19,6 +19,7 @@
 
 #include "Hopper.h"
 #include "Controller.h"
+#include "Simulator.h"   ////
 
 using namespace Eigen;
 using namespace Hopper_t;
@@ -28,10 +29,14 @@ using namespace pinocchio;
 int main(int argc, char *argv[]) {
 
   Controller controller;
+
+  Simulator simulator; ////
+
   if (argc < 2) {
   } else {
     controller.port.reset(new uint16_t(static_cast<uint16_t>(std::stoul(argv[1]))));
   }
 
   controller.run();
+  simulator.run(); ////
 }

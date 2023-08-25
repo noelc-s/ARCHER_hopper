@@ -104,10 +104,29 @@ target_link_libraries(CONTROLLER python3.8)
 include_directories(${PYTHON_INCLUDE_DIRS})
 target_link_libraries(CONTROLLER ${PYTHON_LIBRARIES})
 
+# Simulator class
+add_library(SIMULATOR SHARED
+  src/Simulator.cpp
+) 
+target_link_libraries(SIMULATOR Eigen3::Eigen)
+target_link_libraries(SIMULATOR glfw)
+target_link_libraries(SIMULATOR yaml-cpp)
+target_link_libraries(SIMULATOR ${MUJOCO_LIB})
+#target_link_libraries(SIMULATOR ${MUJOCO_DIR})
+target_link_directories(SIMULATOR PUBLIC ${MUJOCO_PATH})
+target_link_libraries(SIMULATOR python3.8)
+#include_directories(${PYTHON_INCLUDE_DIRS})
+target_link_libraries(SIMULATOR ${PYTHON_LIBRARIES})
+
+
 ############################## Executables #################################
 ############################################################################
 add_executable(hopper_ctrl src/MpcSim.cpp)
 target_link_libraries(hopper_ctrl CONTROLLER)
+target_link_libraries(hopper_ctrl SIMULATOR)
+
+#add_executable(hopper_sim src/MpcSim.cpp)
+#target_link_libraries(hopper_sim SIMULATOR)
 
 if(HARDWARE)
 add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)
@@ -117,16 +136,10 @@ target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
 target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
 endif()
 
-add_executable(hopper_sim src/Simulator.cpp)
-target_link_libraries(hopper_sim PUBLIC Eigen3::Eigen)
-target_link_libraries(hopper_sim PUBLIC glfw)
-target_link_libraries(hopper_sim PUBLIC yaml-cpp)
-target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
-target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
-
 ################ Pybind11 #########################
 add_subdirectory(pybind11)
 pybind11_add_module(hopper "../bindings/hopper.cpp")
 target_link_libraries(hopper PUBLIC Eigen3::Eigen)
 target_link_libraries(hopper PUBLIC CONTROLLER)
+target_link_libraries(hopper PUBLIC SIMULATOR)
 target_link_libraries(hopper PUBLIC yaml-cpp)
