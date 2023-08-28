@@ -60,6 +60,7 @@ ENV HOME /home/$USER_NAME
 ADD --chown=$USER_NAME:$USER_NAME setup/setup.bash $HOME/
 ADD --chown=$USER_NAME:$USER_NAME setup/.bashrc $HOME/
 ADD --chown=$USER_NAME:$USER_NAME setup/BezierTubes $HOME/libs/BezierTubes
+ADD --chown=$USER_NAME:$USER_NAME setup/cddlib $HOME/libs/cddlib
 
 WORKDIR $HOME/libs 
 
@@ -125,26 +126,24 @@ RUN git clone --recursive https://github.com/artivis/manif.git && \
     cmake .. -G Ninja && \
     sudo ninja install
 
-RUN bash -c "ssh git@github.com"
+RUN cd cddlib && \
+    mkdir build && \
+    cd build && \
+    cmake .. -G Ninja && \
+    sudo ninja install
 
-# RUN git clone --recursive https://github.com/noelc-s/cddlib.git && \
-#     cd cddlib && \
-#     mkdir build && \
-#     cd build && \
-#     cmake .. -G Ninja && \
-#     sudo ninja install
+RUN git clone --recursive https://github.com/vsamy/eigen-cddlib.git && \
+    cd eigen-cddlib && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja && \
+    sudo ninja install
 
-# RUN git clone --recursive https://github.com/vsamy/eigen-cddlib.git && \
-#     cd eigen-cddlib && \
-#     mkdir build && \
-#     cd build && \
-#     cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja && \
-#     sudo ninja install
-
-# RUN cd BezierTubes && \
-#     mkdir build && \
-#     cmake .. -G Ninja && \
-#     sudo ninja install
+RUN cd BezierTubes && \
+    mkdir build && \
+    cd build && \
+    cmake .. -G Ninja && \
+    ninja
 
 
 WORKDIR $HOME

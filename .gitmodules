@@ -1,3 +1,8 @@
 [submodule ".devcontainer/setup/BezierTubes"]
 	path = .devcontainer/setup/BezierTubes
 	url = git@github.com:noelc-s/BezierTubes.git
+	branch = feature/docker
+[submodule ".devcontainer/setup/cddlib"]
+	path = .devcontainer/setup/cddlib
+	url = git@github.com:noelc-s/cddlib.git
+
