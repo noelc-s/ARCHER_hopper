@@ -658,14 +658,14 @@ void Controller::run() {
 	TX_torques[11] = command_interp(0);
 	TX_torques[12] = command_interp(1);
 
-	TX_torques[13] = sol(floor(4./4*(mpc_p.N-1))*20);
-	TX_torques[14] = sol(floor(4./4*(mpc_p.N-1))*20+1);
-	TX_torques[15] = sol(floor(3./4*(mpc_p.N-1))*20);
-	TX_torques[16] = sol(floor(3./4*(mpc_p.N-1))*20+1);
-	TX_torques[17] = sol(floor(2./4*(mpc_p.N-1))*20);
-	TX_torques[18] = sol(floor(2./4*(mpc_p.N-1))*20+1);
-	TX_torques[19] = sol(floor(1./4*(mpc_p.N-1))*20);
-	TX_torques[20] = sol(floor(1./4*(mpc_p.N-1))*20+1);
+	TX_torques[13] = sol.coeff(floor(4./4*(mpc_p.N-1))*20);
+	TX_torques[14] = sol.coeff(floor(4./4*(mpc_p.N-1))*20+1);
+	TX_torques[15] = sol.coeff(floor(3./4*(mpc_p.N-1))*20);
+	TX_torques[16] = sol.coeff(floor(3./4*(mpc_p.N-1))*20+1);
+	TX_torques[17] = sol.coeff(floor(2./4*(mpc_p.N-1))*20);
+	TX_torques[18] = sol.coeff(floor(2./4*(mpc_p.N-1))*20+1);
+	TX_torques[19] = sol.coeff(floor(1./4*(mpc_p.N-1))*20);
+	TX_torques[20] = sol.coeff(floor(1./4*(mpc_p.N-1))*20+1);
 	TX_torques[21] = opt.full_ref(0);
 	TX_torques[22] = opt.full_ref(1);
 
