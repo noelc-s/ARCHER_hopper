@@ -5,4 +5,6 @@
 [submodule ".devcontainer/setup/cddlib"]
 	path = .devcontainer/setup/cddlib
 	url = git@github.com:noelc-s/cddlib.git
-
+[submodule "pybind11"]
+	path = ControlStack/pybind11
+	url = https://github.com/pybind/pybind11
