@@ -35,20 +35,20 @@ endif()
 # Include relevant directories
 include_directories(
 	inc
-	${manif_INCLUDE_DIRS}
-	${PINOCCHIO_DIR}/include
-	${MUJOCO_DIR}/include
-	${MUJOCO_DIR}/include/mujoco
-	# ${PATH_TO_REPOS}/eigen-cddlib_install/include/eigen-cdd
+  /usr/local/include
+  /usr/local/include/manif 
+  /usr/local/include/pinocchio
+  /usr/local/include/mujoco
+	/usr/local/include/eigen-cdd
 )
 
 # Bezier Tubes
-set(bezier_DIR ${PATH_TO_BEZIER}/BezierTubes)
+set(bezier_DIR /home/docker/libs/BezierTubes)
 add_library(bezier SHARED IMPORTED)
 set_property(TARGET bezier PROPERTY IMPORTED_LOCATION ${bezier_DIR}/build/libBEZIER.so)
 include_directories(bezier INTERFACE ${bezier_DIR}/inc)
 add_library(cddeigen SHARED IMPORTED)
-set_target_properties(cddeigen PROPERTIES IMPORTED_LOCATION ${PATH_TO_REPOS}/eigen-cddlib_install/lib/libeigen-cdd.so)
+set_target_properties(cddeigen PROPERTIES IMPORTED_LOCATION /usr/local/lib/libeigen-cdd.so)
 
 # Trajectory class
 add_library(TRAJECTORY SHARED
@@ -87,7 +87,7 @@ target_link_libraries(CONTROLLER MPC)
 target_link_libraries(CONTROLLER TRAJECTORY)
 target_link_libraries(CONTROLLER yaml-cpp)
 target_link_libraries(CONTROLLER GRAPH)
-target_link_libraries(CONTROLLER python3.8)
+target_link_libraries(CONTROLLER python3.10)
 include_directories(${PYTHON_INCLUDE_DIRS})
 target_link_libraries(CONTROLLER ${PYTHON_LIBRARIES})
 
@@ -101,7 +101,7 @@ target_link_libraries(SIMULATOR yaml-cpp)
 target_link_libraries(SIMULATOR ${MUJOCO_LIB})
 #target_link_libraries(SIMULATOR ${MUJOCO_DIR})
 target_link_directories(SIMULATOR PUBLIC ${MUJOCO_PATH})
-target_link_libraries(SIMULATOR python3.8)
+target_link_libraries(SIMULATOR python3.10)
 #include_directories(${PYTHON_INCLUDE_DIRS})
 target_link_libraries(SIMULATOR ${PYTHON_LIBRARIES})
 
