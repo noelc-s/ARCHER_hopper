@@ -275,8 +275,7 @@ void Simulator::killSimulation() {
 
 void Simulator::run_with_visualization() {
 
-    // activate software
-    mj_activate("mjkey.txt");
+    GilManager g; ///
 
     char xmlpath[100] = {};
     char datapath[100] = {};
