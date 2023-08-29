@@ -145,8 +145,11 @@ RUN cd BezierTubes && \
     cmake .. -G Ninja && \
     ninja
 
-RUN sudo apt-get install python3-pip && \
-    sudo pip install networkx
+USER root
+RUN apt-get install -y python3-pip && \
+    pip install networkx
+USER $USER_NAME
+
 WORKDIR $HOME
 ENTRYPOINT ["/home/docker/setup.bash"]
 CMD ["bash"]
