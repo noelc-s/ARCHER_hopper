@@ -221,23 +221,23 @@ void Simulator::run() {
         mju_error("Could not initialize GLFW");
 
     // create window, make OpenGL context current, request v-sync
-    GLFWwindow *window = glfwCreateWindow(1244, 700, "Demo", NULL, NULL);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    //GLFWwindow *window = glfwCreateWindow(1244, 700, "Demo", NULL, NULL);
+    //glfwMakeContextCurrent(window);
+    //glfwSwapInterval(1);
 
     // initialize visualization data structures
-    mjv_defaultCamera(&cam);
-    mjv_defaultOption(&opt);
-    mjv_defaultScene(&scn);
-    mjr_defaultContext(&con);
-    mjv_makeScene(m, &scn, 2000);                // space for 2000 objects
-    mjr_makeContext(m, &con, mjFONTSCALE_150);   // model-specific context
+    //mjv_defaultCamera(&cam);
+    //mjv_defaultOption(&opt);
+    //mjv_defaultScene(&scn);
+    //mjr_defaultContext(&con);
+    //mjv_makeScene(m, &scn, 2000);                // space for 2000 objects
+    //mjr_makeContext(m, &con, mjFONTSCALE_150);   // model-specific context
 
     // install GLFW mouse and keyboard callbacks
-    glfwSetKeyCallback(window, keyboard);
-    glfwSetCursorPosCallback(window, mouse_move);
-    glfwSetMouseButtonCallback(window, mouse_button);
-    glfwSetScrollCallback(window, scroll);
+    //glfwSetKeyCallback(window, keyboard);
+    //glfwSetCursorPosCallback(window, mouse_move);
+    //glfwSetMouseButtonCallback(window, mouse_button);
+    //glfwSetScrollCallback(window, scroll);
 
     double arr_view[] = {89.608063, -11.588379, 2, 0.000000, 0.000000,
                          0.500000}; //view the left side (for ll, lh, left_side)
@@ -324,16 +324,19 @@ void Simulator::run() {
     //////////////////////////////// Standard Mujoco Setup //////////////////////////////////////
     // get framebuffer viewport
     mj_step(m, d); // populate state info
-    mjrRect viewport = {0, 0, 0, 0};
-    glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
-    // update scene and render
-    //cam.lookat[0] = d->qpos[0];
-    mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
-    mjr_render(viewport, &scn, &con);
-    // swap OpenGL buffers (blocking call due to v-sync)
-    glfwSwapBuffers(window);
-    // process pending GUI events, call GLFW callbacks
-    glfwPollEvents();
+    bool render = true;
+    //if (render) {
+    //  mjrRect viewport = {0, 0, 0, 0};
+    //  glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+    //  // update scene and render
+    //  //cam.lookat[0] = d->qpos[0];
+    //  mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+    //  mjr_render(viewport, &scn, &con);
+    //  // swap OpenGL buffers (blocking call due to v-sync)
+    //  glfwSwapBuffers(window);
+    //  // process pending GUI events, call GLFW callbacks
+    //  glfwPollEvents();
+    //}
     sleep(pauseBeforeStart);
     c = d->contact;
     // Instantiate perturbation object
@@ -345,11 +348,11 @@ void Simulator::run() {
 
     scalar_t sim_flag = 1;
 
+    auto windowClose = [&] (GLFWwindow *window) {return !glfwWindowShouldClose(window);};
+
     // use the first while condition if you want to simulate for a period.
-    while (!glfwWindowShouldClose(window)) {
-    //while(!kill) {
-    if (kill)
-	    return;
+    //while (windowClose(window)) {
+    while (true) {
 
       if (sim_flag < -0.5) {
 	d->time = 0;
@@ -514,21 +517,23 @@ void Simulator::run() {
 
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
-        // get framebuffer viewport
-        mjrRect viewport = {0, 0, 0, 0};
-        glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
+//	if (render) {
+        //// get framebuffer viewport
+        //mjrRect viewport = {0, 0, 0, 0};
+        //glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
-        // update scene and render
-        cam.lookat[0] = d->qpos[0];
-        cam.lookat[1] = d->qpos[1];
-        mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
-        mjr_render(viewport, &scn, &con);
+        //// update scene and render
+        //cam.lookat[0] = d->qpos[0];
+        //cam.lookat[1] = d->qpos[1];
+        //mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+        //mjr_render(viewport, &scn, &con);
 
-        // swap OpenGL buffers (blocking call due to v-sync)
-        glfwSwapBuffers(window);
+        //// swap OpenGL buffers (blocking call due to v-sync)
+        //glfwSwapBuffers(window);
 
-        // process pending GUI events, call GLFW callbacks
-        glfwPollEvents();
+        //// process pending GUI events, call GLFW callbacks
+        //glfwPollEvents();
+	//}
     }
 
     // free visualization storage
