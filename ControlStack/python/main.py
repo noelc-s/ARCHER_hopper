@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(0, '../build') #this is cursed
 
+from hopper import *
 import hopper
 import time
 import threading
@@ -19,8 +20,8 @@ c = hopper.Controller()
 s = hopper.Simulator()
 
 # instantiate thread for controller and sim
-control_thread = threading.Thread(target=c.run)
-sim_thread = threading.Thread(target=s.run)
+control_thread = threading.Thread(target=call_run, args=(c,))
+sim_thread = threading.Thread(target=call_run_sim, args=(s,))
 
 # set simulation duration
 sim_duration = 2
@@ -31,6 +32,8 @@ c.setInitialState([0., 0., 0.5, 1., 0.5, -0.2, 0., 0., 0., 0., 0., 0.])
 # start control and sim threads
 control_thread.start()
 sim_thread.start()
+# call_sim_run(s)
+
 
 print("Intial: "); print(c.x)
 

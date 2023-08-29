@@ -44,7 +44,8 @@ using namespace pinocchio;
 enum ProgramState {
   RUNNING = 1,
   STOPPED = 0,
-  RESET = -1
+  RESET = -1,
+  KILL = -10
 };
 
 struct Parameters {
@@ -85,6 +86,7 @@ class Controller : public C {
     void setInitialState(vector_t initialCondition);
     void resetSimulation(vector_t x0);
     void stopSimulation();
+    void killSimulation();
     void startSimulation();
 
     void run() override;
