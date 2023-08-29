@@ -537,16 +537,16 @@ void Simulator::run() {
     }
 
     // free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
+   // mjv_freeScene(&scn);
+   // mjr_freeContext(&con);
 
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
+   // // free MuJoCo model and data, deactivate
+   // mj_deleteData(d);
+   // mj_deleteModel(m);
+   // mj_deactivate();
 
-    // terminate GLFW (crashes with Linux NVidia drivers)
-    #if defined(__APPLE__) || defined(_WIN32)
-        glfwTerminate();
-    #endif
+   // // terminate GLFW (crashes with Linux NVidia drivers)
+   // #if defined(__APPLE__) || defined(_WIN32)
+   //     glfwTerminate();
+   // #endif
 }
