@@ -21,7 +21,16 @@ private:
 };
 
 void Controller::setInitialState(vector_t initialCondition) {
+  
+  // set intial condition variable
   initialCondition_ = initialCondition; 
+
+  // update state
+  q.segment(0,3) = initialCondition.segment(0,3);
+  q.segment(3,4) = rpy_to_quat(initialCondition.segment(3,3));
+  v.segment(0,3) = initialCondition.segment(6,3);
+  v.segment(3,3) = initialCondition.segment(9,3);
+  x << q,v;
 }
 
 void Controller::resetSimulation(vector_t x0) {
@@ -187,8 +196,6 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
   close(js);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
-
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT) {
 int opt_socket = 1;
 int addrlen = sizeof(*address);
@@ -239,12 +246,12 @@ vector_t get_configIC() {
   init_cond[0]  = p0[0];
   init_cond[1]  = p0[1];
   init_cond[2]  = p0[2];
-  init_cond[3]  = v0[0];
-  init_cond[4]  = v0[1];
-  init_cond[5]  = v0[2];
-  init_cond[6]  = rpy0[0];
-  init_cond[7]  = rpy0[1];
-  init_cond[8]  = rpy0[2];
+  init_cond[3]  = rpy0[0];
+  init_cond[4]  = rpy0[1];
+  init_cond[5]  = rpy0[2];
+  init_cond[6]  = v0[0];
+  init_cond[7]  = v0[1];
+  init_cond[8]  = v0[2];
   init_cond[9]  = w0[0];
   init_cond[10] = w0[1];
   init_cond[11] = w0[2];
@@ -344,15 +351,28 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
     mpc_p.max_vel = config["MPC"]["max_vel"].as<scalar_t>();
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
+// roll pitch yaw to quaternion
+// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+vector_t rpy_to_quat(vector_t rpy) {
 
-Controller::Controller() {
-  port.reset(new uint16_t(8080));
+    double cr = cos(rpy(0) * 0.5);
+    double sr = sin(rpy(0) * 0.5);
+    double cp = cos(rpy(1) * 0.5);
+    double sp = sin(rpy(1) * 0.5);
+    double cy = cos(rpy(2) * 0.5);
+    double sy = sin(rpy(2) * 0.5);
+
+    vector_t quaternion(4);
+    quaternion << cr * cp * cy + sr * sp * sy,
+                  sr * cp * cy - cr * sp * sy,
+                  cr * sp * cy + sr * cp * sy,
+                  cr * cp * sy - sr * sp * cy;
+    return quaternion;
 }
 
-void Controller::run() {
-
-  state.resize(20);
+Controller::Controller() {
+  //reshape size of state, q, and v
+  x.resize(21);
   q.resize(11);
   v.resize(10);
   q_local.resize(11);
@@ -360,6 +380,35 @@ void Controller::run() {
   q_global.resize(11);
   v_global.resize(10);
   tau.resize(10);
+
+  // set vectors to 0
+  x.setZero();
+  q.setZero();
+  v.setZero();
+  q_local.setZero();
+  v_local.setZero();
+  q_global.setZero();
+  v_global.setZero();
+  tau.setZero();
+
+  // reset port
+  port.reset(new uint16_t(8080));
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+// get state from hopper object and update Controller state
+void Controller::getStateUpdate(Hopper hopper) {
+  q = hopper.q;
+  v = hopper.v;
+  
+  // Note: the controller state is not the same as the 
+  x << hopper.q, hopper.v;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+void Controller::run() {
 
   int stopIndex = 0;
   GilManager g;
@@ -464,8 +513,6 @@ void Controller::run() {
     bool pos_sign = hopper.vel(2) > 0;
     bool pos_sign_check;
 
-
-
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
     omega_des.setZero();
@@ -485,7 +532,9 @@ void Controller::run() {
 	dt_elapsed = state(0) - t_last;
 	dt_elapsed_MPC = state(0) - t_last_MPC;
 
-        hopper.updateState(state);
+  hopper.updateState(state);
+  getStateUpdate(hopper); // for the controller object
+
 	quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
 	hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3)); // Turn local omega to global omega
 	vector_t q0(21);
@@ -556,7 +605,6 @@ void Controller::run() {
         for (int i = 0; i < 4; i++) {
             TX_torques[i] = hopper.torque[i];
         }
-
 
 	TX_torques[4] = pos_term[0];
 	TX_torques[5] = pos_term[1];

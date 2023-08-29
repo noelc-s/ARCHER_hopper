@@ -80,7 +80,7 @@ class Controller : public C {
 
     scalar_t TX_torques[13+2*5+2+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-    vector_t initialCondition_;
+    vector_t initialCondition_; // pos[3], rpy[3], v[3], omega[3] 
 
     void setInitialState(vector_t initialCondition);
     void resetSimulation(vector_t x0);
@@ -91,16 +91,20 @@ class Controller : public C {
     scalar_t duration = -1;
 
     std::unique_ptr<uint16_t> port;
-  // State variables
-  vector_t state;
-  vector_t q;
-  vector_t v;
-  vector_t q_local;
-  vector_t v_local;
-  vector_t q_global;
-  vector_t v_global;
-  vector_t tau;
-  // Pinocchio states: pos, quat, leg, flywheeels
+ 
+    // State variables
+    vector_t x;
+    vector_t q;
+    vector_t v;
+    vector_t q_local;
+    vector_t v_local;
+    vector_t q_global;
+    vector_t v_global;
+    vector_t tau;
+
+    void getStateUpdate(Hopper hopper);
+ 
+    // Pinocchio states: pos, quat, leg, flywheeels
 
 };
 
@@ -116,6 +120,7 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m);
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p);
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT);
+vector_t rpy_to_quat(vector_t rpy);
 
 vector_t get_configIC();
 void setupSocket_sendIC(vector_t initialCondition);

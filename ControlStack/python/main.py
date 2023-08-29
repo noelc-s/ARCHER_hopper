@@ -7,17 +7,12 @@ import threading
 import numpy as np
 import networkx as networkx
 
-########################################################################
-# step 1: turn the Simulator.cpp into a class (the same way Controller was turned into a class). This means that the "main" script should just run simulator.run()
-# step 2: make a simulator python class that can call the run
-# step 3: instantiate that here, and call the run function
-# pseudo-code (python): 
-#   s = hopper.Simulator()
-#   x2 = threading.Thread(target=s.run)
-#   c.setInitialState(...)
-#   x1.start()
-#   x2.start()
-########################################################################
+################################################################################################################
+# [11] hopper.q = x, y, z, qw, qx, qy, qz, L, fw1_pos, fw2_pos, fw3_pos
+# [10] hopper.v = xdot, ydot, zdot, omega_x, omega_y, omega_z, Ldot, fw1_vel, fw2_vel, fw3_vel 
+# [21] x = hopper.q, hopper.v
+# [21] state = t,x,y,z,qw,qx,qy,qz,xdot,ydot,zdot,omega_x,omega_y,omega_z,contact,L,Ldot,fw1_vel,fw2_vel,fw3_vel  
+################################################################################################################
 
 # create controller and sim objects
 c = hopper.Controller()
@@ -28,32 +23,35 @@ control_thread = threading.Thread(target=c.run)
 sim_thread = threading.Thread(target=s.run)
 
 # set simulation duration
-sim_duration = 5
+sim_duration = 2
 
-# set inital state
-c.setInitialState([0.,0.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0.])
+# set inital state, ( pos[3], rpy[3], v[3], omega[3] ) 
+c.setInitialState([0., 0., 0.5, 1., 0.5, -0.2, 0., 0., 0., 0., 0., 0.])
 
 # start control and sim threads
 control_thread.start()
 sim_thread.start()
 
+print("Intial: "); print(c.x)
+
 # simulate until sim_duration 
 while c.t_last < sim_duration:
     pass
 c.stopSimulation()
-print(c.state)
+
+print("Final: "); print(c.x)
 
 # state dimensionality: 21
 # input dimensionality: 4
 
 # sample random states
-state_lower = -np.ones(shape=(1,21))
-state_upper = np.ones(shape=(1,21))
-sample = np.random.sample(size=state_lower.shape)
-sample_states = (state_upper - state_lower)*sample + state_lower
-
-for i in range(sample_states.shape[0]):
-    print(f"[INFO] evaluating state {sample_states[i]}")
+#state_lower = -np.ones(shape=(1,21))
+#state_upper = np.ones(shape=(1,21))
+#sample = np.random.sample(size=state_lower.shape)
+#sample_states = (state_upper - state_lower)*sample + state_lower
+#
+#for i in range(sample_states.shape[0]):
+#    print(f"[INFO] evaluating state {sample_states[i]}")
     # 
 #time.sleep(1)
 
