@@ -50,6 +50,10 @@ void Controller::stopSimulation() {
   programState_ = STOPPED;
 }
 
+void Controller::killSimulation() {
+  programState_ = KILL;
+}
+
 void Controller::startSimulation() {
   programState_ = RUNNING;
 }
@@ -623,6 +627,9 @@ void Controller::run() {
     send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     read(*new_socket, &RX_state, sizeof(RX_state));
     stopIndex++;
+    if (programState_ == KILL) {
+	    return;
+    }
   } while (programState_ == STOPPED);
   stopIndex--;
   if (index == p.stop_index || hopper.num_hops==50){

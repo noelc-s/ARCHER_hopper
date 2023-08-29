@@ -44,6 +44,7 @@ PYBIND11_MODULE(hopper, m) {
 	  .value("RUNNING", RUNNING)
 	  .value("STOPPED", STOPPED)
 	  .value("RESET", RESET)
+	  .value("KILL", KILL)
 	  .export_values();
 
   py::class_<Controller> controller(m, "Controller", c);
@@ -60,14 +61,15 @@ PYBIND11_MODULE(hopper, m) {
         return py::array{26,o.TX_torques,obj};})
   .def("startSimulation", &Controller::startSimulation)
   .def("stopSimulation", &Controller::stopSimulation)
+  .def("killSimulation", &Controller::killSimulation)
   .def("resetSimulation", py::overload_cast<vector_t>(&Controller::resetSimulation))
   .def("setInitialState", py::overload_cast<vector_t>(&Controller::setInitialState))
  ;
 
   m.def("call_run", [](C *c) -> void {
-                  py::gil_scoped_release release;
+                  //py::gil_scoped_release release;
                   call_run(c);
-                  py::gil_scoped_acquire acquire;
+                  //py::gil_scoped_acquire acquire;
                   });
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -83,9 +85,9 @@ PYBIND11_MODULE(hopper, m) {
       .def(py::init<>()); // constructor
 
   m.def("call_run_sim", [](S *s) -> void {
-                  py::gil_scoped_release release;
+                  //py::gil_scoped_release release;
                   call_run_sim(s);
-                  py::gil_scoped_acquire acquire;
+                  //py::gil_scoped_acquire acquire;
                   });
 }
 
