@@ -15,11 +15,11 @@ import random as rand
 # for random support functions
 from utils import *
 
-##############################################################################################
-# state information
-# [11] hopper.q = x, y, z, qw, qx, qy, qz, L, fw1_pos, fw2_pos, fw3_pos
-# [10] hopper.v = xdot, ydot, zdot, omega_x, omega_y, omega_z, Ldot, fw1_vel, fw2_vel, fw3_vel 
-# [21] x = [hopper.q; hopper.v]
+# instantiate thread for controller and sim
+# control_thread = threading.Thread(target=call_run, args=(c,))
+# sim_thread = threading.Thread(target=call_run_sim, args=(s,))
+control_thread = threading.Thread(target=c.run)
+sim_thread = threading.Thread(target=s.run)
 
 # Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
 # x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
