@@ -145,7 +145,8 @@ RUN cd BezierTubes && \
     cmake .. -G Ninja && \
     ninja
 
-
+RUN sudo apt-get install python3-pip && \
+    sudo pip install networkx
 WORKDIR $HOME
 ENTRYPOINT ["/home/docker/setup.bash"]
 CMD ["bash"]

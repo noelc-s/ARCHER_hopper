@@ -7,4 +7,5 @@ data
 *.png
 *.svg
 !ConnectionDiagram.png
-
+.vscode
+ControlStack/python/MUJOCO_LOG.TXT
