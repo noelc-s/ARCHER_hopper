@@ -53,7 +53,9 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("t_last", &Controller::t_last)
   .def_readwrite("t_last_MPC", &Controller::t_last_MPC)
   .def_readwrite("duration", &Controller::duration)
-  .def_readwrite("state", &Controller::state)
+  .def_readwrite("x", &Controller::x)
+  .def_readwrite("q", &Controller::q)
+  .def_readwrite("v", &Controller::v)
   .def_readwrite("initialCondition_", &Controller::initialCondition_)
   .def_readwrite("programState_", &Controller::programState_)
   .def_property_readonly("TX_torques", [](py::object&obj) {

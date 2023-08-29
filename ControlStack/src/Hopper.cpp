@@ -73,7 +73,6 @@ Hopper::Hopper() {
 
 void Hopper::updateState(vector_t state) {
     int ind = 0;
-
     t = state[ind];
     ind++;
     pos << state[ind], state[ind + 1], state[ind + 2];
