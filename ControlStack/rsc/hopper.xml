@@ -9,7 +9,10 @@
     <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>
 
     <asset> <!-- case sensitive for the STL name-->
-      <mesh name='stairs' scale='0.001 0.001 0.001' file='staircase.stl'/>  <!-- insert the staircase here-->
+      <!-- Insert the staircase here  -->
+      <!--
+        <mesh name='stairs' scale='0.001 0.001 0.001' file='staircase.stl'/>
+      -->
         <mesh name='torso'     scale='0.001 0.001 0.001' file='torso_reduced.stl'/>
         <mesh name='wheel'     scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
         <mesh name='foot'      scale='0.001 0.001 0.001' file='foot.stl'/>
@@ -132,10 +135,11 @@
 	</body>
 
   <!-- Insert the staircase here  -->
+  <!--
   <body name="stair" pos="2.0 0.5 0" xyaxes="0 -1 0 0 0 1">
     <geom type='mesh' mesh='stairs' contype="1" conaffinity="0" rgba="0.92 0.3896 0.0433 1.00"/>
-  </body>
-
+    </body>
+  -->
   </worldbody>
     <actuator>
         <position name="position_actuator" joint = "knee" kp ="11732"/>

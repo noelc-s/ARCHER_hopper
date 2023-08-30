@@ -5,7 +5,9 @@
 // Use (void) to silence unused warnings.
 #define assertm(exp, msg) assert(((void)msg, exp))
 
-int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra) {
+// int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra) {
+int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal) {
+
     matrix_t x_bar(nx, p.N-1);
     matrix_t u_bar(nu, p.N-1);
 
@@ -38,13 +40,16 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
 
     ////////////////////////////////////////////////////////////////////
 
-    vector_t temp(12);
-    temp << tra->getState(hopper.t);
-    command.segment(0,2) = temp.segment(0,2);
-  	command_interp = command.segment(0,2); 
+    // vector_t temp(12);
+    // temp << tra->getState(hopper.t);
+    // command.segment(0,2) = temp.segment(0,2);
+  	// command_interp = command.segment(0,2); 
+    command.segment(0,2) = x_goal.segment(0,2);
+    command_interp = command.segment(0,2);
 
     ////////////////////////////////////////////////////////////////////
 
+    // Stage Cost 
    for (int i = 0; i < p.N-1; i++){
     if (elapsed_time(i)-offset < t2i) {
             d_bar(i) = flight;
@@ -93,16 +98,19 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
       }
     }
       
-      temp = tra->getState(hopper.t+p.dt_flight*i);
-      full_ref.segment(i*nx,12) << temp;
-      full_ref.segment(i*nx+2,1) << p.hop_height;
+      // same goal for every step in horizon
+      // temp = tra->getState(hopper.t+p.dt_flight*i);
+      // full_ref.segment(i*nx,12) << temp;
+      full_ref.segment(i*nx,12) << x_goal;
+      // full_ref.segment(i*nx+2,1) << p.hop_height;
       full_ref.segment(i*nx+3,3) << -log_x0.segment(3,3); // Hacky modification to cost to get orientation tracking back TODO
   }
   
     //Terminal cost
-    temp = tra->getState(hopper.t+p.dt_flight*(p.N-1));
-    full_ref.segment((p.N-1)*nx,12) << temp;
-    full_ref.segment((p.N-1)*nx+2,1) << p.hop_height;
+    // temp = tra->getState(hopper.t+p.dt_flight*(p.N-1));
+    // full_ref.segment((p.N-1)*nx,12) << temp;
+    full_ref.segment((p.N-1)*nx,12) << x_goal;
+    // full_ref.segment((p.N-1)*nx+2,1) << p.hop_height;
     full_ref.segment((p.N-1)*nx+3,3) << -log_x0.segment(3,3); // Hacky modification to cost to get orientation tracking back TODO
       
     x_bar.block(0,0,nx,1) << s0;

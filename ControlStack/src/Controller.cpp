@@ -1,5 +1,7 @@
 #include "Controller.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 class GilManager
 {
 public:
@@ -20,52 +22,7 @@ private:
    PyThreadState* mThreadState;
 };
 
-void Controller::setInitialState(vector_t initialCondition) {
-  
-  // set intial condition variable
-  initialCondition_ = initialCondition; 
-
-  // update state
-  q.segment(0,3) = initialCondition.segment(0,3);
-  q.segment(3,4) = rpy_to_quat(initialCondition.segment(3,3));
-  v.segment(0,3) = initialCondition.segment(6,3);
-  v.segment(3,3) = initialCondition.segment(9,3);
-  x << q,v;
-}
-
-void Controller::resetSimulation(vector_t x0) {
-
-  GilManager g;
-
-  programState_ = RESET;
-  t_last = -1;
-  t_last_MPC = -1;
-
-  TX_torques[0] = x0(0);
-  TX_torques[1] = x0(1);
-  TX_torques[2] = x0(2);
-  TX_torques[3] = x0(3);
-  TX_torques[4] = x0(4);
-  TX_torques[5] = x0(5);
-  TX_torques[6] = x0(6);
-  TX_torques[7] = x0(7);
-  TX_torques[8] = x0(8);
-  TX_torques[9] = x0(9);
-  TX_torques[10] = x0(10);
-  TX_torques[11] = x0(11);
-}
-
-void Controller::stopSimulation() {
-  programState_ = STOPPED;
-}
-
-void Controller::killSimulation() {
-  programState_ = KILL;
-}
-
-void Controller::startSimulation() {
-  programState_ = RUNNING;
-}
+///////////////////////////////////////////////////////////////////////////////////////////
 
 // command is the floating object that needs to be altered within the function
 // Need to append here to get PS4 inputs
@@ -81,8 +38,6 @@ static vector_3t getInput() {
   }
   return input;
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////
 
 // https://stackoverflow.com/questions/41505451/c-multi-threading-communication-between-threads
 // https://stackoverflow.com/questions/6171132/non-blocking-console-input-c
@@ -158,8 +113,9 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 
   // joystick device index
   js = open(device, O_RDONLY); 
-  if (js == -1)
-      perror("Could not open joystick");
+  if (js == -1) {
+      // perror("Could not open joystick");
+  }
 
   //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
   double comm_scale = 10000.;
@@ -199,6 +155,8 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 
   close(js);
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////
 
 void setupSocket(int* new_socket, int* server_fd, struct sockaddr_in* address, uint32_t PORT) {
 int opt_socket = 1;
@@ -355,6 +313,8 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
     mpc_p.max_vel = config["MPC"]["max_vel"].as<scalar_t>();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // roll pitch yaw to quaternion
 // https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 vector_t rpy_to_quat(vector_t rpy) {
@@ -374,6 +334,8 @@ vector_t rpy_to_quat(vector_t rpy) {
     return quaternion;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+
 Controller::Controller() {
   //reshape size of state, q, and v
   x.resize(21);
@@ -384,6 +346,7 @@ Controller::Controller() {
   q_global.resize(11);
   v_global.resize(10);
   tau.resize(10);
+  goalState_.resize(12);
 
   // set vectors to 0
   x.setZero();
@@ -394,12 +357,65 @@ Controller::Controller() {
   q_global.setZero();
   v_global.setZero();
   tau.setZero();
+  goalState_.setZero();
 
   // reset port
   port.reset(new uint16_t(8080));
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
+// set intial state of the controller
+void Controller::setInitialState(vector_t initialCondition) {
+  
+  // set intial condition variable
+  initialCondition_ = initialCondition; 
+
+  // update state
+  q.segment(0,3) = initialCondition.segment(0,3);
+  q.segment(3,4) = rpy_to_quat(initialCondition.segment(3,3));
+  v.segment(0,3) = initialCondition.segment(6,3);
+  v.segment(3,3) = initialCondition.segment(9,3);
+  x << q,v;
+}
+
+// set goal state for MPC
+void Controller::setGoalState(vector_t goalState) {
+  goalState_ = goalState;
+}
+
+void Controller::resetSimulation(vector_t x0) {
+
+  GilManager g;
+
+  programState_ = RESET;
+  t_last = -1;
+  t_last_MPC = -1;
+
+  TX_torques[0] = x0(0);
+  TX_torques[1] = x0(1);
+  TX_torques[2] = x0(2);
+  TX_torques[3] = x0(3);
+  TX_torques[4] = x0(4);
+  TX_torques[5] = x0(5);
+  TX_torques[6] = x0(6);
+  TX_torques[7] = x0(7);
+  TX_torques[8] = x0(8);
+  TX_torques[9] = x0(9);
+  TX_torques[10] = x0(10);
+  TX_torques[11] = x0(11);
+}
+
+void Controller::stopSimulation() {
+  programState_ = STOPPED;
+}
+
+void Controller::killSimulation() {
+  programState_ = KILL;
+}
+
+void Controller::startSimulation() {
+  programState_ = RUNNING;
+}
+
 
 // get state from hopper object and update Controller state
 void Controller::getStateUpdate(Hopper hopper) {
@@ -468,38 +484,42 @@ void Controller::run() {
   vector_2t command_interp;
   std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
-  //////////////////////// Trajectory Test ////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  vector_array_t waypts;
-  scalar_array_t times;
+  ////////////////////////////////////////////////////////////////////////
+
+  // vector_array_t waypts;
+  // scalar_array_t times;
  
-  vector_t vec(12);
-  vec.setZero();
+  // vector_t vec(12);
+  // vec.setZero();
 
-  vec.segment(0,2) << 0,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << -1,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 1,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << -1,1;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 0,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 1.9,0;
-  waypts.push_back(vec);
-  vec.segment(0,2) << 3.5,0;
-  waypts.push_back(vec);
+  // vec.segment(0,2) << 0,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << -1,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 1,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << -1,1;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 0,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 1.9,0;
+  // waypts.push_back(vec);
+  // vec.segment(0,2) << 3.5,0;
+  // waypts.push_back(vec);
 
-  for (int i=0; i<waypts.size(); i++) {
-    times.push_back(1.* (float) i);
+  // for (int i=0; i<waypts.size(); i++) {
+  //   times.push_back(1.* (float) i);
+  // }
+
+  // Traj trajectory = {waypts,times, waypts.size()};
+  // Bezier_T tra(trajectory, 1.0);
+
+  // set goal state if not provided with goal
+  if (goalState_.size() == 0) {
+    goalState_ << 0, 0, 0.5, 1, 0, 0, 0, 0 ,0 ,0, 0 ,0;
   }
 
-  Traj trajectory = {waypts,times, waypts.size()};
-  Bezier_T tra(trajectory, 1.0);
-
- //////////////////////// Main Loop /////////////////////////////////////////////////////////////////////////////////////////////////////
- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ //////////////////////// Main Loop ///////////////////////////////////////
 
     // get intial conditions from YAML
     if (initialCondition_.size() == 0) {
@@ -557,7 +577,8 @@ void Controller::run() {
 			  }
 	}
         if (replan) {
-          opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
+          // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
+          opt.solve(hopper, sol, command, command_interp, goalState_); ///////////////////////////////////
 	  for (int i = 0; i < opt.p.N; i++) {
             sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
 	  }

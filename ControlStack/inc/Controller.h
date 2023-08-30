@@ -81,9 +81,12 @@ class Controller : public C {
 
     scalar_t TX_torques[13+2*5+2+1] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-    vector_t initialCondition_; // pos[3], rpy[3], v[3], omega[3] 
+    vector_t initialCondition_;  // pos[3], rpy[3], v[3], omega[3] 
+    vector_t goalState_;         // pos[3], rpy[3], v[3], omega[3] 
 
     void setInitialState(vector_t initialCondition);
+    void setGoalState(vector_t goalState);
+    
     void resetSimulation(vector_t x0);
     void stopSimulation();
     void killSimulation();
@@ -105,11 +108,7 @@ class Controller : public C {
     vector_t tau;
 
     void getStateUpdate(Hopper hopper);
- 
-    // Pinocchio states: pos, quat, leg, flywheeels
-
 };
-
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");

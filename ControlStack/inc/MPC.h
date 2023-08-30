@@ -56,9 +56,9 @@ public:
         this->nu = nu;
       	p = loaded_p;
 
-        std::cout << "Horizon length: " << p.N << std::endl;
-        std::cout << "Pos gain: " << p.stateScaling(0) << ", " << p.stateScaling(1) << std::endl;
-        std::cout << "Vel gain: " << p.stateScaling(10) << ", " << p.stateScaling(11) << std::endl;
+        // std::cout << "Horizon length: " << p.N << std::endl;
+        // std::cout << "Pos gain: " << p.stateScaling(0) << ", " << p.stateScaling(1) << std::endl;
+        // std::cout << "Vel gain: " << p.stateScaling(10) << ", " << p.stateScaling(11) << std::endl;
 
         d_bar.resize(p.N-1,1);
         elapsed_time.resize(p.N,1);
@@ -205,7 +205,8 @@ public:
      * @param [in] &command_interp the interpolated command for trajectory tracking.
      * @param [in] tra the Trajectory type to track.
      */
-    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra);
+    // int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra);
+    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal);
 
     /*! @brief build the cost function matrices*/
     void buildCost();

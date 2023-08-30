@@ -32,9 +32,7 @@ class PySimulator : public S {
 
 PYBIND11_MODULE(hopper, m) {
 
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // Controller Class
+  ////////////////////////////////// CONTROLLER Class //////////////////////////////////
   py::class_<C, PyController> c(m, "C");
   c
           .def(py::init<>())
@@ -57,6 +55,7 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("q", &Controller::q)
   .def_readwrite("v", &Controller::v)
   .def_readwrite("initialCondition_", &Controller::initialCondition_)
+  .def_readwrite("goalState_", &Controller::goalState_)
   .def_readwrite("programState_", &Controller::programState_)
   .def_property_readonly("TX_torques", [](py::object&obj) {
         Controller& o = obj.cast<Controller&>();
@@ -66,6 +65,7 @@ PYBIND11_MODULE(hopper, m) {
   .def("killSimulation", &Controller::killSimulation)
   .def("resetSimulation", py::overload_cast<vector_t>(&Controller::resetSimulation))
   .def("setInitialState", py::overload_cast<vector_t>(&Controller::setInitialState))
+  .def("setGoalState", py::overload_cast<vector_t>(&Controller::setGoalState))
  ;
 
   m.def("call_run", [](C *c) -> void {
@@ -74,9 +74,7 @@ PYBIND11_MODULE(hopper, m) {
                   //py::gil_scoped_acquire acquire;
                   });
 
-  ///////////////////////////////////////////////////////////////////////////////
-
-  // Simulator Class
+  ////////////////////////////////// SIMULATOR Class //////////////////////////////////
   py::class_<S, PySimulator> s(m, "S");
   s
           .def(py::init<>())

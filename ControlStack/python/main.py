@@ -8,12 +8,11 @@ import threading
 import numpy as np
 import networkx as networkx
 
-################################################################################################################
+##############################################################################################
 # [11] hopper.q = x, y, z, qw, qx, qy, qz, L, fw1_pos, fw2_pos, fw3_pos
 # [10] hopper.v = xdot, ydot, zdot, omega_x, omega_y, omega_z, Ldot, fw1_vel, fw2_vel, fw3_vel 
-# [21] x = hopper.q, hopper.v
-# [21] state = t,x,y,z,qw,qx,qy,qz,xdot,ydot,zdot,omega_x,omega_y,omega_z,contact,L,Ldot,fw1_vel,fw2_vel,fw3_vel  
-################################################################################################################
+# [21] x = [hopper.q; hopper.v]
+##############################################################################################
 
 # create controller and sim objects
 c = hopper.Controller()
@@ -24,18 +23,17 @@ control_thread = threading.Thread(target=call_run, args=(c,))
 sim_thread = threading.Thread(target=call_run_sim, args=(s,))
 
 # set simulation duration
-sim_duration = 2
+sim_duration = 5
 
-# set inital state, ( pos[3], rpy[3], v[3], omega[3] ) 
-c.setInitialState([0., 0., 0.5, 1., 0.5, -0.2, 0., 0., 0., 0., 0., 0.])
+# set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
+c.setInitialState([0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+c.setGoalState([1., 1., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
 
 # start control and sim threads
 control_thread.start()
 sim_thread.start()
-# call_sim_run(s)
 
-
-print("Intial: "); print(c.x)
+print("Initial: "); print(c.x)
 
 # simulate until sim_duration 
 while c.t_last < sim_duration:
@@ -43,6 +41,8 @@ while c.t_last < sim_duration:
 c.stopSimulation()
 
 print("Final: "); print(c.x)
+
+c.killSimulation()
 
 # state dimensionality: 21
 # input dimensionality: 4

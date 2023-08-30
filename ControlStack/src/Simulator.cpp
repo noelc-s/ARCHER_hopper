@@ -172,10 +172,10 @@ void setupSocket_receiveIC(scalar_t *init_conds, int n) {
 
     read(client_IC, &init_cond, sizeof(init_cond));
 
-    std::cout << "Simulator Initial Conditions: \n";
+    // std::cout << "Simulator Initial Conditions: \n";
     for (int i=0; i<n; i++) {
         init_conds[i] = init_cond[i];
-        std::cout << init_conds[i] << std::endl;
+        // std::cout << init_conds[i] << std::endl;
     }
 
     close(client_IC);
@@ -184,7 +184,7 @@ void setupSocket_receiveIC(scalar_t *init_conds, int n) {
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 Simulator::Simulator() {
-    // anything special I need to do?
+    // can do something for the sim here
 }
 
 // main function
