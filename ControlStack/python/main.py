@@ -7,6 +7,7 @@ import time
 import threading
 import numpy as np
 import networkx as networkx
+import multiprocessing
 
 # for random support functions
 from utils import *
@@ -29,9 +30,12 @@ s = hopper.Simulator()
 control_thread = threading.Thread(target=call_run, args=(c,))
 sim_thread = threading.Thread(target=call_run_sim, args=(s,))
 
+# control_thread = multiprocessing.Process(target=c.run)
+# sim_thread = multiprocessing.Process(target=s.run)
+
 # set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
 c.setInitialState([0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
-c.setGoalState([0.5, 0.5, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+c.setGoalState([1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
 
 x0 = c.initialCondition_
 xg = c.goalState_
@@ -51,7 +55,7 @@ print("Initial: "); print(x0)
 # by sim duration
 if sim_type == 0: 
     while c.t_last < sim_duration:
-        pass
+        print(c.objVal)
     c.stopSimulation()
     xf = c.x
 
@@ -62,16 +66,22 @@ elif sim_type == 1:
     c.stopSimulation()
     xf = c.x
 
+# control_thread.terminate()
+# sim_thread.terminate()
+
 print("Final: "); print(xf)
 
 # print metrics
 print("ObjVal: "); print(c.objVal)
 
 # truncate xf down to lower dimension (need to convert quaternion)
-quat  = xf[3:6+1]
+# quat  = xf[3:6+1]
 rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
 xf_low_dim = np.delete(xf,rm_idx)
 print("xf low dim: "); print(xf_low_dim)
+
+
+c.killSimulation()
 
 #######################################################################################
 
