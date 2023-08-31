@@ -10,10 +10,8 @@ import numpy as np
 import networkx as nx
 import multiprocessing
 import ctypes
-
 import random as rand
-
-from utils import *
+from logging import getLogger
 
 ##############################################################################################
 
@@ -122,6 +120,9 @@ def validationSimulation(x0, waypts, parameterization):
     sim_thread.join()
     return xf, c.objVal
 
+logger.info(f"Final: {xf}")
+# print metrics
+logger.info(f"ObjVal: {c.objVal}")
 
 # Test this stuff out
 x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
@@ -133,6 +134,8 @@ T_ = 2.0
 # rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
 # xf_low_dim = np.delete(xf,rm_idx)
 # print("xf low dim: "); print(xf_low_dim)
+
+
 
 #######################################################################################
 
@@ -146,16 +149,92 @@ T_ = 2.0
 # states x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_pos, foot_vel, fw_pos_1, fw_pos_2, fw_pos_3, fw_vel_1, fw_vel_2, fw_vel_3
 #Should sample
 # x,y, 0.5, 1, 0, 0, 0, x_dot, y_dot, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0, 0
+num_samples = 64
+goal_position = np.array([0.,2.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
+start_position = np.array([0.,0.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
 sample_state_mask = np.array([1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=bool)
 state_template = np.array([0.,0.,0.5,1.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
 sample_states_lower = np.array([-5, -5, -1, -1])
-sample_state_upper = -sample_states_lower
+sample_states_upper = -sample_states_lower
 
-for i in range(sample_states.shape[0]):
-    sample = np.random.sample(size=sample_states_lower.shape)
-    sample_states = (sample_state_upper - sample_states_lower)*sample + sample_states_lower
-    print(f"[INFO] evaluating state {sample_states[i]}")
-    
+goal_bias = 0.1
+goal_graph_bias = 0.1
+goal_random = 1 - goal_bias - goal_graph_bias
+init_graph_bias = 0.5
+
+def make_full_state(reduced_state):
+    full_state = state_template.copy()
+    full_state[sample_state_mask] = reduced_state
+    return full_state
+G = nx.Graph()
+G.add_node(0, state=start_position)
+G.add_node(-1, state=goal_position)
+
+def pretend_dynamics(x_init, x_goal):
+    """
+    x_init: initial state
+    x_goal: goal state
+
+    returns: cost, reached_idx
+    cost: cost of reaching the goal state
+    reached_idx: index of the reached state in the graph
+    """
+    reached = x_goal #TODO: Sergio get real simulator dynamics
+    reached_idx = len(G.nodes)
+    G.add_node(len(G.nodes), state=reached)
+    cost = np.linalg.norm(x_init - reached) #TODO: Sergio get real MPC cost
+    return cost, reached_idx
+
+def sample_state():
+    init_sample_choice = np.random.choice([0, 1], p=[1-init_graph_bias, init_graph_bias])
+    x_init = None
+    x_goal = None
+    x_init_idx = None
+    if init_sample_choice == 0:
+        #sample randomly
+        x_init = np.random.uniform(low=sample_states_lower, high=sample_states_upper)
+        x_init = make_full_state(x_init)
+        x_init_idx = len(G.nodes)
+        G.add_node(len(G.nodes), state=x_init)
+        logger.debug("Sampled random initial state.")
+    elif init_sample_choice == 1:
+        #sample from graph
+        x_init_idx = np.random.choice(G.nodes)
+        x_init = G.nodes[x_init_idx]["state"]
+        logger.debug("Sampled initial state from graph.")
+    else: 
+        raise ValueError("init_sample_choice must be 0 or 1")
+    goal_sample_choice = np.random.choice([0, 1, 2], p=[goal_random, goal_bias, goal_graph_bias])
+    if goal_sample_choice == 0:
+        #randomly sample
+        x_goal = np.random.uniform(low=sample_states_lower, high=sample_states_upper)
+        x_goal = make_full_state(x_goal)
+        logger.debug("Sampled random goal state.")
+    elif goal_sample_choice == 1:
+        # pick goal
+        x_goal = goal_position
+        logger.debug("Sampled goal state from goal position.")
+    elif goal_sample_choice == 2:
+        # sample from graph
+        x_goal_idx = np.random.choice(G.nodes)
+        x_goal = G.nodes[x_goal_idx]["state"]
+        logger.debug("Sampled goal state from graph.")
+    else:
+        raise ValueError("goal_sample_choice must be 0, 1, or 2")
+    # if len(G.nodes) < 10:
+    #     return 
+    # else:
+    return np.stack([x_init, x_goal], axis=0), x_init_idx
+
+
+for i in range(num_samples):
+    # sample initial state and goal
+    sample, x_init_idx = sample_state()
+    cost, reached_idx = pretend_dynamics(sample[0], sample[1])
+    G.add_edge(x_init_idx, reached_idx, cost=cost, goal=sample[1])
+    logger.info(f"Evaluating Sample {i}: {sample}")
+
+c.killSimulation()    
 #time.sleep(1)
 
 #print(c.programState_)
