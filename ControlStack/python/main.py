@@ -1,12 +1,13 @@
 import sys
-sys.path.insert(0, '../build') #this is cursed
-
+from pathlib import Path
+# assume build directory is in the ControlStack directory
+sys.path.insert(0, str(Path(__file__).parent.parent / "build"))
 from hopper import *
 import hopper
 import time
 import threading
 import numpy as np
-import networkx as networkx
+import networkx as nx
 import multiprocessing
 import ctypes
 
@@ -119,5 +120,51 @@ def validationSimulation(x0, waypts, parameterization):
     # safely shutdown the threads
     control_thread.join()
     sim_thread.join()
+    return xf, c.objVal
 
-    return xf
+
+# Test this stuff out
+x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+xg_ = [1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+T_ = 2.0
+
+# truncate xf down to lower dimension (need to convert quaternion)
+# quat  = xf[3:6+1]
+# rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
+# xf_low_dim = np.delete(xf,rm_idx)
+# print("xf low dim: "); print(xf_low_dim)
+
+#######################################################################################
+
+# state dimensionality: 21
+# input dimensionality: 4
+
+# sample random states
+# Segio
+# states t, x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_contact(bool), foot_pos, foot_vel, fw_vel_1, fw_vel_2, fw_vel_3
+# Noel
+# states x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_pos, foot_vel, fw_pos_1, fw_pos_2, fw_pos_3, fw_vel_1, fw_vel_2, fw_vel_3
+#Should sample
+# x,y, 0.5, 1, 0, 0, 0, x_dot, y_dot, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0, 0
+sample_state_mask = np.array([1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=bool)
+state_template = np.array([0.,0.,0.5,1.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
+sample_states_lower = np.array([-5, -5, -1, -1])
+sample_state_upper = -sample_states_lower
+
+for i in range(sample_states.shape[0]):
+    sample = np.random.sample(size=sample_states_lower.shape)
+    sample_states = (sample_state_upper - sample_states_lower)*sample + sample_states_lower
+    print(f"[INFO] evaluating state {sample_states[i]}")
+    
+#time.sleep(1)
+
+#print(c.programState_)
+# print(c.TX_torques)
+#time.sleep(1)
+#c.startSimulation()
+#time.sleep(3)
+# c.startSimulation()
+# print(c.TX_torques)
+xf, objVal = runSimulation(x0_,xg_,T_)
+print(xf)
+print(objVal)

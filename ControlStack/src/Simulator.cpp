@@ -295,8 +295,8 @@ void Simulator::run_with_visualization() {
     d = mj_makeData(m);
 
     // init GLFW
-    if (!glfwInit())
-        mju_error("Could not initialize GLFW");
+    // if (!glfwInit())
+        // mju_error("Could not initialize GLFW");
 
     // create window, make OpenGL context current, request v-sync
     GLFWwindow *window = glfwCreateWindow(1244, 700, "Demo", NULL, NULL);
