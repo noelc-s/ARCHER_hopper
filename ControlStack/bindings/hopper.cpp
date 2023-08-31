@@ -56,6 +56,7 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("v", &Controller::v)
   .def_readwrite("initialCondition_", &Controller::initialCondition_)
   .def_readwrite("goalState_", &Controller::goalState_)
+  .def_readwrite("objVal", &Controller::objVal)
   .def_readwrite("programState_", &Controller::programState_)
   .def_property_readonly("TX_torques", [](py::object&obj) {
         Controller& o = obj.cast<Controller&>();

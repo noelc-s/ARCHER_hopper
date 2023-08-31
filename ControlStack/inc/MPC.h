@@ -28,6 +28,7 @@ public:
     vector_t f, full_ref;
 
     OsqpEigen::Solver solver;
+    scalar_t primalObjVal; // objective value of primal problem
 
     // Parameters for the MPC program
     struct MPC_Params {

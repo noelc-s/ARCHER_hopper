@@ -577,9 +577,13 @@ void Controller::run() {
 			  }
 	}
         if (replan) {
+
           // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
           opt.solve(hopper, sol, command, command_interp, goalState_); ///////////////////////////////////
-	  for (int i = 0; i < opt.p.N; i++) {
+          objVal = opt.primalObjVal;
+          // std::cout << objVal << std::endl;
+
+    for (int i = 0; i < opt.p.N; i++) {
             sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
 	  }
 	  sol_g.segment((opt.nx+1)*opt.p.N,opt.nu*(opt.p.N-1)) << sol.segment((opt.nx)*opt.p.N,opt.nu*(opt.p.N-1));

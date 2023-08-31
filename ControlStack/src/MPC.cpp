@@ -148,6 +148,10 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
         }
       }
     }
+
+    // update primal objective function value
+    primalObjVal = solver.getObjValue() + 0.5 * full_ref.transpose() * H * full_ref;
+
     return 0;
 }
 
@@ -298,6 +302,7 @@ void MPC::reset() {
     dynamics_b_ub.setZero();
     H.setZero();
     f.setZero();
+    // primalObjVal.setZero();
 }
 
 void MPC::buildDynamicEquality() {
@@ -380,4 +385,6 @@ void MPC::buildCost(){
     }
     f.setZero();
 }
+
+
 
