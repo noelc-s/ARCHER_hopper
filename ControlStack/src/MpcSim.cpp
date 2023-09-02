@@ -29,7 +29,6 @@ using namespace pinocchio;
 int main(int argc, char *argv[]) {
 
   Controller controller;
-
   Simulator simulator;
 
   if (argc < 2) {

@@ -429,23 +429,24 @@ void Controller::resetSimulation(vector_t x0) {
 
 void Controller::stopSimulation() {
   programState_ = STOPPED;
+  // exit(0);
 }
 
 void Controller::killSimulation() {
   programState_ = KILL;
+
 }
 
 void Controller::startSimulation() {
   programState_ = RUNNING;
 }
 
-
 // get state from hopper object and update Controller state
 void Controller::getStateUpdate(Hopper hopper) {
   q = hopper.q;
   v = hopper.v;
   
-  // Note: the controller state is not the same as the 
+  // Note: the controller.x is not the same as  
   x << hopper.q, hopper.v;
 }
 

@@ -76,3 +76,10 @@ def toQuaternion(r,p,y):
     qz = cr * cp * sy - sr * sp * cy
 
     return qw, qx, qy, qz
+
+
+# truncate xf down to lower dimension (need to convert quaternion)
+# quat  = xf[3:6+1]
+# rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
+# xf_low_dim = np.delete(xf,rm_idx)
+# print("xf low dim: "); print(xf_low_dim)

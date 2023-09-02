@@ -12,7 +12,6 @@ import ctypes
 
 import random as rand
 
-# for random support functions
 from utils import *
 
 # instantiate thread for controller and sim
