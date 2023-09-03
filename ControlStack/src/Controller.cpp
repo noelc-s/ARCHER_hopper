@@ -2,25 +2,25 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-class GilManager
-{
-public:
-   GilManager()
-   {
-      mThreadState = PyEval_SaveThread();
-   }
-
-   ~GilManager()
-   {
-      if (mThreadState)
-         PyEval_RestoreThread(mThreadState);
-   }
-
-   GilManager(const GilManager&) = delete;
-   GilManager& operator=(const GilManager&) = delete;
-private:
-   PyThreadState* mThreadState;
-};
+//class GilManager
+//{
+//public:
+//   GilManager()
+//   {
+//      mThreadState = PyEval_SaveThread();
+//   }
+//
+//   ~GilManager()
+//   {
+//      if (mThreadState)
+//         PyEval_RestoreThread(mThreadState);
+//   }
+//
+//   GilManager(const GilManager&) = delete;
+//   GilManager& operator=(const GilManager&) = delete;
+//private:
+//   PyThreadState* mThreadState;
+//};
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -384,7 +384,7 @@ void Controller::setGoalState(vector_t goalState) {
 
 void Controller::resetSimulation(vector_t x0) {
 
-  GilManager g;
+// GilManager g;
 
   programState_ = RESET;
   t_last = -1;
@@ -431,7 +431,7 @@ void Controller::getStateUpdate(Hopper hopper) {
 void Controller::run() {
 
   int stopIndex = 0;
-  GilManager g;
+  //GilManager g;
 
   ///////////// Variable Initialization ///////////////////////////
   /////////////////////////////////////////////////////////////////
@@ -482,7 +482,7 @@ void Controller::run() {
   vector_3t command;
   vector_2t dist;
   vector_2t command_interp;
-  std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
+  //std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
   ////////////////////////////////////////////////////////////////////////
 
@@ -697,13 +697,21 @@ void Controller::run() {
   // TODO: add logic here to escape the loop when you want to start, will probably be commanded by
   //       an outside program
   do {
-    send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
-    read(*new_socket, &RX_state, sizeof(RX_state));
-    stopIndex++;
-    if (programState_ == KILL) {
+    if (programState_ == KILL)
 	    return;
-    }
+    send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+    if (programState_ == KILL)
+	    return;
+    read(*new_socket, &RX_state, sizeof(RX_state));
+    if (programState_ == KILL)
+	    return;
+    stopIndex++;
+    if (programState_ == KILL)
+	    return;
   } while (programState_ == STOPPED);
+  //if (state[0] > 2) {
+  //	return;
+  //}
   stopIndex--;
   if (index == p.stop_index || hopper.num_hops==50){
     return;

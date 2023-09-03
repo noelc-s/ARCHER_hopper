@@ -50,6 +50,9 @@ class Simulator : public S {
         // SimulatorState simulatorState_ = RUNNING;
 
         void run() override; //explicitly override S::run() and use Simulator::run()
+        void killSimulation();
+     
+    bool kill = false;
 };
 
 void keyboard(GLFWwindow *window, int key, int scancode, int act, int mods);

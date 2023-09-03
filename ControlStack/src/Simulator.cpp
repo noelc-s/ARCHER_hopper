@@ -1,24 +1,24 @@
 #include "Simulator.h"
 
-class GilManager
-{
-public:
-   GilManager()
-   {
-      mThreadState = PyEval_SaveThread();
-   }
-
-   ~GilManager()
-   {
-      if (mThreadState)
-         PyEval_RestoreThread(mThreadState);
-   }
-
-   GilManager(const GilManager&) = delete;
-   GilManager& operator=(const GilManager&) = delete;
-private:
-   PyThreadState* mThreadState;
-};
+//class GilManager
+//{
+//public:
+//   GilManager()
+//   {
+//      mThreadState = PyEval_SaveThread();
+//   }
+//
+//   ~GilManager()
+//   {
+//      if (mThreadState)
+//         PyEval_RestoreThread(mThreadState);
+//   }
+//
+//   GilManager(const GilManager&) = delete;
+//   GilManager& operator=(const GilManager&) = delete;
+//private:
+//   PyThreadState* mThreadState;
+//};
 
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -185,12 +185,16 @@ void setupSocket_receiveIC(scalar_t *init_conds, int n) {
 
 Simulator::Simulator() {
     // can do something for the sim here
+
+}
+
+void Simulator::killSimulation() {
+  kill = true;
 }
 
 // main function
 void Simulator::run() {
 
-    GilManager g; ///
 
     // activate software
     mj_activate("mjkey.txt");
@@ -344,6 +348,9 @@ void Simulator::run() {
 
     // use the first while condition if you want to simulate for a period.
     while (!glfwWindowShouldClose(window)) {
+    //while(!kill) {
+    if (kill)
+	    return;
 
       if (sim_flag < -0.5) {
 	d->time = 0;
@@ -420,8 +427,59 @@ void Simulator::run() {
 
             //send current states to the controller
 	    do {
+    if (kill){
+	// free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
+
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    mj_deactivate();
+
+    // terminate GLFW (crashes with Linux NVidia drivers)
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
+
+	    return;
+    }  
               send(*new_socket, &TX_state, sizeof(TX_state), 0);
+    if (kill){
+	 // free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
+
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    mj_deactivate();
+
+    // terminate GLFW (crashes with Linux NVidia drivers)
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
+
+	    return;
+    }   
               read(*new_socket, &RX_torques, sizeof(RX_torques));
+    if (kill){
+	  // free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
+
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    mj_deactivate();
+
+    // terminate GLFW (crashes with Linux NVidia drivers)
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
+
+	    return;
+    } 
 
               //override the communication based on the received toruqe comands from ctrl
               d->ctrl = RX_torques;
@@ -430,6 +488,23 @@ void Simulator::run() {
 	      d->xfrc_applied[7] = RX_torques[24];
 
 	      sim_flag = RX_torques[25];
+    if (kill){
+// free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
+
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+    mj_deactivate();
+
+    // terminate GLFW (crashes with Linux NVidia drivers)
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
+
+	    return;
+    }
 	    } while (sim_flag < 0.1 && sim_flag > -0.1);
 
             // Take integrator step

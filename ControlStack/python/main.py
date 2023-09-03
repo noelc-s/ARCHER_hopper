@@ -8,9 +8,43 @@ import threading
 import numpy as np
 import networkx as networkx
 import multiprocessing
+import ctypes
 
 # for random support functions
 from utils import *
+
+c = hopper.Controller()
+s = hopper.Simulator()
+
+class thread_with_exception(threading.Thread):
+    def __init__(self, name):
+        threading.Thread.__init__(self)
+        self.name = name
+             
+    def run(self):
+ 
+        # target function of the thread class
+        try:
+            c.run()
+        finally:
+            print('ended')
+          
+    def get_id(self):
+ 
+        # returns id of the respective thread
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+  
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
 
 ##############################################################################################
 # state information
@@ -23,15 +57,13 @@ from utils import *
 ##############################################################################################
 
 # create controller and sim objects
-c = hopper.Controller()
-s = hopper.Simulator()
-
 # instantiate thread for controller and sim
 control_thread = threading.Thread(target=call_run, args=(c,))
+#control_thread = thread_with_exception('Thread 1')
 sim_thread = threading.Thread(target=call_run_sim, args=(s,))
 
-# control_thread = multiprocessing.Process(target=c.run)
-# sim_thread = multiprocessing.Process(target=s.run)
+#control_thread = multiprocessing.Process(target=c.run)
+#sim_thread = multiprocessing.Process(target=s.run)
 
 # set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
 c.setInitialState([0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.])
@@ -66,8 +98,7 @@ elif sim_type == 1:
     c.stopSimulation()
     xf = c.x
 
-# control_thread.terminate()
-# sim_thread.terminate()
+#sim_thread.terminate()
 
 print("Final: "); print(xf)
 
@@ -81,7 +112,12 @@ xf_low_dim = np.delete(xf,rm_idx)
 print("xf low dim: "); print(xf_low_dim)
 
 
+#control_thread.terminate()
+#control_thread.raise_exception()
 c.killSimulation()
+s.killSimulation()
+#control_thread.join()
+#sim_thread.join()
 
 #######################################################################################
 

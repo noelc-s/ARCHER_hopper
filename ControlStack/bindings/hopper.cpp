@@ -70,9 +70,9 @@ PYBIND11_MODULE(hopper, m) {
  ;
 
   m.def("call_run", [](C *c) -> void {
-                  //py::gil_scoped_release release;
+                  py::gil_scoped_release release;
                   call_run(c);
-                  //py::gil_scoped_acquire acquire;
+                  py::gil_scoped_acquire acquire;
                   });
 
   ////////////////////////////////// SIMULATOR Class //////////////////////////////////
@@ -83,12 +83,14 @@ PYBIND11_MODULE(hopper, m) {
   
   py::class_<Simulator> simulator(m, "Simulator",s);
   simulator 
-      .def(py::init<>()); // constructor
+      .def(py::init<>()) // constructor
+      .def("killSimulation",&Simulator::killSimulation)
+      .def_readwrite("kill", &Simulator::kill);
 
   m.def("call_run_sim", [](S *s) -> void {
-                  //py::gil_scoped_release release;
+                  py::gil_scoped_release release;
                   call_run_sim(s);
-                  //py::gil_scoped_acquire acquire;
+                  py::gil_scoped_acquire acquire;
                   });
 }
 
