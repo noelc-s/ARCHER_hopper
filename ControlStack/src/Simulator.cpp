@@ -463,23 +463,6 @@ void Simulator::run() {
 	    return;
     }   
               read(*new_socket, &RX_torques, sizeof(RX_torques));
-    if (kill){
-	  // free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
-
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
-
-    // terminate GLFW (crashes with Linux NVidia drivers)
-    #if defined(__APPLE__) || defined(_WIN32)
-        glfwTerminate();
-    #endif
-
-	    return;
-    } 
 
               //override the communication based on the received toruqe comands from ctrl
               d->ctrl = RX_torques;
@@ -488,23 +471,6 @@ void Simulator::run() {
 	      d->xfrc_applied[7] = RX_torques[24];
 
 	      sim_flag = RX_torques[25];
-    if (kill){
-// free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
-
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
-
-    // terminate GLFW (crashes with Linux NVidia drivers)
-    #if defined(__APPLE__) || defined(_WIN32)
-        glfwTerminate();
-    #endif
-
-	    return;
-    }
 	    } while (sim_flag < 0.1 && sim_flag > -0.1);
 
             // Take integrator step

@@ -697,17 +697,11 @@ void Controller::run() {
   // TODO: add logic here to escape the loop when you want to start, will probably be commanded by
   //       an outside program
   do {
-    if (programState_ == KILL)
-	    return;
     send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     if (programState_ == KILL)
 	    return;
     read(*new_socket, &RX_state, sizeof(RX_state));
-    if (programState_ == KILL)
-	    return;
     stopIndex++;
-    if (programState_ == KILL)
-	    return;
   } while (programState_ == STOPPED);
   //if (state[0] > 2) {
   //	return;
