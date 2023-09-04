@@ -34,6 +34,8 @@
 #include "../inc/Graph.h"
 #include "pinocchio/algorithm/jacobian.hpp"
 
+#include <cassert>
+
 //#include "pinocchio/algorithm/kinematics.hpp"
 //#define port 8080
 #define MAXLINE 1000
@@ -85,8 +87,12 @@ class Controller : public C {
     vector_t goalState_;         // pos[3], rpy[3], v[3], omega[3] 
     scalar_t objVal;             // MPC primal objective value
 
+    vector_array_t stateSequence_; // sequence of goal states
+    scalar_array_t paramsSequence_;      // parameterization of goal states
+
     void setInitialState(vector_t initialCondition);
     void setGoalState(vector_t goalState);
+    void setStateSequence(vector_array_t stateSequence, scalar_array_t paramsSequence);
     
     void resetSimulation(vector_t x0);
     void stopSimulation();

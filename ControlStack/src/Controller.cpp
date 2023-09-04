@@ -382,6 +382,28 @@ void Controller::setGoalState(vector_t goalState) {
   goalState_ = goalState;
 }
 
+// set goal sequence for MPC to track
+void Controller::setStateSequence(vector_array_t stateSequence, scalar_array_t paramsSequence) {
+  
+  // set state and times
+  stateSequence_ = stateSequence;
+  paramsSequence_ = paramsSequence;
+
+  // check that sequences and vectors are the same size
+  int stateSeqSize = stateSequence.size();
+  int paramsSeqSize = paramsSequence.size();
+  assert(stateSeqSize == paramsSeqSize);
+
+  bool sameVectorSize = true;
+  int s = stateSequence[0].size();
+  for (int i = 0; i < stateSequence.size(); i++) {
+    if (stateSequence[i].size() != s) {
+      sameVectorSize = false;
+      assert(sameVectorSize);
+    }
+  }
+}
+
 void Controller::resetSimulation(vector_t x0) {
 
 // GilManager g;
@@ -486,9 +508,11 @@ void Controller::run() {
 
   ////////////////////////////////////////////////////////////////////////
 
-  // set goal state if not provided with goal
-  if (goalState_.size() == 0) {
-    goalState_ << 0, 0, 0.5, 1, 0, 0, 0, 0 ,0 ,0, 0 ,0;
+  // set goal state if not provided with goal state or sequence of states
+  if (goalState_.norm() == 0  && stateSequence_.size() == 0) {
+    goalState_ << 0, 0, 0.5, 0, 0, 0, 0, 0 ,0 ,0, 0 ,0;
+    std::cout << "No state sequence provided and" << std::endl;
+    std::cout << "No goal state provided. Using default goal state: [" << goalState_.transpose() << "]" << std::endl;
   }
 
  //////////////////////// Main Loop ///////////////////////////////////////
@@ -552,7 +576,7 @@ void Controller::run() {
         if (replan) {
 
           // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
-          opt.solve(hopper, sol, command, command_interp, goalState_); ///////////////////////////////////
+          opt.solve(hopper, sol, command, command_interp, goalState_, stateSequence_, paramsSequence_); ///////////////////////////////////
           objVal = opt.primalObjVal;
 
     for (int i = 0; i < opt.p.N; i++) {

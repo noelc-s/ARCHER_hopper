@@ -2,6 +2,25 @@
 import numpy as np
 import math as mt
 
+# log operator, Log: S^3 -> s^3 -> R^3, alternatively can use manifpy
+def Log(quat):
+
+    w = quat[0]
+    v = quat[1:3+1]
+    
+    # from Micro Lie thoery
+    s = 2*v*mt.atan2(np.linalg.norm(v), w) / np.linalg.norm(v)
+    return s
+
+# exp operator, Exp: R^3 -> s^3 -> S^3, alternatively can use manifpy
+def Exp(s):
+    
+    # from Micro Lie theory
+    qw = mt.cos(np.linalg.norm(s)/2)
+    qv = s * mt.sin(np.linalg.norm(s)/2) / np.linalg.norm(s)
+    
+    quat = [qw, qv[0], qv[1], qv[2]]
+    return quat
 
 # truncate xf down to lower dimension (need to convert quaternion)
 def truncate(xf):
@@ -41,7 +60,7 @@ def toEulerAngles(quat):
 
     return r,p,y
 
-# euler angle sto quaternion 
+# euler angles to quaternion
 def toQuaternion(r,p,y):
 
     cr = mt.cos(r * 0.5)

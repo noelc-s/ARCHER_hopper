@@ -207,7 +207,7 @@ public:
      * @param [in] tra the Trajectory type to track.
      */
     // int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra);
-    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal);
+    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence);
 
     /*! @brief build the cost function matrices*/
     void buildCost();
