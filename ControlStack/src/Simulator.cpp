@@ -195,7 +195,6 @@ void Simulator::killSimulation() {
 // main function
 void Simulator::run() {
 
-
     // activate software
     mj_activate("mjkey.txt");
 
@@ -471,6 +470,13 @@ void Simulator::run() {
 	      d->xfrc_applied[7] = RX_torques[24];
 
 	      sim_flag = RX_torques[25];
+        
+          if (sim_flag < 0.1 && sim_flag > -0.1){
+            close(*new_socket);
+            kill = true;
+            return;
+          }
+          
 	    } while (sim_flag < 0.1 && sim_flag > -0.1);
 
             // Take integrator step

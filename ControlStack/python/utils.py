@@ -2,6 +2,18 @@
 import numpy as np
 import math as mt
 
+
+# truncate xf down to lower dimension (need to convert quaternion)
+def truncate(xf):
+    # convert quaternion to euler angles
+    quat  = xf[3:6+1]
+    
+    # remove unused incdices
+    rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
+    xf_low_dim = np.delete(xf,rm_idx)
+
+    return xf_low_dim
+
 # assumes normalized quaternion & converts to Euler angles in 3-2-1 sequence
 # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 def toEulerAngles(quat):

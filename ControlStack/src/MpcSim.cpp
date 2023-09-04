@@ -19,7 +19,7 @@
 
 #include "Hopper.h"
 #include "Controller.h"
-#include "Simulator.h"   ////
+#include "Simulator.h"   
 
 using namespace Eigen;
 using namespace Hopper_t;
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
   Controller controller;
 
-  Simulator simulator; ////
+  Simulator simulator;
 
   if (argc < 2) {
   } else {
@@ -38,5 +38,5 @@ int main(int argc, char *argv[]) {
   }
 
   controller.run();
-  simulator.run(); ////
+  simulator.run(); 
 }

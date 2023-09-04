@@ -486,41 +486,14 @@ void Controller::run() {
 
   ////////////////////////////////////////////////////////////////////////
 
-  // vector_array_t waypts;
-  // scalar_array_t times;
- 
-  // vector_t vec(12);
-  // vec.setZero();
-
-  // vec.segment(0,2) << 0,0;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << -1,0;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << 1,0;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << -1,1;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << 0,0;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << 1.9,0;
-  // waypts.push_back(vec);
-  // vec.segment(0,2) << 3.5,0;
-  // waypts.push_back(vec);
-
-  // for (int i=0; i<waypts.size(); i++) {
-  //   times.push_back(1.* (float) i);
-  // }
-
-  // Traj trajectory = {waypts,times, waypts.size()};
-  // Bezier_T tra(trajectory, 1.0);
-
   // set goal state if not provided with goal
   if (goalState_.size() == 0) {
     goalState_ << 0, 0, 0.5, 1, 0, 0, 0, 0 ,0 ,0, 0 ,0;
   }
 
  //////////////////////// Main Loop ///////////////////////////////////////
-
+    
+    programState_ = RUNNING;
     // get intial conditions from YAML
     if (initialCondition_.size() == 0) {
       initialCondition_ = get_configIC();
@@ -581,7 +554,6 @@ void Controller::run() {
           // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
           opt.solve(hopper, sol, command, command_interp, goalState_); ///////////////////////////////////
           objVal = opt.primalObjVal;
-          // std::cout << objVal << std::endl;
 
     for (int i = 0; i < opt.p.N; i++) {
             sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
@@ -697,9 +669,18 @@ void Controller::run() {
   // TODO: add logic here to escape the loop when you want to start, will probably be commanded by
   //       an outside program
   do {
+  
+    TX_torques[25] = programState_;
+  
     send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
-    if (programState_ == KILL)
+  
+    // if (programState_ == KILL){
+    if (TX_torques[25] < 0.1 && TX_torques[25] > -0.1) {
+      close(*new_socket);
+	    shutdown(*server_fd, SHUT_RDWR);
 	    return;
+    }
+  
     read(*new_socket, &RX_state, sizeof(RX_state));
     stopIndex++;
   } while (programState_ == STOPPED);
