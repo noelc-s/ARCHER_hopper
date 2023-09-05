@@ -12,6 +12,8 @@ import multiprocessing
 import ctypes
 import random as rand
 from logging import getLogger
+from utils import toEulerAngles, toQuaternion
+
 
 ##############################################################################################
 
@@ -120,14 +122,18 @@ def validationSimulation(x0, waypts, parameterization):
     sim_thread.join()
     return xf, c.objVal
 
-logger.info(f"Final: {xf}")
-# print metrics
-logger.info(f"ObjVal: {c.objVal}")
-
 # Test this stuff out
 x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 xg_ = [1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 T_ = 2.0
+xf, objVal = runSimulation(x0_,xg_,T_)
+print(xf)
+print(objVal)
+logger = getLogger(__file__)
+logger.setLevel("DEBUG")
+logger.info(f"Final: {x0_}")
+# print metrics
+logger.info(f"ObjVal: {objVal}")
 
 # truncate xf down to lower dimension (need to convert quaternion)
 # quat  = xf[3:6+1]
@@ -170,6 +176,7 @@ G = nx.Graph()
 G.add_node(0, state=start_position)
 G.add_node(-1, state=goal_position)
 
+
 def pretend_dynamics(x_init, x_goal):
     """
     x_init: initial state
@@ -183,7 +190,15 @@ def pretend_dynamics(x_init, x_goal):
     reached_idx = len(G.nodes)
     G.add_node(len(G.nodes), state=reached)
     cost = np.linalg.norm(x_init - reached) #TODO: Sergio get real MPC cost
-    return cost, reached_idx
+    return reached_idx, cost
+
+
+def simulator_dynamics(x_init, x_goal, tmax=3.0):
+    xf, cost = runSimulation(x_init, x_goal, tmax)
+    reached_idx = len(G.nodes)
+    G.add_node(reached_idx, state=xf)
+    return reached_idx, cost
+
 
 def sample_state():
     init_sample_choice = np.random.choice([0, 1], p=[1-init_graph_bias, init_graph_bias])
@@ -230,20 +245,18 @@ def sample_state():
 for i in range(num_samples):
     # sample initial state and goal
     sample, x_init_idx = sample_state()
-    cost, reached_idx = pretend_dynamics(sample[0], sample[1])
+    reached_idx, cost = runSimulation(sample[0], sample[1], 3.0)
     G.add_edge(x_init_idx, reached_idx, cost=cost, goal=sample[1])
     logger.info(f"Evaluating Sample {i}: {sample}")
 
-c.killSimulation()    
-#time.sleep(1)
+# time.sleep(1)
 
-#print(c.programState_)
+# print(c.programState_)
 # print(c.TX_torques)
-#time.sleep(1)
-#c.startSimulation()
-#time.sleep(3)
+# time.sleep(1)
+# c.startSimulation()
+# time.sleep(3)
 # c.startSimulation()
 # print(c.TX_torques)
-xf, objVal = runSimulation(x0_,xg_,T_)
-print(xf)
-print(objVal)
+
+
