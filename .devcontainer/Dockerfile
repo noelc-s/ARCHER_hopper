@@ -11,7 +11,7 @@ ARG USERID
 RUN groupadd --gid $GROUPID $USER_NAME
 
 RUN useradd --uid $USERID --gid $GROUPID -ms /bin/bash $USER_NAME
-RUN echo 'docker:docker' | chpasswd
+RUN echo '$USERID:$USERID' | chpasswd
 RUN apt-get update \
     && apt-get install -y sudo \
     && echo $USER_NAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USER_NAME \
