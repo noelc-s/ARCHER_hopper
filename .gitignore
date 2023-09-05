@@ -8,4 +8,4 @@ data
 *.svg
 !ConnectionDiagram.png
 .vscode
-ControlStack/python/MUJOCO_LOG.TXT
+**/MUJOCO_LOG.TXT
