@@ -30,8 +30,8 @@ def runSimulation(x0, xg, terminate_cond, sim_type):
     Parameters:
         x0 (list): initial state as 12 dimensional list
         xg (list): goal state as 12 dimensional list
-        terminate_cond (float): either a time interval or the maximum number of apex-to-apex hops
-        sim_type (char): 'T' for time interval or 'H' for maximum number of hops
+        terminate_cond (float): either a maximum time horizon or the maximum number of apex-to-apex hops
+        sim_type (char): 'T' for max time horizon or 'H' for maximum number of hops
     Returns: 
         xf (list): final state as 12 dimensional list
         objVal (float): objective value
@@ -59,35 +59,31 @@ def runSimulation(x0, xg, terminate_cond, sim_type):
         sim_duration = terminate_cond  # time in seconds before sim stops
         while c.t_last < sim_duration:
             pass
-            # print(c.t_last)
 
     elif sim_type == 'H':
         max_hops = terminate_cond      # maximum number of hops before sim stops
-        while int(c.num_hops) < int(max_hops):
+        while c.num_hops < max_hops:
             pass
-            # print(c.num_hops)
         
     else:
         print("choose either \'T\' or \'H\' for \'sim_type\'")
+        quit()
 
     # stop simulation
     c.stopSimulation() 
-    print("Final Conditions: ", c.x)
-    print("Objective Value: ", c.objVal)
 
     # get final state and objective value
     xf = c.x
     objVal = c.objVal
 
     # safely shutdown the threads
-    c.killSimulation()
     control_thread.join()
     sim_thread.join()
 
     return xf, objVal
 
-def validationSimulation(x0, waypts, times):
-    """ Run a simulation to validate sequecne of waypoints
+def validationSimulation(x0, waypts, parameterization):
+    """ Run a simulation to validate sequence of waypoints
     Parameters:
         x0 (list): initial state as 12 dimensional list
         xg (list of lists): list of 12 dimensional lists (state waypoints)
@@ -106,10 +102,10 @@ def validationSimulation(x0, waypts, times):
 
     # set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
     c.setInitialState(x0)
-    c.setStateSequence(waypts,times)
+    c.setStateSequence(waypts,parameterization)
 
     # set simulation stop condition
-    sim_duration = times[-1]  # number of seconds before sim stops
+    sim_duration = parameterization[-1]  # number of seconds before sim stops
 
     # start control and sim threads
     control_thread.start()
@@ -118,13 +114,15 @@ def validationSimulation(x0, waypts, times):
     # run until termination condition
     while c.t_last < sim_duration:
         pass
-    c.stopSimulation()
 
+     # stop simulation
+    c.stopSimulation() 
+
+    # get final state and objective value
     xf = c.x
     objVal = c.objVal
 
     # safely shutdown the threads
-    c.killSimulation()
     control_thread.join()
     sim_thread.join()
 
@@ -133,12 +131,13 @@ def validationSimulation(x0, waypts, times):
 ##############################################################################################
 
 # test drive the simulation
-for i in range(10):
+for i in range(25):
 
-    print("*" * 50)
-    print("Test Drive: ", i)
+    print("*" * 80)
+    print("Test Drive: ", i+1)
+    rand.seed(i)
 
-    #get random init conditions
+    # set init conditions
     pos =   [2*rand.random()-1, 2*rand.random()-1, 0.5]
     rpy =   [0.05*rand.random()-0.025, 0.05*rand.random()-0.025, 0.05*rand.random()-0.025] # lie algebra
     vel =   [1*rand.random()-0.5, 1*rand.random()-0.5, 1*rand.random()-0.5]
@@ -149,19 +148,25 @@ for i in range(10):
           vel[0], vel[1], vel[2], 
           omega[0], omega[1], omega[2]]
 
-    # set goal state and time horizon
-    xg = [0 , 0, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
-    term_cond = 2
+    # set goal state
+    xg = [2*rand.random()-1, 2*rand.random()-1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+    
+    # set simulation configuration
+    # 'T' for max time horizon or 'H' for maximum number of hops
+    term_cond = 1
+    sim_type = 'H'  
 
     # run a simulation
     print("Initial Conditions: ", x0)
     print("Goal: ", xg)
-    xf, objVal = runSimulation(x0 ,xg , term_cond, 'H')
+    xf, objVal = runSimulation(x0 ,xg , term_cond, sim_type)
+    print("Final Conditions: ", xf)
+    print("Objective Value: ", objVal)
 
 ##############################################################################################
 
 # validation simulation
-# # intial condition
+# intial condition
 # x0 = [-1 , -1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.] # initial condition uses rpy
 
 # x1 = [0 ,   0, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.] # these use lie algebra elements

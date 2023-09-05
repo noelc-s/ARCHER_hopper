@@ -709,6 +709,7 @@ void Controller::run() {
   
     // if (programState_ == KILL){
     if (TX_torques[25] < 0.1 && TX_torques[25] > -0.1) {
+      // std::cout << "Killing Control" << std::endl;
       close(*new_socket);
 	    shutdown(*server_fd, SHUT_RDWR);
 	    return;

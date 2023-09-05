@@ -33,7 +33,7 @@ public:
     vector_3t omega;
   
     bool contact;
-    scalar_t num_hops;  
+    int num_hops;  
 
     scalar_t last_impact_time;
     scalar_t last_flight_time;

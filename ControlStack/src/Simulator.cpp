@@ -472,6 +472,7 @@ void Simulator::run() {
 	      sim_flag = RX_torques[25];
         
           if (sim_flag < 0.1 && sim_flag > -0.1){
+            // std::cout << "Killing Simulation" << std::endl;
             close(*new_socket);
             kill = true;
             return;

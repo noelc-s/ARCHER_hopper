@@ -72,7 +72,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     }
     // std::cout << "Time: " << paramsSequence[current_idx] << " <= " 
     //           << hopper.t << " < " << paramsSequence[current_idx+1] << std::endl;
-    std::cout << "Goal: " << current_state.transpose() << std::endl;
+    // std::cout << "Goal: " << current_state.transpose() << std::endl;
   } 
   else {
     current_state = x_goal;
