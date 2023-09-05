@@ -371,10 +371,12 @@ void Controller::setInitialState(vector_t initialCondition) {
   initialCondition_ = initialCondition; 
 
   // update state
-  q.segment(0,3) = initialCondition.segment(0,3);
-  q.segment(3,4) = rpy_to_quat(initialCondition.segment(3,3));
-  v.segment(0,3) = initialCondition.segment(6,3);
-  v.segment(3,3) = initialCondition.segment(9,3);
+  // q.segment(0,3) = initialCondition.segment(0,3);
+  // q.segment(3,4) = rpy_to_quat(initialCondition.segment(3,3));
+  // v.segment(0,3) = initialCondition.segment(6,3);
+  // v.segment(3,3) = initialCondition.segment(9,3);
+  q = initialCondition.segment(0,11);
+  v = initialCondition.segment(11,10);
   x << q,v;
 }
 

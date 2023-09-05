@@ -16,9 +16,9 @@ from utils import *
 
 # instantiate thread for controller and sim
 # control_thread = threading.Thread(target=call_run, args=(c,))
-# sim_thread = threading.Thread(target=call_run_sim, args=(s,))
-control_thread = threading.Thread(target=c.run)
-sim_thread = threading.Thread(target=s.run)
+# # sim_thread = threading.Thread(target=call_run_sim, args=(s,))
+# control_thread = threading.Thread(target=c.run)
+# sim_thread = threading.Thread(target=s.run)
 
 # Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
 # x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
@@ -27,12 +27,12 @@ sim_thread = threading.Thread(target=s.run)
 def runSimulation(x0, xg, terminate_cond, sim_type):
     """ Run a forward simulation of the hopper given an initial condition, goal state, and termination condition
     Parameters:
-        x0 (list): initial state as 12 dimensional list
-        xg (list): goal state as 12 dimensional list
+        x0 (list): initial state as 21 dimensional list
+        xg (list): goal state as 21 dimensional list
         terminate_cond (float): either a maximum time horizon or the maximum number of apex-to-apex hops
         sim_type (char): 'T' for max time horizon or 'H' for maximum number of hops
     Returns: 
-        xf (list): final state as 12 dimensional list
+        xf (list): final state as 21 dimensional list
         objVal (float): objective value
     """
 
@@ -142,10 +142,19 @@ for i in range(25):
     vel =   [1*rand.random()-0.5, 1*rand.random()-0.5, 1*rand.random()-0.5]
     omega = [0.1*rand.random()-0.05, 0.1*rand.random()-0.05, 0.1*rand.random()-0.05]
 
-    x0 = [pos[0], pos[1], pos[2], 
-          rpy[0], rpy[1], rpy[2], 
+    x0 = [pos[0], pos[1], pos[2],
+          rpy[0], rpy[1], rpy[2], 0,
           vel[0], vel[1], vel[2], 
           omega[0], omega[1], omega[2]]
+    
+    x0 = [1,1,0.5,
+          0,0,0,0,
+          0,
+          0,0,0,
+          0,0,0,
+          0,0,0,
+          0,
+          0,0,0]
 
     # set goal state
     xg = [2*rand.random()-1, 2*rand.random()-1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
