@@ -47,7 +47,9 @@ RUN apt-get update && \
     libboost-all-dev \
     make \
     ninja-build \
-    zsh
+    zsh \
+    python3-pip && \
+    pip install networkx
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 12 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12
@@ -66,7 +68,7 @@ WORKDIR $HOME/libs
 
 RUN sudo apt-get update && \
 sudo apt-get install -y libglfw3-dev liburdfdom-dev python3-numpy libeigen3-dev libxinerama-dev libxcursor-dev\
-                        libxi-dev texlive-latex-base
+                        libxi-dev texlive-latex-base\
 
 # RUN git clone --branch 3.4.1 https://gitlab.com/libeigen/eigen.git && \
 #     cd eigen && \
@@ -144,12 +146,6 @@ RUN cd BezierTubes && \
     cd build && \
     cmake .. -G Ninja && \
     ninja
-
-USER root
-RUN apt-get install -y python3-pip && \
-    pip install networkx
-USER $USER_NAME
-
 WORKDIR $HOME
 ENTRYPOINT ["/home/docker/setup.bash"]
 CMD ["bash"]
