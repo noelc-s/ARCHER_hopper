@@ -358,6 +358,7 @@ Controller::Controller() {
   v_global.setZero();
   tau.setZero();
   goalState_.setZero();
+  int num_hops = 0;
 
   // reset port
   port.reset(new uint16_t(8080));
@@ -528,11 +529,15 @@ void Controller::run() {
     // setup socket comms
     setupSocket(new_socket, server_fd, address, *port);    
     
-    // for counting number of hops based on z velocity
-    hopper.num_hops = 0;
+    // for counting number of hops based on z velocity and domain transitions
     int sign_flips =0;
     bool pos_sign = hopper.vel(2) > 0;
     bool pos_sign_check;
+
+    int contact_flips = 0;
+    bool inContact = hopper.contact;
+    bool inContact_check;
+    int contactTransitions = 0;
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
@@ -674,20 +679,24 @@ void Controller::run() {
 
   // count number of hops based on changing directions of z velocity
   pos_sign_check = hopper.vel(2) > 0;
-  if (pos_sign != pos_sign_check) {
+  inContact_check = hopper.contact;
+
+  // increment number of contact transitions
+  if (inContact != inContact_check) {
+    inContact = inContact_check;
+    contact_flips++;
+    if (contact_flips % 2 ==0)
+      contactTransitions++;
+  }
+
+  // increment number of hops if the sign of the z velocity changes and went through contact
+  if (pos_sign != pos_sign_check && contact_flips%2 == 0 && contactTransitions > 0) {
     pos_sign = pos_sign_check;
     sign_flips ++;
     if (sign_flips % 2 ==0)
       hopper.num_hops++;
+      num_hops = hopper.num_hops;
   }
-
-  //std::cout << "Index: " << index << std::endl;
-  //std::cout << "Stop Index: " << p.stop_index << std::endl;
-  //std::cout << "Time: " << hopper.t << std::endl;
-  //std::cout << "Contact: " << hopper.contact << std::endl;
-  //std::cout << "Pos Sign: " << pos_sign << std::endl;
-  //std::cout << "Sign Flips: " << sign_flips << std::endl;
-  //std::cout << "Num hops: " << hopper.num_hops << std::endl;
 
   // right now this is an infinite do while loop if the program state becomes stopped. 
   // TODO: add logic here to escape the loop when you want to start, will probably be commanded by
@@ -712,7 +721,7 @@ void Controller::run() {
   //	return;
   //}
   stopIndex--;
-  if (index == p.stop_index || hopper.num_hops==50){
+  if (index == p.stop_index){
     return;
   }
   if (duration > 0 && (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - t_start).count()) > duration) {

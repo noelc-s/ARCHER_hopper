@@ -86,6 +86,7 @@ class Controller : public C {
     vector_t initialCondition_;  // pos[3], rpy[3], v[3], omega[3] 
     vector_t goalState_;         // pos[3], rpy[3], v[3], omega[3] 
     scalar_t objVal;             // MPC primal objective value
+    scalar_t num_hops;                // number of hops
 
     vector_array_t stateSequence_; // sequence of goal states
     scalar_array_t paramsSequence_;      // parameterization of goal states

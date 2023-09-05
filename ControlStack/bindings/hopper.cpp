@@ -59,6 +59,7 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("initialCondition", &Controller::initialCondition_)
   .def_readwrite("goalState", &Controller::goalState_)
   .def_readwrite("objVal", &Controller::objVal)
+  .def_readwrite("num_hops", &Controller::num_hops)
   .def_readwrite("programState", &Controller::programState_)
   .def_readwrite("stateSequence", &Controller::stateSequence_)
   .def_readwrite("paramsSequence", &Controller::paramsSequence_)

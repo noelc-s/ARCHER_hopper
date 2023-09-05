@@ -69,6 +69,7 @@ Hopper::Hopper() {
 
     q.resize(model.nq);
     v.resize(model.nv);
+    num_hops = 0;
 }
 
 void Hopper::updateState(vector_t state) {
