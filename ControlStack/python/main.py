@@ -11,7 +11,7 @@ import networkx as nx
 import multiprocessing
 import ctypes
 import random as rand
-from logging import getLogger
+import logging
 from utils import toEulerAngles, toQuaternion
 
 
@@ -122,26 +122,22 @@ def validationSimulation(x0, waypts, parameterization):
     sim_thread.join()
     return xf, c.objVal
 
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 # Test this stuff out
 x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 xg_ = [1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 T_ = 2.0
-xf, objVal = runSimulation(x0_,xg_,T_)
-print(xf)
-print(objVal)
-logger = getLogger(__file__)
-logger.setLevel("DEBUG")
+logger.debug("Running Test Simulationl.")
+xf, objVal = runSimulation(x0_, xg_, T_)
+
+
 logger.info(f"Final: {x0_}")
 # print metrics
 logger.info(f"ObjVal: {objVal}")
-
-# truncate xf down to lower dimension (need to convert quaternion)
-# quat  = xf[3:6+1]
-# rm_idx = [7,8,9,10,17,18,19,20] # remove L,fw_pos, Ldot, fw_vel
-# xf_low_dim = np.delete(xf,rm_idx)
-# print("xf low dim: "); print(xf_low_dim)
-
-
+logger.info("F")
 
 #######################################################################################
 
@@ -153,7 +149,7 @@ logger.info(f"ObjVal: {objVal}")
 # states t, x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_contact(bool), foot_pos, foot_vel, fw_vel_1, fw_vel_2, fw_vel_3
 # Noel
 # states x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_pos, foot_vel, fw_pos_1, fw_pos_2, fw_pos_3, fw_vel_1, fw_vel_2, fw_vel_3
-#Should sample
+# Should sample
 # x,y, 0.5, 1, 0, 0, 0, x_dot, y_dot, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0, 0
 num_samples = 64
 goal_position = np.array([0.,2.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
@@ -168,10 +164,13 @@ goal_graph_bias = 0.1
 goal_random = 1 - goal_bias - goal_graph_bias
 init_graph_bias = 0.5
 
+
 def make_full_state(reduced_state):
     full_state = state_template.copy()
     full_state[sample_state_mask] = reduced_state
     return full_state
+
+    
 G = nx.Graph()
 G.add_node(0, state=start_position)
 G.add_node(-1, state=goal_position)
@@ -245,7 +244,9 @@ def sample_state():
 for i in range(num_samples):
     # sample initial state and goal
     sample, x_init_idx = sample_state()
-    reached_idx, cost = runSimulation(sample[0], sample[1], 3.0)
+    logger.debug(f"Sampled Initial Condition: {sample[0]}")
+    logger.debug(f"Sampled Goal Condition: {sample[1]}")
+    reached_idx, cost = simulator_dynamics(sample[0], sample[1])
     G.add_edge(x_init_idx, reached_idx, cost=cost, goal=sample[1])
     logger.info(f"Evaluating Sample {i}: {sample}")
 
