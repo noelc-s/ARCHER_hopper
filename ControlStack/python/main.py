@@ -130,8 +130,18 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logger.setLevel(logging.DEBUG)
 # Test this stuff out
-x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
-xg_ = [1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+x0_ = [0., 0., 0.5,
+       1., 0., 0., 0.,
+       0., 0., 0., 0., 
+       0., 0., 0., 0., 
+       0., 0., 0,
+       0., 0., 0.]
+xg_ = [1, 1, 0.5, 
+       1.0, 0.0, 0.0, 0.0,
+       0., 0., 0., 0., 
+       0., 0., 0., 0., 
+       0., 0., 0,
+       0., 0., 0.]
 T_ = 2.0
 logger.debug("Running Test Simulationl.")
 xf, objVal = runSimulation(x0_, xg_, T_, 'T')
@@ -151,14 +161,34 @@ logger.info("F")
 # Segio
 # states t, x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_contact(bool), foot_pos, foot_vel, fw_vel_1, fw_vel_2, fw_vel_3
 # Noel
-# states x, y, z, qw, qx, qy wz, xdot, ydot, zdot, wx, wy, wz, foot_pos, foot_vel, fw_pos_1, fw_pos_2, fw_pos_3, fw_vel_1, fw_vel_2, fw_vel_3
+# states x, y, z, qw, qx, qy qz, xdot, ydot, zdot, wx, wy, wz, foot_pos, foot_vel, fw_pos_1, fw_pos_2, fw_pos_3, fw_vel_1, fw_vel_2, fw_vel_3
 # Should sample
 # x,y, 0.5, 1, 0, 0, 0, x_dot, y_dot, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0, 0
 num_samples = 64
-goal_position = np.array([0.,2.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
-start_position = np.array([0.,0.,0.5,0.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
-sample_state_mask = np.array([1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=bool)
-state_template = np.array([0.,0.,0.5,1.,0.,0.,0.,0.,0.,0.,0.,0., 0., 0., 0., 0., 0., 0., 0, 0., 0.])
+goal_position = np.array([0., 2., 0.5,
+                         1., 0., 0., 0.,
+                         0., 0., 0., 0.,
+                         0., 0., 0., 0., 
+                         0., 0., 0., 0, 
+                         0., 0.])
+start_position = np.array([0., 0., 0.5,
+                           1., 0., 0., 0.,
+                           0., 0., 0., 0., 
+                           0., 0., 0., 0., 
+                           0., 0., 0., 0,
+                           0., 0.])
+sample_state_mask = np.array([1, 1, 0, 
+                              0, 0, 0, 0, 
+                              1, 1, 0, 0, 
+                              0, 0, 0, 0, 
+                              0, 0, 0, 0, 
+                              0, 0], dtype=bool)
+state_template = np.array([0., 0., 0.5,
+                           1., 0., 0., 0.,
+                           0., 0., 0., 0.,
+                           0., 0., 0., 0.,
+                           0., 0., 0., 0,
+                           0., 0.])
 sample_states_lower = np.array([-5, -5, -1, -1])
 sample_states_upper = -sample_states_lower
 
