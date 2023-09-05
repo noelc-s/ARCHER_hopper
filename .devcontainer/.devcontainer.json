@@ -19,6 +19,6 @@
   ],
   "runArgs": [],
   "workspaceFolder": "/home/docker/ARCHER_hopper",
-  "workspaceMount": "source=/home/ivan/src/ARCHER_hopper,target=${containerWorkspaceFolder},type=bind,consistency=cached",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${containerWorkspaceFolder},type=bind,consistency=cached",
   "postAttachCommand": "/home/docker/setup.bash"
 }

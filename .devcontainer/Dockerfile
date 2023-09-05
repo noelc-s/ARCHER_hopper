@@ -11,7 +11,7 @@ ARG USERID
 RUN groupadd --gid $GROUPID $USER_NAME
 
 RUN useradd --uid $USERID --gid $GROUPID -ms /bin/bash $USER_NAME
-RUN echo '$USERID:$USERID' | chpasswd
+RUN echo "${USER_NAME}:${USER_NAME}" | chpasswd
 RUN apt-get update \
     && apt-get install -y sudo \
     && echo $USER_NAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USER_NAME \
@@ -68,7 +68,7 @@ WORKDIR $HOME/libs
 
 RUN sudo apt-get update && \
 sudo apt-get install -y libglfw3-dev liburdfdom-dev python3-numpy libeigen3-dev libxinerama-dev libxcursor-dev\
-                        libxi-dev texlive-latex-base\
+                        libxi-dev texlive-latex-base
 
 # RUN git clone --branch 3.4.1 https://gitlab.com/libeigen/eigen.git && \
 #     cd eigen && \
