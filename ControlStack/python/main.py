@@ -15,6 +15,9 @@ import logging
 from utils import toEulerAngles, toQuaternion
 
 
+
+# Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
+# x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
 ##############################################################################################
 
 def runSimulation(x0, xg, terminate_cond, sim_type, visualize):
@@ -131,10 +134,10 @@ x0_ = [0., 0., 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 xg_ = [1, 1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 T_ = 2.0
 logger.debug("Running Test Simulationl.")
-xf, objVal = runSimulation(x0_, xg_, T_)
+xf, objVal = runSimulation(x0_, xg_, T_, 'T')
 
 
-logger.info(f"Final: {x0_}")
+logger.info(f"Final: {xf}")
 # print metrics
 logger.info(f"ObjVal: {objVal}")
 logger.info("F")
@@ -192,8 +195,8 @@ def pretend_dynamics(x_init, x_goal):
     return reached_idx, cost
 
 
-def simulator_dynamics(x_init, x_goal, tmax=3.0):
-    xf, cost = runSimulation(x_init, x_goal, tmax)
+def simulator_dynamics(x_init, x_goal):
+    xf, cost = runSimulation(x_init, x_goal, 1, 'H')
     reached_idx = len(G.nodes)
     G.add_node(reached_idx, state=xf)
     return reached_idx, cost

@@ -275,8 +275,6 @@ void Simulator::killSimulation() {
 
 void Simulator::run_with_visualization() {
 
-    GilManager g; ///
-
     char xmlpath[100] = {};
     char datapath[100] = {};
 
@@ -805,7 +803,22 @@ void Simulator::run_without_visualization() {
 
             //send current states to the controller
 	    do {
- 
+    if (kill){
+	// free visualization storage
+    mjv_freeScene(&scn);
+    mjr_freeContext(&con);
+
+    // free MuJoCo model and data, deactivate
+    mj_deleteData(d);
+    mj_deleteModel(m);
+
+    // terminate GLFW (crashes with Linux NVidia drivers)
+    #if defined(__APPLE__) || defined(_WIN32)
+        glfwTerminate();
+    #endif
+
+	    return;
+    }  
               send(*new_socket, &TX_state, sizeof(TX_state), 0);
               read(*new_socket, &RX_torques, sizeof(RX_torques));
 
