@@ -120,7 +120,7 @@ void set_torque_control(const mjModel *m, int actuator_no, int flag) {
 
 
 /******************************/
-void set_position_servo(const mjModel *m, int actuator_no, double kp) {
+void set_nnosition_servo(const mjModel *m, int actuator_no, double kp) {
     m->actuator_gainprm[10 * actuator_no + 0] = kp;
     m->actuator_biasprm[10 * actuator_no + 1] = -kp;
 }
@@ -266,22 +266,30 @@ void Simulator::run_with_visualization() {
     //////////////////////////////////////////////////////////////////////////////////////
 
     // Set the initial condition [pos, orientation, vel, angular rate]
-    scalar_t init_conds[12];
-    setupSocket_receiveIC(init_conds, 12);
+    scalar_t init_conds[21];
+    setupSocket_receiveIC(init_conds, 21);
 
     d->qpos[0] = init_conds[0];
     d->qpos[1] = init_conds[1];
     d->qpos[2] = init_conds[2];
+    // THIS IS NOT BEING SET
+    d->xquat[0] = 0;//init_conds[3];
+    d->xquat[1] = 1;//init_conds[4];
+    d->xquat[2] = 0;//init_conds[5];
+    d->xquat[3] = 0;//init_conds[6];
     d->qpos[3] = init_conds[3];
     d->qpos[4] = init_conds[4];
     d->qpos[5] = init_conds[5];
 
-    d->qvel[0] = init_conds[6];
-    d->qvel[1] = init_conds[7];
-    d->qvel[2] = init_conds[8];
-    d->qvel[3] = init_conds[9];
-    d->qvel[4] = init_conds[10];
-    d->qvel[5] = init_conds[11];
+    d->qvel[0] = init_conds[11];
+    d->qvel[1] = init_conds[12];
+    d->qvel[2] = init_conds[13];
+    d->qvel[3] = init_conds[14];
+    d->qvel[4] = init_conds[15];
+    d->qvel[5] = init_conds[16];
+    d->qvel[6] = init_conds[18];
+    d->qvel[7] = init_conds[19];
+    d->qvel[8] = init_conds[20];
 
     // Read the gain matrix from the yaml file
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
