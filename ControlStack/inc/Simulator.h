@@ -49,10 +49,18 @@ class Simulator : public S {
         Simulator();
         // SimulatorState simulatorState_ = RUNNING;
 
+        bool visualize_;
+        void setVisualization(bool visualize); // set glfw
+
         void run() override; //explicitly override S::run() and use Simulator::run()
         void killSimulation();
-     
+    
     bool kill = false;
+
+    private:
+        void run_with_visualization();
+        void run_without_visualization();
+
 };
 
 void keyboard(GLFWwindow *window, int key, int scancode, int act, int mods);
@@ -66,3 +74,4 @@ void init_controller(const mjModel *m, mjData *d);
 void mycontroller(const mjModel *m, mjData *d);
 
 void setupSocket_receiveIC(scalar_t *init_conds, int n);
+

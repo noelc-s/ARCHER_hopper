@@ -91,6 +91,8 @@ PYBIND11_MODULE(hopper, m) {
   simulator 
       .def(py::init<>()) // constructor
       .def("killSimulation",&Simulator::killSimulation)
+      .def("setVisualization",py::overload_cast<bool>(&Simulator::setVisualization))
+      .def_readwrite("visualize", &Simulator::visualize_)
       .def_readwrite("kill", &Simulator::kill);
 
   m.def("call_run_sim", [](S *s) -> void {

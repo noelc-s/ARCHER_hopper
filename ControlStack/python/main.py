@@ -14,17 +14,9 @@ import random as rand
 
 from utils import *
 
-# instantiate thread for controller and sim
-# control_thread = threading.Thread(target=call_run, args=(c,))
-# # sim_thread = threading.Thread(target=call_run_sim, args=(s,))
-# control_thread = threading.Thread(target=c.run)
-# sim_thread = threading.Thread(target=s.run)
-
-# Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
-# x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
 ##############################################################################################
 
-def runSimulation(x0, xg, terminate_cond, sim_type):
+def runSimulation(x0, xg, terminate_cond, sim_type, visualize):
     """ Run a forward simulation of the hopper given an initial condition, goal state, and termination condition
     Parameters:
         x0 (list): initial state as 21 dimensional list
@@ -43,6 +35,9 @@ def runSimulation(x0, xg, terminate_cond, sim_type):
     # instantiate thread for controller and sim
     control_thread = threading.Thread(target=call_run, args=(c,))
     sim_thread = threading.Thread(target=call_run_sim, args=(s,))
+
+    # set simulator visualization
+    s.setVisualization(visualize)
 
     # set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
     c.num_hops = 0
@@ -126,11 +121,18 @@ def validationSimulation(x0, waypts, parameterization):
     sim_thread.join()
 
     return xf
+##############################################################################################
+# state information
+# [11] hopper.q = x, y, z, qw, qx, qy, qz, L, fw1_pos, fw2_pos, fw3_pos
+# [10] hopper.v = xdot, ydot, zdot, omega_x, omega_y, omega_z, Ldot, fw1_vel, fw2_vel, fw3_vel 
+# [21] x = [hopper.q; hopper.v]
 
+# Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
+# x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
 ##############################################################################################
 
 # test drive the simulation
-for i in range(25):
+for i in range(10):
 
     print("*" * 80)
     print("Test Drive: ", i+1)
@@ -147,14 +149,14 @@ for i in range(25):
           vel[0], vel[1], vel[2], 
           omega[0], omega[1], omega[2]]
     
-    x0 = [1,1,0.5,
-          0,0,0,0,
-          0,
-          0,0,0,
-          0,0,0,
-          0,0,0,
-          0,
-          0,0,0]
+    x0 = [0,0,0.5,  # pos[3]
+          1,0,0,0, # quat[4]
+          0,        # L[1]
+          0,0,0,    # flywheel[3]
+          0,0,0,    # v[3]
+          0,0,0,    # omega[3]
+          0,        # Ldot[1]
+          0,0,0]    # flywheel_dot[3]
 
     # set goal state
     xg = [2*rand.random()-1, 2*rand.random()-1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0.]
@@ -162,12 +164,13 @@ for i in range(25):
     # set simulation configuration
     # 'T' for max time horizon or 'H' for maximum number of hops
     term_cond = 1
-    sim_type = 'H'  
+    sim_type = 'H' 
+    visualize = False # turn on/off visualization
 
     # run a simulation
     print("Initial Conditions: ", x0)
     print("Goal: ", xg)
-    xf, objVal = runSimulation(x0 ,xg , term_cond, sim_type)
+    xf, objVal = runSimulation(x0 ,xg , term_cond, sim_type, visualize)
     print("Final Conditions: ", xf)
     print("Objective Value: ", objVal)
 
