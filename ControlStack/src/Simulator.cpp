@@ -120,7 +120,7 @@ void set_torque_control(const mjModel *m, int actuator_no, int flag) {
 
 
 /******************************/
-void set_nnosition_servo(const mjModel *m, int actuator_no, double kp) {
+void set_position_servo(const mjModel *m, int actuator_no, double kp) {
     m->actuator_gainprm[10 * actuator_no + 0] = kp;
     m->actuator_biasprm[10 * actuator_no + 1] = -kp;
 }
@@ -179,6 +179,80 @@ void setupSocket_receiveIC(scalar_t *init_conds, int n) {
     }
 
     close(client_IC);
+}
+
+// converts to Euler angles in 3-2-1 sequence
+vector_t quat_to_rpy(vector_t quat) {
+
+    scalar_t qw, qx, qy, qz;
+    scalar_t r, p, y;
+    vector_t rpy;
+    qw = quat[0];
+    qx = quat[1];
+    qy = quat[2];
+    qz = quat[3];
+
+    // roll (x-axis rotation)
+    double sinr_cosp = 2 * (qw * qx + qy * qz);
+    double cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
+    r = std::atan2(sinr_cosp, cosr_cosp);
+
+    // pitch (y-axis rotation)
+    double sinp = std::sqrt(1 + 2 * (qw * qy - qx * qz));
+    double cosp = std::sqrt(1 - 2 * (qw * qy - qx * qz));
+    p = 2 * std::atan2(sinp, cosp) - M_PI / 2;
+
+    // yaw (z-axis rotation)
+    double siny_cosp = 2 * (qw * qz + qx * qy);
+    double cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
+    y = std::atan2(siny_cosp, cosy_cosp);
+
+    rpy << r, p, y;
+    return rpy;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+void printModelInfo(mjModel *m, mjData *d) {
+    
+    /* Confirmed configuration vars:
+    * qpos[0] = posx
+    * qpos[1] = posy
+    * qpos[2] = posz
+    * qpos[3] = qw
+    * qpos[4] = qx
+    * qpos[5] = qy
+    * qpos[6] = qz
+    * qpos[7] = back right flywheel pos
+    * qpos[8] = back left flywheel pos
+    * qpos[9] = front flywheel pos (ARCHER Logo)
+    * qpos[10] = L
+    * 
+    * qvel[0] = vx
+    * qvel[1] = vy
+    * qvel[2] = vz
+    * qvel[3] = omega_x
+    * qvel[4] = omega_y
+    * qvel[5] = omega_z
+    * qvel[6] = back right flywheel vel
+    * qvel[7] = back left flywheel vel
+    * qvel[8] = front flywheel vel (ARCHER Logo)
+    * qvel[9] = Ldot
+    */
+
+    std::cout << "nq: " << m->nq << std::endl; // 34
+    std::cout << "nv: " << m->nv << std::endl; // 32
+    std::cout << "nu: " << m->nu << std::endl; // 4
+    std::cout << "nbody: " << m->nbody << std::endl; // 17 (number of bodies)
+
+    // state info
+    for (int i=0; i<m->nq; i++) {
+        std::cout << "qpos[" << i << "] = "<<d->qpos[i] << std::endl;
+    }
+
+    for (int i=0; i<m->nv; i++) {
+        std::cout << "qvel[" << i << "] = "<<d->qvel[i] << std::endl;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -269,27 +343,30 @@ void Simulator::run_with_visualization() {
     scalar_t init_conds[21];
     setupSocket_receiveIC(init_conds, 21);
 
-    d->qpos[0] = init_conds[0];
-    d->qpos[1] = init_conds[1];
-    d->qpos[2] = init_conds[2];
-    // THIS IS NOT BEING SET
-    d->xquat[0] = 0;//init_conds[3];
-    d->xquat[1] = 1;//init_conds[4];
-    d->xquat[2] = 0;//init_conds[5];
-    d->xquat[3] = 0;//init_conds[6];
-    d->qpos[3] = init_conds[3];
-    d->qpos[4] = init_conds[4];
-    d->qpos[5] = init_conds[5];
+    d->qpos[0] = init_conds[0];   // posx
+    d->qpos[1] = init_conds[1];   // posy
+    d->qpos[2] = init_conds[2];   // posz
+    d->qpos[3] = init_conds[6];   // qw
+    d->qpos[4] = init_conds[3];   // qx
+    d->qpos[5] = init_conds[4];   // qy
+    d->qpos[6] = init_conds[5];   // qz
+    d->qpos[7] = init_conds[8];   // flywheel pos dont matter
+    d->qpos[8] = init_conds[9];   // flywheel pos dont matter
+    d->qpos[9] = init_conds[10];  // flywheel pos dont matter
+    d->qpos[10] = init_conds[7];  // L
+    
+    d->qvel[0] = init_conds[11]; // vx
+    d->qvel[1] = init_conds[12]; // vy
+    d->qvel[2] = init_conds[13]; // vz
+    d->qvel[3] = init_conds[14]; // omega_x
+    d->qvel[4] = init_conds[15]; // omega_y
+    d->qvel[5] = init_conds[16]; // omega_z
+    d->qvel[6] = init_conds[18]; // flywheel_vel_1
+    d->qvel[7] = init_conds[19]; // flywheel_vel_2
+    d->qvel[8] = init_conds[20]; // flywheel_vel_3
+    d->qvel[9] = init_conds[17]; // Ldot
 
-    d->qvel[0] = init_conds[11];
-    d->qvel[1] = init_conds[12];
-    d->qvel[2] = init_conds[13];
-    d->qvel[3] = init_conds[14];
-    d->qvel[4] = init_conds[15];
-    d->qvel[5] = init_conds[16];
-    d->qvel[6] = init_conds[18];
-    d->qvel[7] = init_conds[19];
-    d->qvel[8] = init_conds[20];
+    // printModelInfo(m, d);
 
     // Read the gain matrix from the yaml file
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -428,23 +505,7 @@ void Simulator::run_with_visualization() {
 
             //send current states to the controller
 	    do {
-    if (kill){
-	// free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
 
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
-
-    // terminate GLFW (crashes with Linux NVidia drivers)
-    #if defined(__APPLE__) || defined(_WIN32)
-        glfwTerminate();
-    #endif
-
-	    return;
-    }  
               send(*new_socket, &TX_state, sizeof(TX_state), 0);
               read(*new_socket, &RX_torques, sizeof(RX_torques));
 
@@ -459,7 +520,23 @@ void Simulator::run_with_visualization() {
           if (sim_flag < 0.1 && sim_flag > -0.1){
             // std::cout << "Killing Simulation" << std::endl;
             close(*new_socket);
+            
+            // free visualization storage
+            mjv_freeScene(&scn);
+            mjr_freeContext(&con);
+
+            // free MuJoCo model and data, deactivate
+            mj_deleteData(d);
+            mj_deleteModel(m);
+            mj_deactivate();
+
+            // terminate GLFW (crashes with Linux NVidia drivers)
+            #if defined(__APPLE__) || defined(_WIN32)
+                glfwTerminate();
+            #endif
+            
             kill = true;
+            
             return;
           }
           
@@ -518,20 +595,6 @@ void Simulator::run_with_visualization() {
 
     }
 
-        // free visualization storage
-        mjv_freeScene(&scn);
-        mjr_freeContext(&con);
-
-        // free MuJoCo model and data, deactivate
-        mj_deleteData(d);
-        mj_deleteModel(m);
-        mj_deactivate();
-
-        // terminate GLFW (crashes with Linux NVidia drivers)
-        #if defined(__APPLE__) || defined(_WIN32)
-            glfwTerminate();
-        #endif
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -558,10 +621,6 @@ void Simulator::run_without_visualization() {
     // make data
     d = mj_makeData(m);
 
-    // init GLFW
-    if (!glfwInit())
-        mju_error("Could not initialize GLFW");
-
     double arr_view[] = {89.608063, -11.588379, 2, 0.000000, 0.000000,
                          0.500000}; //view the left side (for ll, lh, left_side)
     cam.azimuth = arr_view[0];
@@ -584,22 +643,33 @@ void Simulator::run_without_visualization() {
     //////////////////////////////////////////////////////////////////////////////////////
 
     // Set the initial condition [pos, orientation, vel, angular rate]
-    scalar_t init_conds[12];
-    setupSocket_receiveIC(init_conds, 12);
+    scalar_t init_conds[21];
+    setupSocket_receiveIC(init_conds, 21);
 
-    d->qpos[0] = init_conds[0];
-    d->qpos[1] = init_conds[1];
-    d->qpos[2] = init_conds[2];
-    d->qpos[3] = init_conds[3];
-    d->qpos[4] = init_conds[4];
-    d->qpos[5] = init_conds[5];
+    d->qpos[0] = init_conds[0];   // posx
+    d->qpos[1] = init_conds[1];   // posy
+    d->qpos[2] = init_conds[2];   // posz
+    d->qpos[3] = init_conds[6];   // qw
+    d->qpos[4] = init_conds[3];   // qx
+    d->qpos[5] = init_conds[4];   // qy
+    d->qpos[6] = init_conds[5];   // qz
+    d->qpos[7] = init_conds[8];   // flywheel pos dont matter
+    d->qpos[8] = init_conds[9];   // flywheel pos dont matter
+    d->qpos[9] = init_conds[10];  // flywheel pos dont matter
+    d->qpos[10] = init_conds[7];  // L
+    
+    d->qvel[0] = init_conds[11]; // vx
+    d->qvel[1] = init_conds[12]; // vy
+    d->qvel[2] = init_conds[13]; // vz
+    d->qvel[3] = init_conds[14]; // omega_x
+    d->qvel[4] = init_conds[15]; // omega_y
+    d->qvel[5] = init_conds[16]; // omega_z
+    d->qvel[6] = init_conds[18]; // flywheel_vel_1
+    d->qvel[7] = init_conds[19]; // flywheel_vel_2
+    d->qvel[8] = init_conds[20]; // flywheel_vel_3
+    d->qvel[9] = init_conds[17]; // Ldot
 
-    d->qvel[0] = init_conds[6];
-    d->qvel[1] = init_conds[7];
-    d->qvel[2] = init_conds[8];
-    d->qvel[3] = init_conds[9];
-    d->qvel[4] = init_conds[10];
-    d->qvel[5] = init_conds[11];
+    // printModelInfo(m, d);
 
     // Read the gain matrix from the yaml file
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -659,10 +729,6 @@ void Simulator::run_without_visualization() {
 
     scalar_t sim_flag = 1;
 
-    auto windowClose = [&] (GLFWwindow *window) {return !glfwWindowShouldClose(window);};
-    // use the first while condition if you want to simulate for a period.
-    // while (windowClose(window)) {
-    // while (!glfwWindowShouldClose(window)) {
     while (true) {
 
       if (sim_flag < -0.5) {
@@ -740,23 +806,7 @@ void Simulator::run_without_visualization() {
 
             //send current states to the controller
 	    do {
-    if (kill){
-	// free visualization storage
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
-
-    // free MuJoCo model and data, deactivate
-    mj_deleteData(d);
-    mj_deleteModel(m);
-    mj_deactivate();
-
-    // terminate GLFW (crashes with Linux NVidia drivers)
-    #if defined(__APPLE__) || defined(_WIN32)
-        glfwTerminate();
-    #endif
-
-	    return;
-    }  
+ 
               send(*new_socket, &TX_state, sizeof(TX_state), 0);
               read(*new_socket, &RX_torques, sizeof(RX_torques));
 
@@ -771,7 +821,14 @@ void Simulator::run_without_visualization() {
           if (sim_flag < 0.1 && sim_flag > -0.1){
             // std::cout << "Killing Simulation" << std::endl;
             close(*new_socket);
+        
+             // free MuJoCo model and data, deactivate
+            mj_deleteData(d);
+            mj_deleteModel(m);
+            mj_deactivate();
+
             kill = true;
+
             return;
           }
           
@@ -813,7 +870,6 @@ void Simulator::run_without_visualization() {
 
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
 
 // main function
 void Simulator::run() {

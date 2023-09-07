@@ -49,11 +49,11 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   // command_interp = command.segment(0,2);
 
   // variables to evaluate piecewise function
-  vector_t current_state(12);
-  bool nonEmptySequence = (stateSequence.size() > 0);
+  vector_t current_state(21);
+  current_state.setZero();
 
   // logic to determine if fixed goal or sequence of states
-  if (nonEmptySequence) {
+  if (stateSequence.size() > 0 && paramsSequence.size() > 0) {
     
     scalar_t current_idx;
     scalar_t t_0, t_f;
@@ -152,7 +152,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     // same goal for every step in horizon
     // temp = tra->getState(hopper.t+p.dt_flight*i);
     // full_ref.segment(i*nx,12) << temp;
-    full_ref.segment(i * nx, 12) << current_state;
+    full_ref.segment(i * nx, current_state.size()) << current_state;
     // full_ref.segment(i*nx+2,1) << p.hop_height;
     full_ref.segment(i * nx + 3, 3) << -log_x0.segment(3, 3); // Hacky modification to cost to get orientation tracking back TODO
   }
@@ -160,7 +160,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   // Terminal cost
   //  temp = tra->getState(hopper.t+p.dt_flight*(p.N-1));
   //  full_ref.segment((p.N-1)*nx,12) << temp;
-  full_ref.segment((p.N - 1) * nx, 12) << current_state;
+  full_ref.segment((p.N - 1) * nx, current_state.size()) << current_state;
   // full_ref.segment((p.N-1)*nx+2,1) << p.hop_height;
   full_ref.segment((p.N - 1) * nx + 3, 3) << -log_x0.segment(3, 3); // Hacky modification to cost to get orientation tracking back TODO
 

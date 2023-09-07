@@ -74,4 +74,5 @@ void init_controller(const mjModel *m, mjData *d);
 void mycontroller(const mjModel *m, mjData *d);
 
 void setupSocket_receiveIC(scalar_t *init_conds, int n);
-
+void printModelInfo(mjModel m, mjData d);
+vector_t quat_to_rpy(vector_t quat);

@@ -346,7 +346,7 @@ Controller::Controller() {
   q_global.resize(11);
   v_global.resize(10);
   tau.resize(10);
-  goalState_.resize(12);
+  goalState_.resize(21);
 
   // set vectors to 0
   x.setZero();
@@ -427,6 +427,15 @@ void Controller::resetSimulation(vector_t x0) {
   TX_torques[9] = x0(9);
   TX_torques[10] = x0(10);
   TX_torques[11] = x0(11);
+  TX_torques[12] = x0(12);
+  TX_torques[11] = x0(13);
+  TX_torques[14] = x0(14);
+  TX_torques[15] = x0(15);
+  TX_torques[16] = x0(16);
+  TX_torques[17] = x0(17);
+  TX_torques[18] = x0(18);
+  TX_torques[19] = x0(19);
+  TX_torques[20] = x0(20);
 }
 
 void Controller::stopSimulation() {
@@ -514,7 +523,7 @@ void Controller::run() {
 
   // set goal state if not provided with goal state or sequence of states
   if (goalState_.norm() == 0  && stateSequence_.size() == 0) {
-    goalState_ << 0, 0, 0.5, 0, 0, 0, 0, 0 ,0 ,0, 0 ,0;
+    goalState_ << 0, 0, 0.5, 0, 0, 0, 0, 0 ,0 ,0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0; 
     std::cout << "No state sequence provided and" << std::endl;
     std::cout << "No goal state provided. Using default goal state: [" << goalState_.transpose() << "]" << std::endl;
   }
