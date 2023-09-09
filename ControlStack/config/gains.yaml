@@ -21,7 +21,7 @@ Simulator:
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
-  speed: 1             # speed of simulation [multiplier]
+  speed: 1           # speed of simulation [multiplier]
 
   # Perturbation Forces
   # pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
@@ -34,7 +34,7 @@ Simulator:
   
 MPC:
   N: 20                                                 # nodes of MPC horizon
-  stateScaling: [20,20,0,8,8,8,0,0,0,0,                 # cost function scaling on state
+  stateScaling: [20,20,0,15,15,15,0,0,0,0,                 # cost function scaling on state
                  2.5,2.5,0,.03,.03,.03,0,0,0,0]         # cost function scaling on vel
   inputScaling: [.01,.01,.01,.01]                       # cost function scaling on input
   discountFactor: 1                                     # scale each future node by gamma^k
