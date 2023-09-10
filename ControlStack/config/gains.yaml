@@ -30,7 +30,7 @@ Simulator:
   pert_force_y: [0,0, 10,10]
   pert_start: [3000, 8000, 11000,14000] # start time for force [milliseconds]
   pert_end: [3150, 8150, 11150, 14150]  # end time for force [milliseconds
-  simEnd: 10000.0               # time to end the simulation [s]
+  simEnd: 1000               # time to end the simulation [s]
   
 MPC:
   N: 20                                                 # nodes of MPC horizon

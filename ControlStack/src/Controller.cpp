@@ -407,6 +407,10 @@ void Controller::setStateSequence(vector_array_t stateSequence, scalar_array_t p
   }
 }
 
+void Controller::setSimType(char sim_type) {
+  sim_type_ = sim_type;
+}
+
 void Controller::resetSimulation(vector_t x0) {
 
 // GilManager g;
@@ -524,8 +528,8 @@ void Controller::run() {
   // set goal state if not provided with goal state or sequence of states
   if (goalState_.norm() == 0  && stateSequence_.size() == 0) {
     goalState_ << 0, 0, 0.5, 0, 0, 0, 0, 0 ,0 ,0, 0 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0; 
-    std::cout << "No state sequence provided and" << std::endl;
-    std::cout << "No goal state provided. Using default goal state: [" << goalState_.transpose() << "]" << std::endl;
+   std::cout << "No state sequence provided and no goal state provided. Using default goal state: [" 
+                  << goalState_.transpose() << "]" << std::endl;
   }
 
  //////////////////////// Main Loop ///////////////////////////////////////
@@ -593,7 +597,7 @@ void Controller::run() {
         if (replan) {
 
           // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
-          opt.solve(hopper, sol, command, command_interp, goalState_, stateSequence_, paramsSequence_); ///////////////////////////////////
+          opt.solve(hopper, sol, command, command_interp, goalState_, stateSequence_, paramsSequence_, sim_type_); ///////////////////////////////////
           objVal = opt.primalObjVal;
 
     for (int i = 0; i < opt.p.N; i++) {

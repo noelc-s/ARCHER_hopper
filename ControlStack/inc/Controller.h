@@ -90,10 +90,12 @@ class Controller : public C {
 
     vector_array_t stateSequence_; // sequence of goal states
     scalar_array_t paramsSequence_;      // parameterization of goal states
+    char sim_type_;
 
     void setInitialState(vector_t initialCondition);
     void setGoalState(vector_t goalState);
     void setStateSequence(vector_array_t stateSequence, scalar_array_t paramsSequence);
+    void setSimType(char sim_type);
     
     void resetSimulation(vector_t x0);
     void stopSimulation();

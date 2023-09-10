@@ -6,7 +6,7 @@
 #define assertm(exp, msg) assert(((void)msg, exp))
 
 // int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra) {
-int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence)
+int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence, char sim_type)
 {
 
   matrix_t x_bar(nx, p.N - 1);
@@ -48,37 +48,53 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   // command.segment(0,2) = temp.segment(0,2);
   // command_interp = command.segment(0,2);
 
-  // variables to evaluate piecewise function
-  vector_t current_state(21);
-  current_state.setZero();
+  // variables to evaluate piecewise MPC objective function
+  vector_t goal_state(21);
+  goal_state.setZero();
+  int current_idx;
 
   // logic to determine if fixed goal or sequence of states
   if (stateSequence.size() > 0 && paramsSequence.size() > 0) {
     
-    scalar_t current_idx;
-    scalar_t t_0, t_f;
-    scalar_array_t time_vals;
-    time_vals = paramsSequence;
-    
-    // t in a time interval
-    for (int i=0; i<time_vals.size()-1; i++) {
-      if (time_vals[i] <= hopper.t && hopper.t < time_vals[i+1]) {
-        current_idx = i;
-        current_state = stateSequence[current_idx];
-        command.segment(0,2) = current_state.segment(0,2);
-        command_interp = command.segment(0,2);
-        break;
+    for (int i=0; i<paramsSequence.size()-1; i++) {
+
+      // time based sequence
+      if (sim_type == 'T') {
+        if (paramsSequence[i] <= hopper.t && hopper.t < paramsSequence[i+1]){
+          current_idx = i;
+          goal_state = stateSequence[current_idx+1];
+          command.segment(0,2) = goal_state.segment(0,2);
+          command_interp = command.segment(0,2);
+          break;
+        }
+        else {
+          goal_state = stateSequence[stateSequence.size()-1];
+          command.segment(0,2) = goal_state.segment(0,2);
+          command_interp = command.segment(0,2);
+        }
       }
+      // hopping based sequence
+      else if (sim_type == 'H') {
+        if ((int)paramsSequence[i] <= hopper.num_hops && hopper.num_hops < (int)paramsSequence[i+1]) {
+          current_idx = i;
+          goal_state = stateSequence[current_idx+1];
+          command.segment(0,2) = goal_state.segment(0,2);
+          command_interp = command.segment(0,2);
+          break;
+        }
+      }
+      
     }
-    // std::cout << "Time: " << paramsSequence[current_idx] << " <= " 
-    //           << hopper.t << " < " << paramsSequence[current_idx+1] << std::endl;
-    // std::cout << "Goal: " << current_state.transpose() << std::endl;
   } 
   else {
-    current_state = x_goal;
-    command.segment(0,2) = current_state.segment(0,2);
+    goal_state = x_goal;
+    command.segment(0,2) = goal_state.segment(0,2);
     command_interp = command.segment(0,2);
   }
+
+  // take log of goal state
+  vector_t log_goal_state(20);
+  log_goal_state << goal_state.segment(0, 3) , 0,0,0 , goal_state.segment(7,14);
 
   ////////////////////////////////////////////////////////////////////
 
@@ -152,7 +168,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     // same goal for every step in horizon
     // temp = tra->getState(hopper.t+p.dt_flight*i);
     // full_ref.segment(i*nx,12) << temp;
-    full_ref.segment(i * nx, current_state.size()) << current_state;
+    full_ref.segment(i * nx, 20) << log_goal_state;
     // full_ref.segment(i*nx+2,1) << p.hop_height;
     full_ref.segment(i * nx + 3, 3) << -log_x0.segment(3, 3); // Hacky modification to cost to get orientation tracking back TODO
   }
@@ -160,7 +176,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   // Terminal cost
   //  temp = tra->getState(hopper.t+p.dt_flight*(p.N-1));
   //  full_ref.segment((p.N-1)*nx,12) << temp;
-  full_ref.segment((p.N - 1) * nx, current_state.size()) << current_state;
+  full_ref.segment((p.N - 1) * nx, 20) << log_goal_state;
   // full_ref.segment((p.N-1)*nx+2,1) << p.hop_height;
   full_ref.segment((p.N - 1) * nx + 3, 3) << -log_x0.segment(3, 3); // Hacky modification to cost to get orientation tracking back TODO
 

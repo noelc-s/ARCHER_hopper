@@ -14,10 +14,6 @@ import random as rand
 import logging
 from utils import toEulerAngles, toQuaternion
 
-
-
-# Sample Space [x,y,z,r,p,y, x_dot, y_dot, z_dot, omega_x, omega_y, omega_z]
-# x_s = [x, y, 0.5, 0, 0, 0, xdot, ydot, 0, 0, 0] <--- sample like this
 ##############################################################################################
 
 def runSimulation(x0, xg, terminate_cond, sim_type, visualize):
@@ -81,14 +77,17 @@ def runSimulation(x0, xg, terminate_cond, sim_type, visualize):
 
     return xf, objVal
 
-def validationSimulation(x0, waypts, parameterization):
+def validationSimulation(x0, waypts, parameterization, sim_type, visualize):
     """ Run a simulation to validate sequence of waypoints
     Parameters:
         x0 (list): initial state as 21 dimensional list
-        xg (list of lists): list of 21 dimensional lists (state waypoints)
-        times (list): set of intervals between waypoints
+        waypts (list of lists): list of 21 dimensional lists (state waypoints)
+        parameterization (list): list of parameterization values (time intervals or number of hops)
+        sim_type (char): 'T' for time based parameterization or 'H' for hops based parameterization
+        visualize (bool): True to visualize the simulation
     Returns: 
         xf (list): final state as 21 dimensional list
+        objVal (float): objective value based on last waypoint
     """
 
     # create controller and sim objects
@@ -99,20 +98,34 @@ def validationSimulation(x0, waypts, parameterization):
     control_thread = threading.Thread(target=call_run, args=(c,))
     sim_thread = threading.Thread(target=call_run_sim, args=(s,))
 
+    # set simulator visualization
+    s.setVisualization(visualize)
+
     # set inital state and goal state, ( pos[3], rpy[3], v[3], omega[3] )
+    c.num_hops = 0
+    c.setSimType(sim_type)
     c.setInitialState(x0)
     c.setStateSequence(waypts,parameterization)
-
-    # set simulation stop condition
-    sim_duration = parameterization[-1]  # number of seconds before sim stops
+    c.setSimType(sim_type)
 
     # start control and sim threads
     control_thread.start()
     sim_thread.start()
 
-    # run until termination condition
-    while c.t_last < sim_duration:
-        pass
+   # run until termination condition
+    if sim_type == 'T':
+        sim_duration = parameterization[-1]  # time in seconds before sim stops
+        while c.t_last < sim_duration:
+            pass
+
+    elif sim_type == 'H':
+        max_hops = parameterization[-1]      # maximum number of hops before sim stops
+        while c.num_hops < max_hops:
+            pass
+        
+    else:
+        print("choose either \'T\' or \'H\' for \'sim_type\'")
+        quit()
 
      # stop simulation
     c.stopSimulation() 
@@ -120,10 +133,12 @@ def validationSimulation(x0, waypts, parameterization):
     # get final state and objective value
     xf = c.x
     objVal = c.objVal
+
     # safely shutdown the threads
     control_thread.join()
     sim_thread.join()
-    return xf, c.objVal
+    
+    return xf, objVal
 
 
 logger = logging.getLogger(__name__)
@@ -131,22 +146,44 @@ logging.basicConfig(level=logging.DEBUG)
 logger.setLevel(logging.DEBUG)
 # Test this stuff out
 x0_ = [0., 0., 0.5,
-       1., 0., 0., 0.,
+       0., 0., 0., 1.,
        0., 0., 0., 0., 
        0., 0., 0., 0., 
        0., 0., 0,
        0., 0., 0.]
 xg_ = [1, 1, 0.5, 
-       1.0, 0.0, 0.0, 0.0,
+       0., 0., 0., 1.,
        0., 0., 0., 0., 
        0., 0., 0., 0., 
        0., 0., 0,
        0., 0., 0.]
-T_ = 2.0
-logger.debug("Running Test Simulationl.")
-xf, objVal = runSimulation(x0_, xg_, T_, 'T')
+T_ = 3
+# logger.debug("Running Test Simulationl.")
+# xf, objVal = runSimulation(x0_, xg_, T_, 'H',True)
 
 
+# logger.info(f"Final: {xf}")
+# # print metrics
+# logger.info(f"ObjVal: {objVal}")
+# logger.info("F")
+
+# validation simulation
+# waypoints
+x0 = [-1 , -1, 0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.] # initial condition uses rpy
+x1 = [0 , 0, 0.5, 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+x2 = [0 , 1, 0.5, 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+x3 = [1 , 0, 0.5, 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+x4 = [1 , 1, 0.5, 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+waypts = [x0, x1, x2, x3, x4]
+
+# parameterization
+p = 3 # number hops or time between changing goal points
+params = []
+for i in range(len(waypts)):
+    params.append(p*i)
+print(params)
+
+xf, objVal = validationSimulation(x0, waypts, params, 'H', True)
 logger.info(f"Final: {xf}")
 # print metrics
 logger.info(f"ObjVal: {objVal}")
@@ -218,7 +255,7 @@ def pretend_dynamics(x_init, x_goal):
     cost: cost of reaching the goal state
     reached_idx: index of the reached state in the graph
     """
-    reached = x_goal #TODO: Sergio get real simulator dynamics
+    reached = runSimulation(x_init, x_goal, 1, 'H', False) #TODO: Sergio get real simulator dynamics
     reached_idx = len(G.nodes)
     G.add_node(len(G.nodes), state=reached)
     cost = np.linalg.norm(x_init - reached) #TODO: Sergio get real MPC cost
@@ -226,7 +263,7 @@ def pretend_dynamics(x_init, x_goal):
 
 
 def simulator_dynamics(x_init, x_goal):
-    xf, cost = runSimulation(x_init, x_goal, 1, 'H')
+    xf, cost = runSimulation(x_init, x_goal, 1, 'H', False)
     reached_idx = len(G.nodes)
     G.add_node(reached_idx, state=xf)
     return reached_idx, cost
@@ -282,15 +319,4 @@ for i in range(num_samples):
     reached_idx, cost = simulator_dynamics(sample[0], sample[1])
     G.add_edge(x_init_idx, reached_idx, cost=cost, goal=sample[1])
     logger.info(f"Evaluating Sample {i}: {sample}")
-
-# time.sleep(1)
-
-# print(c.programState_)
-# print(c.TX_torques)
-# time.sleep(1)
-# c.startSimulation()
-# time.sleep(3)
-# c.startSimulation()
-# print(c.TX_torques)
-
 
