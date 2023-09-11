@@ -146,6 +146,8 @@ RUN cd BezierTubes && \
     cd build && \
     cmake .. -G Ninja && \
     ninja
+RUN sudo apt-get install -y python3-matplotlib python3-ipykernel python3-tk libx11-dev
+RUN pip install ipympl pyquaternion
 WORKDIR $HOME
 ENTRYPOINT ["/home/docker/setup.bash"]
 CMD ["bash"]
