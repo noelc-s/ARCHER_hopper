@@ -91,11 +91,13 @@ class Controller : public C {
     vector_array_t stateSequence_; // sequence of goal states
     scalar_array_t paramsSequence_;      // parameterization of goal states
     char sim_type_;
+    int max_hops_ = -1;
 
     void setInitialState(vector_t initialCondition);
     void setGoalState(vector_t goalState);
     void setStateSequence(vector_array_t stateSequence, scalar_array_t paramsSequence);
     void setSimType(char sim_type);
+    void setMaxHops(int num_hops);
     
     void resetSimulation(vector_t x0);
     void stopSimulation();

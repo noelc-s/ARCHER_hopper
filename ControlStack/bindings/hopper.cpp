@@ -64,6 +64,7 @@ PYBIND11_MODULE(hopper, m) {
   .def_readwrite("stateSequence", &Controller::stateSequence_)
   .def_readwrite("paramsSequence", &Controller::paramsSequence_)
   .def_readwrite("sim_type", &Controller::sim_type_)
+  .def_readwrite("max_hops", &Controller::max_hops_)
   .def_property_readonly("TX_torques", [](py::object&obj) {
         Controller& o = obj.cast<Controller&>();
         return py::array{26,o.TX_torques,obj};})
@@ -75,6 +76,7 @@ PYBIND11_MODULE(hopper, m) {
   .def("setGoalState", py::overload_cast<vector_t>(&Controller::setGoalState))
   .def("setStateSequence", py::overload_cast<vector_array_t,scalar_array_t>(&Controller::setStateSequence))
   .def("setSimType", py::overload_cast<char>(&Controller::setSimType))
+  .def("setMaxHops", py::overload_cast<int>(&Controller::setMaxHops))
  ;
 
   m.def("call_run", [](C *c) -> void {

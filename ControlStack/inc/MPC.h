@@ -115,6 +115,14 @@ public:
     */
     static scalar_t time2impact(vector_t x, scalar_t heightOffset);
 
+     /*! @brief Estimate the time to reach an apex of a hop
+    *
+    * Simply uses vertical velocity to determine the time to reach the apex.
+    * @param[in] x state
+    * @param[out] t time to reach apex
+    */
+    static scalar_t time2apex(vector_t x);
+
     /*! @brief Take the state and apply the log of the orientation to get elements of the Lie Algebra
     * @param[in] x Lie Group elements
     * @param[out] xi Lie Algebra elements
@@ -207,8 +215,10 @@ public:
      * @param [in] tra the Trajectory type to track.
      */
     // int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra);
-    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence, char sim_type);
+    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence, char sim_type, int max_hops, int contact_flips);
 
     /*! @brief build the cost function matrices*/
     void buildCost();
+
+    int getApexIndex(scalar_t time_until_apex);
 };

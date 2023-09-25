@@ -21,7 +21,7 @@ Simulator:
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
-  speed: 1           # speed of simulation [multiplier]
+  speed:    1         # speed of simulation [multiplier]
 
   # Perturbation Forces
   # pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
@@ -34,15 +34,15 @@ Simulator:
   
 MPC:
   N: 20                                                 # nodes of MPC horizon
-  stateScaling: [20,20,0,15,15,15,0,0,0,0,                 # cost function scaling on state
+  stateScaling: [20,20,5,8,8,8,0,0,0,0,                 # cost function scaling on state
                  2.5,2.5,0,.03,.03,.03,0,0,0,0]         # cost function scaling on vel
-  inputScaling: [.01,.01,.01,.01]                       # cost function scaling on input
+  inputScaling: [.1,.1,.1,.01]                       # cost function scaling on input
   discountFactor: 1                                     # scale each future node by gamma^k
   terminalScaling: 1                                    # scaling of terminal state
   dt_flight: 0.01                                       # dt of flight phase [s]
   dt_ground: 0.001                                      # dt of ground phase [s]
   dt_replan: 0.01                                       # dt to run MPC at
-  SQP_iter: 2                                           # number of SQP iterations
+  SQP_iter: 5                                           # number of SQP iterations
     # tau_max: 1.5                                          # maximum control input (hardware)
   tau_max: 15                                          # maximum control input (simulation)
   f_max: 0                                              # maximum force applied to foot

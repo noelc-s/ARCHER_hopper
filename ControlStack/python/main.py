@@ -45,6 +45,9 @@ def runSimulation(x0, xg, terminate_cond, sim_type, visualize):
     c.setInitialState(x0)
     c.setGoalState(xg)
 
+    if sim_type == 'H':
+        c.setMaxHops(terminate_cond)
+
     # start control and sim threads
     control_thread.start()
     sim_thread.start()
@@ -151,60 +154,69 @@ def validationSimulation(x0, waypts, parameterization, sim_type, visualize):
 ##############################################################################################
 
 # rand.seed(3)
-# # test drive the simulation
-# for i in range(10):
+# test drive the simulation
+for i in range(1):
 
-#     print("*" * 80)
-#     print("Test Drive: ", i+1)
+    print("*" * 80)
+    print("Test Drive: ", i+1)
 
-#     # # set init conditions
-#     # pos =   [2*rand.random()-1, 2*rand.random()-1, 0.5]
-#     # vec = [rand.random()-0.5,rand.random()-0.5,rand.random()-0.5,rand.random()-0.5] # [qx, qy, qz, qw] MUST normalize
-#     # quat = vec / np.linalg.norm(vec)
-#     # vel =   [1*rand.random()-0.5, 1*rand.random()-0.5, 1*rand.random()-0.5]
-#     # omega = [0.1*rand.random()-0.05, 0.1*rand.random()-0.05, 0.1*rand.random()-0.05]
+    # # set init conditions
+    # pos =   [2*rand.random()-1, 2*rand.random()-1, 0.5]
+    # vec = [rand.random()-0.5,rand.random()-0.5,rand.random()-0.5,rand.random()-0.5] # [qx, qy, qz, qw] MUST normalize
+    # quat = vec / np.linalg.norm(vec)
+    # vel =   [1*rand.random()-0.5, 1*rand.random()-0.5, 1*rand.random()-0.5]
+    # omega = [0.1*rand.random()-0.05, 0.1*rand.random()-0.05, 0.1*rand.random()-0.05]
 
-#     # x0 = [pos[0], pos[1], pos[2],              # pos[3]
-#     #       quat[0], quat[1], quat[2], quat[3],  # quat[4] , [qx, qy, qz, qw] MUST be unit
-#     #       0.05,                                # L[1] (0.05 nominal)                 
-#     #       0,0,0,                               # flywheel[3], setting this does nothing
-#     #       vel[0], vel[1], vel[2],              # v[3]
-#     #       omega[0], omega[1], omega[2],        # omega[3]
-#     #       0,                                   # Ldot[1]                    
-#     #       0,0,0]                               # flywheel_dot[3]
-#    # set goal state
-#     x0 = [1,1,0.5,  # pos[3]
-#           0,0,0,1,  # quat[4] , [qx, qy, qz, qw], MUST normalize
-#           .05,      # L[1] (0.05 nominal)
-#           0,0,0,    # flywheel[3], setting this does nothing
-#           0,0,0,    # v[3]
-#           0,0,0,    # omega[3]
-#           0,        # Ldot[1]
-#           0,0,0]    # flywheel_dot[3]
+    # x0 = [pos[0], pos[1], pos[2],              # pos[3]
+    #       quat[0], quat[1], quat[2], quat[3],  # quat[4] , [qx, qy, qz, qw] MUST be unit
+    #       0.05,                                # L[1] (0.05 nominal)                 
+    #       0,0,0,                               # flywheel[3], setting this does nothing
+    #       vel[0], vel[1], vel[2],              # v[3]
+    #       omega[0], omega[1], omega[2],        # omega[3]
+    #       0,                                   # Ldot[1]                    
+    #       0,0,0]                               # flywheel_dot[3]
+   # set goal state
+    x0 = [0,0,0.5,  # pos[3]
+          0,0,0,1,  # quat[4] , [qx, qy, qz, qw], MUST normalize
+          .05,      # L[1] (0.05 nominal)
+          0,0,0,    # flywheel[3], setting this does nothing
+          0,0,0,    # v[3]
+          0,0,0,    # omega[3]
+          0,        # Ldot[1]
+          0,0,0]    # flywheel_dot[3]
+#     x0 = [-4.74416092 ,-1.93978687 , 0.5  ,
+#                  0. ,         0.  ,        0.,1.       ,
+#                        0.05 , -0.49721658  ,0.    ,      0.     ,     0.,
+#   0.     ,     0.    ,      0.  ,        0.  ,        0.      ,    0.,
+#   0.    ,      0.  ,        0.        ]
 
-#     # set goal state
-#     xg = [0,0,0.5,  # pos[3]
-#           0,0,0,1,  # quat[4] , [qx, qy, qz, qw], MUST normalize
-#           .05,      # L[1] (0.05 nominal)
-#           0,0,0,    # flywheel[3], setting this does nothing
-#           0,0,0,    # v[3]
-#           0,0,0,    # omega[3]
-#           0,        # Ldot[1]
-#           0,0,0]    # flywheel_dot[3]
-    
-#     # set simulation configuration
-#     # 'T' for max time horizon or 'H' for maximum number of hops
-#     term_cond = 10
-#     sim_type = 'T' 
-#     visualize = True # turn on/off visualization
+    # # set goal state
+    xg = [1,1,0.5,  # pos[3]
+          0,0,0,1,  # quat[4] , [qx, qy, qz, qw], MUST normalize
+          .05,      # L[1] (0.05 nominal)
+          0,0,0,    # flywheel[3], setting this does nothing
+          0,0,0,    # v[3]
+          0,0,0,    # omega[3]
+          0,        # Ldot[1]
+          0,0,0]    # flywheel_dot[3]
+#     xg = [ 1.53548067 , 0.11570903 , 0.5  ,       0.    ,      0.  ,       0.,
+#   1.        , -0.72582026,  0.33792164  ,0.    ,      0.   ,       0.,
+#   0.        ,  0.      ,    0.     ,     0.        ,  0.    ,      0.,
+#   0.       ,   0.       ,   0.   ,     ]
+
+    # set simulation configuration
+    # 'T' for max time horizon or 'H' for maximum number of hops
+    term_cond = 2
+    sim_type = 'H' 
+    visualize = True # turn on/off visualization
 
 #     # run a simulation
-#     print("Initial Conditions: ", x0)
-#     print("Goal: ", xg)
-#     xf, objVal = runSimulation(x0 ,xg , term_cond, sim_type, visualize)
-#     print("Final Conditions: ", xf)
-#     print("Objective Value: ", objVal)
-#     print("Euclidean Dist:", np.linalg.norm(x0 -xf))
+    print("Initial Conditions: ", x0)
+    print("Goal: ", xg)
+    xf, objVal = runSimulation(x0 ,xg , term_cond, sim_type, visualize)
+    print("Final Conditions: ", xf)
+    print("Objective Value: ", objVal)
+    print("Euclidean Dist:", np.linalg.norm(x0 -xf))
 
 ##############################################################################################
 
@@ -224,7 +236,5 @@ for i in range(len(waypts)):
     params.append(p*i)
 print(params)
 
-time.sleep(1)
-
-xf, objVal = validationSimulation(x0, waypts, params, 'T', True)
-print(xf)
+# xf, objVal = validationSimulation(x0, waypts, params, 'H', True)
+# print(xf)

@@ -411,6 +411,10 @@ void Controller::setSimType(char sim_type) {
   sim_type_ = sim_type;
 }
 
+void Controller::setMaxHops(int max_hops) {
+  max_hops_ = max_hops;
+}
+
 void Controller::resetSimulation(vector_t x0) {
 
 // GilManager g;
@@ -597,7 +601,7 @@ void Controller::run() {
         if (replan) {
 
           // opt.solve(hopper, sol, command, command_interp, &tra); ///////////////////////////////////
-          opt.solve(hopper, sol, command, command_interp, goalState_, stateSequence_, paramsSequence_, sim_type_); ///////////////////////////////////
+          opt.solve(hopper, sol, command, command_interp, goalState_, stateSequence_, paramsSequence_, sim_type_, max_hops_, contact_flips); ///////////////////////////////////
           objVal = opt.primalObjVal;
 
     for (int i = 0; i < opt.p.N; i++) {

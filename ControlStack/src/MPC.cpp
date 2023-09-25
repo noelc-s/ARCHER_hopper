@@ -6,7 +6,7 @@
 #define assertm(exp, msg) assert(((void)msg, exp))
 
 // int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, Trajectory* tra) {
-int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence, char sim_type)
+int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp, vector_t x_goal, vector_array_t stateSequence, scalar_array_t paramsSequence, char sim_type, int max_hops, int contact_flips)
 {
 
   matrix_t x_bar(nx, p.N - 1);
@@ -54,54 +54,61 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   int current_idx;
 
   // logic to determine if fixed goal or sequence of states
-  if (stateSequence.size() > 0 && paramsSequence.size() > 0) {
-    
-    for (int i=0; i<paramsSequence.size()-1; i++) {
+  if (stateSequence.size() > 0 && paramsSequence.size() > 0)
+  {
+
+    for (int i = 0; i < paramsSequence.size() - 1; i++)
+    {
 
       // time based sequence
-      if (sim_type == 'T') {
-        if (paramsSequence[i] <= hopper.t && hopper.t < paramsSequence[i+1]){
+      if (sim_type == 'T')
+      {
+        if (paramsSequence[i] <= hopper.t && hopper.t < paramsSequence[i + 1])
+        {
           current_idx = i;
-          goal_state = stateSequence[current_idx+1];
-          command.segment(0,2) = goal_state.segment(0,2);
-          command_interp = command.segment(0,2);
+          goal_state = stateSequence[current_idx + 1];
+          command.segment(0, 2) = goal_state.segment(0, 2);
+          command_interp = command.segment(0, 2);
           break;
         }
-        else {
-          goal_state = stateSequence[stateSequence.size()-1];
-          command.segment(0,2) = goal_state.segment(0,2);
-          command_interp = command.segment(0,2);
+        else
+        {
+          goal_state = stateSequence[stateSequence.size() - 1];
+          command.segment(0, 2) = goal_state.segment(0, 2);
+          command_interp = command.segment(0, 2);
         }
       }
       // hopping based sequence
-      else if (sim_type == 'H') {
-        if ((int)paramsSequence[i] <= hopper.num_hops && hopper.num_hops < (int)paramsSequence[i+1]) {
+      else if (sim_type == 'H')
+      {
+        if ((int)paramsSequence[i] <= hopper.num_hops && hopper.num_hops < (int)paramsSequence[i + 1])
+        {
           current_idx = i;
-          goal_state = stateSequence[current_idx+1];
-          command.segment(0,2) = goal_state.segment(0,2);
-          command_interp = command.segment(0,2);
+          goal_state = stateSequence[current_idx + 1];
+          command.segment(0, 2) = goal_state.segment(0, 2);
+          command_interp = command.segment(0, 2);
           break;
         }
       }
-      
     }
-  } 
-  else {
+  }
+  else
+  {
     goal_state = x_goal;
-    command.segment(0,2) = goal_state.segment(0,2);
-    command_interp = command.segment(0,2);
+    command.segment(0, 2) = goal_state.segment(0, 2);
+    command_interp = command.segment(0, 2);
   }
 
   // scalar_t param;
   // if (sim_type == 'T') {param = hopper.t;} else {param = hopper.num_hops;}
-  // std::cout << "Time: " << paramsSequence[current_idx] << " <= " 
+  // std::cout << "Time: " << paramsSequence[current_idx] << " <= "
   //           << param << " < " << paramsSequence[current_idx+1] << std::endl;
   // std::cout << "Goal: " << goal_state.transpose() << std::endl;
   // std::cout << "idx: " << current_idx << std::endl;
 
   // take log of goal state
   vector_t log_goal_state(20);
-  log_goal_state << goal_state.segment(0, 3) , 0,0,0 , goal_state.segment(7,14);
+  log_goal_state << goal_state.segment(0, 3), 0, 0, 0, goal_state.segment(7, 14);
 
   ////////////////////////////////////////////////////////////////////
 
@@ -203,6 +210,17 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
 
   ////////////////////////////////////////////////////////////////////
 
+  // reaching the apex -- you need to change the FOTCP to enforce upright at Apex
+  scalar_t t2a = time2apex(x0);
+  bool last_hop = (max_hops - 1 == hopper.num_hops);
+  bool t2a_in_horizon = elapsed_time(elapsed_time.size()-1) >= t2a;
+  bool ascending = t2a > 0;
+  bool touched_down = (contact_flips > 0);
+  bool enable_terminal_const = (ascending && t2a_in_horizon && last_hop && touched_down);
+
+  vector_3t sf;
+  sf << 0,0,0;
+  
   f = -H * full_ref; // SEE NOEL NOTE ////////////////////  Here and down
 
   for (int iter = 0; iter < p.SQP_iter; iter++)
@@ -240,6 +258,15 @@ scalar_t MPC::time2impact(vector_t x, scalar_t heightOffset)
   scalar_t g = 9.81;
 
   scalar_t t = (-v0 - sqrt(pow(v0, 2) + 2 * g * x0)) / (-g);
+  return t;
+}
+
+scalar_t MPC::time2apex(vector_t x)
+{
+  scalar_t v0 = x(11 + 2);
+  scalar_t g = 9.81;
+
+  scalar_t t = v0 / g;
   return t;
 }
 
@@ -499,4 +526,35 @@ void MPC::buildCost()
     }
   }
   f.setZero();
+}
+
+int MPC::getApexIndex(scalar_t t2a)
+{
+  int apex_idx;
+  for (int i = 0; i < elapsed_time.size() - 1; i++)
+    {
+      if (elapsed_time[i] <= t2a && t2a < elapsed_time[i + 1])
+      {
+        apex_idx = i;
+        break;
+      }
+    }
+  
+  scalar_t t_lower, t_upper, t1, t2;
+  t_lower = elapsed_time(apex_idx);
+  t_upper = elapsed_time(apex_idx+1);
+  t1 = abs(t_lower - t2a);
+  t2 = abs(t_upper - t2a);
+  
+  if (t2 > t1) {
+    apex_idx = apex_idx;
+  } else {
+    apex_idx = apex_idx+1;
+  }
+
+  // std::cout << "Apex time: " << t2a << std::endl;
+  // std::cout << "Elapsed time: " << elapsed_time.transpose() << std::endl;
+  // std::cout << "Index: " << apex_idx << std::endl;
+
+  return apex_idx;
 }
