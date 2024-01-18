@@ -318,3 +318,29 @@ void Hopper::DiscreteDynamics(const vector_t &x, const vector_t &u, const domain
         }
     }
 }
+
+quat_t Hopper::DesiredQuaternion(){
+   
+    quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
+
+    return quat_des;
+
+}
+
+
+vector_3t Hopper::DesiredOmega(){
+   
+    vector_3t omega_des;
+    omega_des << 0, 0, 0;
+    
+    return omega_des;
+
+}
+
+vector_4t Hopper::DesiredInputs(){
+
+    vector_4t u_des;
+    u_des << 0, 0, 0, 0;
+    
+    return u_des;
+}

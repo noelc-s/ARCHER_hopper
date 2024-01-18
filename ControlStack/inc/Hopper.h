@@ -124,6 +124,15 @@ public:
     void Ddelta_f(const vector_t q, const vector_t v, const domain d,
                   matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
+    
+    quat_t DesiredQuaternion();
+    
+    vector_3t DesiredOmega();
+    
+    vector_4t DesiredInputs();
+
+ 
+
 };
 
 #endif //HOPPER_HOPPER_H
