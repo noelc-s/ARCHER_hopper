@@ -305,8 +305,8 @@ int main() {
 
         for (int i = 0; i < 4; i++) {
             TX_torques[i] = hopper.torque[i];
-        }
-
+	}
+	
 	TX_torques[4] = pos_term[0];
 	TX_torques[5] = pos_term[1];
 	TX_torques[6] = pos_term[2];

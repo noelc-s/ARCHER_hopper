@@ -158,7 +158,7 @@ void mycontroller(const mjModel *m, mjData *d) {
 int main(int argc, const char **argv) {
 
     // activate software
-    mj_activate("mjkey.txt");
+    //mj_activate("mjkey.txt");
 
     char xmlpath[100] = {};
     char datapath[100] = {};
@@ -427,7 +427,7 @@ int main(int argc, const char **argv) {
     // free MuJoCo model and data, deactivate
     mj_deleteData(d);
     mj_deleteModel(m);
-    mj_deactivate();
+    //mj_deactivate();
 
     // terminate GLFW (crashes with Linux NVidia drivers)
 #if defined(__APPLE__) || defined(_WIN32)
