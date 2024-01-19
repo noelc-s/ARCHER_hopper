@@ -42,28 +42,22 @@ find_library(MUJOCO_LIB mujoco REQUIRED HINTS ${MUJOCO_DIR}/lib)
 
 add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
-
-add_library(MPC SHARED
-    src/Hopper.cpp
-    src/MPC.cpp
-)
-target_link_libraries(MPC Eigen3::Eigen)
-target_link_libraries(MPC osqp::osqp)
-target_link_libraries(MPC OsqpEigen::OsqpEigen)
-target_include_directories(MPC PUBLIC ${manif_INCLUDE_DIRS})
-target_link_libraries(MPC ${PINOCCHIO_LIBRARIES})
-target_link_directories(MPC PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
-
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp)
-target_link_libraries(hopper_ctrl MPC)
+add_executable(hopper_ctrl src/Controller.cpp src/Hopper.cpp src/Policy.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
+target_link_libraries(hopper_ctrl Eigen3::Eigen)
+target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
 
-add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)
-target_link_libraries(hopper_ctrl_hardware MPC)
-target_link_libraries(hopper_ctrl_hardware yaml-cpp)
-target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
-target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
+target_link_libraries(hopper_ctrl ${PINOCCHIO_LIBRARIES})
+target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
+
+if(HARDWARE)
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)
+    target_link_libraries(hopper_ctrl_hardware MPC)
+    target_link_libraries(hopper_ctrl_hardware yaml-cpp)
+    target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
+    target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
+endif()
 
 add_executable(hopper_sim src/Simulator.cpp)
 target_link_libraries(hopper_sim PUBLIC Eigen3::Eigen)
