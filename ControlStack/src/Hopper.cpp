@@ -133,6 +133,8 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
     torque << spring_f, tau;
     torque += u_des;
+
+    // std::cout<<torque(0)<<std::endl<<torque(1)<<std::endl<<torque(2)<<std::endl<<torque(3);
 };
 
 vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {

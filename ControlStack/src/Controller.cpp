@@ -213,7 +213,10 @@ int main() {
             // quat_des = Quaternion<scalar_t>(1,0,0,0);
             // omega_des << 0,0,0;
             // u_des << 0,0,0,0;
-            quat_des = policy.DesiredQuaternion();
+            scalar_t x_d = 0;
+            scalar_t y_d = 0;
+
+            quat_des = policy.DesiredQuaternion(state(1), state(2), x_d, y_d);
             omega_des = policy.DesiredOmega();
             u_des = policy.DesiredInputs();
 
