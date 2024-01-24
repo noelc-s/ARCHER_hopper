@@ -28,7 +28,7 @@ option(HARDWARE "build with hardware support (ros)" OFF)
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(osqp REQUIRED)
-find_package(OsqpEigen REQUIRED)
+find_package(OsqpEigen REQUIRED HINTS ${PATH_TO_REPOS}/osqp-eigen_install)
 find_package(glfw3 REQUIRED)
 find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
 find_package(manif REQUIRED HINTS ${MANIF_DIR})
@@ -65,8 +65,3 @@ target_link_libraries(hopper_sim PUBLIC glfw)
 target_link_libraries(hopper_sim PUBLIC yaml-cpp)
 target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
-
-
-
-
-
