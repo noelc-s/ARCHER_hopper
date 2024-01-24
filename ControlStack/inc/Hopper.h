@@ -124,6 +124,37 @@ public:
     void Ddelta_f(const vector_t q, const vector_t v, const domain d,
                   matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
+    /*! @brief Take the state and apply the log of the orientation to get elements of the Lie Algebra
+    * @param[in] x Lie Group elements
+    * @param[out] xi Lie Algebra elements
+    */
+    static vector_t Log(vector_t x);
+
+    /*! @brief Take elements of the Lie Algebra and Exp them to the Lie Group
+    * @param[in] xi Lie Algebra elements
+    * @param[out] x Lie Group elements
+    */
+    static vector_t Exp(vector_t xi);
+
+    /*! @brief apply q0_inverse and then perform Log
+    * @param[in] qk the Lie Group element
+    * @param[in] q0 the base point
+    * @param[out] xik the Lie Algebra element
+    */
+
+    vector_t qk_to_xik(vector_t qk, vector_t q0);
+   
+     /*! @brief apply q0 and then perform Exp
+    *
+    * @param[in] xik the Lie Algebra element
+    * @param[in] q0 the base point
+    * @param[out] qk the Lie Group element
+    */   
+    vector_t xik_to_qk(vector_t xik, vector_t q0);
+    
+
+
+
 };
 
 #endif //HOPPER_HOPPER_H

@@ -1,5 +1,4 @@
 #include "../inc/Hopper.h"
-#include "../inc/MPC.h"
 #include <stdexcept>
 
 #include <manif/manif.h>
@@ -134,6 +133,8 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
     torque << spring_f, tau;
     torque += u_des;
+
+    // std::cout<<torque(0)<<std::endl<<torque(1)<<std::endl<<torque(2)<<std::endl<<torque(3);
 };
 
 vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {
@@ -210,7 +211,7 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
     vector_t s(20);
     vector_t x(21);
     x << q,v;
-    s = MPC::qk_to_xik(x,q0);
+    s = qk_to_xik(x,q0);
 	
     C << f - A * s - B * a.tail(4);
 };
@@ -280,7 +281,7 @@ void Hopper::Ddelta_f(const vector_t q, const vector_t v, const domain d,
     vector_t s(20);
     vector_t x(21);
     x << q,v;
-    s = MPC::qk_to_xik(x,q0);
+    s = qk_to_xik(x,q0);
 
     vector_t s_df(20);
     s_df << s.segment(0,10),df.segment(11,10);
@@ -317,4 +318,44 @@ void Hopper::DiscreteDynamics(const vector_t &x, const vector_t &u, const domain
             break;
         }
     }
+}
+
+vector_t Hopper::Log(vector_t x) {
+  vector_t g_frak(20);
+  quat_t quat(x(6), x(3), x(4), x(5));
+  auto quat_ = manif::SO3<scalar_t>(quat);
+  manif::SO3Tangent<scalar_t> xi = quat_.log();
+  g_frak << x.segment(0,3),xi.coeffs(),x.segment(7,4),x.segment(11,10);
+  return g_frak;
+}
+
+vector_t Hopper::Exp(vector_t xi) {
+  vector_t g(21);
+  manif::SO3Tangent<scalar_t> xi_;
+  xi_ << xi(3),xi(4),xi(5);
+  quat_t quat = xi_.exp().quat();
+  g << xi.segment(0,3), quat.coeffs(), xi.segment(6,14);
+  return g;
+}
+
+vector_t Hopper::qk_to_xik(vector_t qk, vector_t q0) {
+  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
+  quat_t quatk(qk(6), qk(3), qk(4), qk(5));
+
+  vector_t tmp(21);
+  tmp << qk.segment(0,3), (quat0.inverse()*quatk).coeffs(), qk.segment(7,14);
+  vector_t xik(20);
+  xik = Log(tmp);
+  return xik;
+}
+
+vector_t Hopper::xik_to_qk(vector_t xik, vector_t q0) {
+  vector_t tmp(21);
+  tmp = Exp(xik);
+  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
+  quat_t quatk(tmp(6), tmp(3), tmp(4), tmp(5));
+  vector_t qk(21);
+  qk << tmp.segment(0,3), (quat0*quatk).coeffs(), tmp.segment(7,14);
+  //qk << tmp.segment(0,3), (quatk).coeffs(), tmp.segment(7,14);
+  return qk;
 }
