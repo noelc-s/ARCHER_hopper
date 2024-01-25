@@ -135,6 +135,8 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     torque += u_des;
 
     // std::cout<<torque(0)<<std::endl<<torque(1)<<std::endl<<torque(2)<<std::endl<<torque(3);
+    std::cout << quat_a_.coeffs().transpose() << std::endl;
+    std::cout << quat_d_.coeffs().transpose() << std::endl;
 };
 
 vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {

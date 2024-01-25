@@ -36,7 +36,7 @@ public:
     *  @param [in] y_d  desired position (y-direction) of the body frame wrt the world frame
     *  @param [out] quat_d  desired quaternion for the low level controller
     */
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d);
+    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a);
     
     /*! @brief  evaluate the forward dynamics
     *  @param [out] omega_d  desired omega (rate of change of quaternion) of the body frame wrt the world fram

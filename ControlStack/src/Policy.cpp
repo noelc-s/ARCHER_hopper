@@ -32,7 +32,7 @@ quat_t Policy::eulerToQuaternion(scalar_t roll, scalar_t pitch, scalar_t yaw) {
                       * AngleAxisd(yaw, Vector3d::UnitZ());
 
 // std::cout<<"Quaternion"<<quaternion.w()<<std::endl<<quaternion.x()<<std::endl<<quaternion.y()<<std::endl<<quaternion.z()<<std::endl;
-    std::cout<<quaternion.coeffs()<<std::endl;
+    //std::cout<<quaternion.coeffs().transpose()<<std::endl;
     return quaternion;
 }
 
@@ -40,14 +40,17 @@ template <typename T> int Policy::sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d){
+quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a){
     
     //scaling coefficients for the exponential map
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
     scalar_t stance_time = config["MPC"]["groundDuration"].as<scalar_t>();
 
-    scalar_t kx = config["RaibertHeuristic"]["kx"].as<scalar_t>();
-    scalar_t ky = config["RaibertHeuristic"]["ky"].as<scalar_t>();
+    scalar_t kx_p = config["RaibertHeuristic"]["kx_p"].as<scalar_t>();
+    scalar_t ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
+    scalar_t kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
+    scalar_t ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
+    scalar_t angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
 
 // quat_t quat_des = Eigen::Quaternion<scalar_t>(1,0,0,0);
 
@@ -67,8 +70,10 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
 // std::cout<<sgn(del_x);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = (exp(kx*sgn(del_x)*del_x) - 1);
-    scalar_t roll_d = (exp(ky*sgn(del_y)*del_y) - 1);
+    scalar_t pitch_d = std::min(kx_p*del_x + kx_d*xd_a, angle_max);
+    pitch_d = std::max(pitch_d, -angle_max);
+    scalar_t roll_d = std::min(ky_p*del_y + ky_d*yd_a, angle_max);
+    roll_d = std::max(roll_d, -angle_max);
     scalar_t yaw_d = 0;
 
 // std::cout << "Desired Pitch: " << pitch_d << std::endl;

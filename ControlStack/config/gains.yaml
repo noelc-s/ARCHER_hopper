@@ -2,16 +2,16 @@
 LowLevel:
   # For the reaction wheeels multiplying orientation error and angular rate
   Orientation:
-    Kp: [ 50,50,50 ]
-    Kd: [ .15,.15,.15 ]
+    Kp: [ -90,-90,-90 ]
+    Kd: [ 1.5,1.5,1.5 ]
   # For the leg multiplying deflection error and velocity
   Leg:
-    Kp: 0.5
-    Kd: .005 
+    Kp: .5
+    Kd: .05 
   dt: 0.001
 
 Simulator:
-  p0: [0,0,0.5]         # initial position [x,y,z]
+  p0: [0.0,0,0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
@@ -19,12 +19,12 @@ Simulator:
   speed: 1              # speed of simulation [multiplier]
 
   # Perturbation Forces
-  pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
-  pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
-  # pert_force_x: [100, -100,100,-100]
-  # pert_force_y: [0,0, 100,100]
-  pert_start: [3000, 8000, 11000,14000] # start time for force [milliseconds]
-  pert_end: [3150, 8150, 11150, 14150]  # end time for force [milliseconds
+  #pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
+  #pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
+  pert_force_x: [80, 0,00, 0]
+  pert_force_y: [00, 80, 00,00]
+  pert_start: [2000, 4100, 11000,14000] # start time for force [milliseconds]
+  pert_end: [2100, 4150, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
   
 MPC:
@@ -51,5 +51,8 @@ MPC:
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
 RaibertHeuristic:
-  kx: 0.01                                            #gain for placing foot to manipulate the forward velocity (x-direction)
-  ky: 0.01                                              #gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.3                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.3                                           # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.2                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.2                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  angle_max: 1.0
