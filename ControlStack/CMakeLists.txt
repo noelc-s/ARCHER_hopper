@@ -59,7 +59,7 @@ if(HARDWARE)
     target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
 endif()
 
-add_executable(hopper_sim src/Simulator.cpp)
+add_executable(hopper_sim src/Simulator.cpp src/UnitTest.cpp)
 target_link_libraries(hopper_sim PUBLIC Eigen3::Eigen)
 target_link_libraries(hopper_sim PUBLIC glfw)
 target_link_libraries(hopper_sim PUBLIC yaml-cpp)
