@@ -7,6 +7,7 @@ project(hopper)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
+# set(CMAKE_VERBOSE_MAKEFILE on)
 
 SET(PATH_TO_REPOS /home/amberlab/repos) ######################
 
@@ -23,7 +24,7 @@ list(APPEND CMAKE_PREFIX_PATH ${GLFW3_DIR})
 
 list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS}/eigenpy_install)
 
-option(HARDWARE "build with hardware support (ros)" OFF)
+option(HARDWARE "build with hardware support (ros)" ON)
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -51,12 +52,19 @@ target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
 target_link_libraries(hopper_ctrl ${PINOCCHIO_LIBRARIES})
 target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
 
+message(HARDWARE_STATUS="${HARDWARE}")
+
 if(HARDWARE)
-    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp)
-    target_link_libraries(hopper_ctrl_hardware MPC)
+    message(STATUS "Hardware is building")
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/Hopper.cpp src/Policy.cpp)
+    # target_link_libraries(hopper_ctrl_hardware MPC)
     target_link_libraries(hopper_ctrl_hardware yaml-cpp)
+    target_link_libraries(hopper_ctrl_hardware Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
+    target_include_directories(hopper_ctrl_hardware PUBLIC ${manif_INCLUDE_DIRS})
     target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
+    target_link_libraries(hopper_ctrl_hardware ${PINOCCHIO_LIBRARIES})
+    target_link_directories(hopper_ctrl_hardware PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
 endif()
 
 add_executable(hopper_sim src/Simulator.cpp src/UnitTest.cpp)
