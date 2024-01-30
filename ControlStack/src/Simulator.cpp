@@ -7,7 +7,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-
+#include "../inc/UnitTest.h"
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -269,6 +269,20 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
+
+    // Initializing the Unit Test
+    UnitTest newUnitTest;
+    char initializeUnitTest = config["UnitTest"]["response"].as<char>();
+    
+    // std::cout << "Do you want to run a Unit Test? (y/n): ";
+    // std::cin >> initializeUnitTest;
+
+    // Clear the input buffer
+    // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    std::vector<std::vector<double>> unitTestInputs(4);
+    unitTestInputs = newUnitTest.runUnitTest(initializeUnitTest);
+    newUnitTest.rewriteValues(unitTestInputs, p0, v0, rpy0, w0);
 
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];

@@ -56,3 +56,6 @@ RaibertHeuristic:
   kx_d: -0.2                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.2                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
+
+UnitTest:
+  response: 'n'

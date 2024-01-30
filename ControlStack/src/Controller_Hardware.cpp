@@ -32,8 +32,8 @@
 
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
-#include "../inc/MPC.h"
-
+// #include "../inc/MPC.h"
+#include "../inc/Policy.h"
 
 #define MAXLINE 1000
 #define MAX 48
@@ -92,9 +92,9 @@ struct Parameters {
     scalar_t leg_kp;
     scalar_t leg_kd;
     scalar_t dt;
-    scalar_t MPC_dt_flight;
-    scalar_t MPC_dt_ground;
-    scalar_t MPC_dt_replan;
+    // scalar_t MPC_dt_flight;
+    // scalar_t MPC_dt_ground;
+    // scalar_t MPC_dt_replan;
     scalar_t frameOffset;
     scalar_t markerOffset;
     int predHorizon;
@@ -136,18 +136,18 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   OptiState.q_z = msg->pose.orientation.z;
 }
 
-void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
+void setupGains(const std::string filepath) {
     YAML::Node config = YAML::LoadFile(filepath);
     p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
     p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
     p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
     p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
     p.dt = config["Debug"]["dt"].as<scalar_t>();
-    p.MPC_dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    p.MPC_dt_flight = config["MPC"]["dt_flight"].as<scalar_t>();
-    p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
-    p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
-    p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
+    // p.MPC_dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
+    // p.MPC_dt_flight = config["MPC"]["dt_flight"].as<scalar_t>();
+    // p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
+    // p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
+    // p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
     p.predHorizon = config["Debug"]["predHorizon"].as<int>();
     p.stop_index = config["Debug"]["stopIndex"].as<int>();
     p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
@@ -157,30 +157,30 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
             p.leg_kp, p.leg_kd;
 
         // Read gain yaml
-    mpc_p.N = config["MPC"]["N"].as<int>();
-    mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
-    mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
-    std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
-    mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
-    mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    mpc_p.groundDuration = config["MPC"]["groundDuration"].as<scalar_t>();
-    mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
-    mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
-    mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
-    int nx = 20;
-    int nu = 4;
-    mpc_p.stateScaling.resize(nx);
-    mpc_p.inputScaling.resize(nu);
-    for (int i = 0; i < nx; i++)
-        mpc_p.stateScaling(i) = tmp[i];
-    tmp = config["MPC"]["inputScaling"].as<std::vector<scalar_t>>();
-    for (int i = 0; i < nu; i++)
-        mpc_p.inputScaling(i) = tmp[i];
-    mpc_p.tau_max = config["MPC"]["tau_max"].as<scalar_t>();
-    mpc_p.f_max = config["MPC"]["f_max"].as<scalar_t>();
-    mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
-    mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
-    mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
+    // mpc_p.N = config["MPC"]["N"].as<int>();
+    // mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
+    // mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
+    // std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
+    // mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
+    // mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
+    // mpc_p.groundDuration = config["MPC"]["groundDuration"].as<scalar_t>();
+    // mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
+    // mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
+    // mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
+    // int nx = 20;
+    // int nu = 4;
+    // mpc_p.stateScaling.resize(nx);
+    // mpc_p.inputScaling.resize(nu);
+    // for (int i = 0; i < nx; i++)
+    //     mpc_p.stateScaling(i) = tmp[i];
+    // tmp = config["MPC"]["inputScaling"].as<std::vector<scalar_t>>();
+    // for (int i = 0; i < nu; i++)
+    //     mpc_p.inputScaling(i) = tmp[i];
+    // mpc_p.tau_max = config["MPC"]["tau_max"].as<scalar_t>();
+    // mpc_p.f_max = config["MPC"]["f_max"].as<scalar_t>();
+    // mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
+    // mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
+    // mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
 
 }
 
@@ -299,8 +299,8 @@ int main(int argc, char **argv){
     ////////////////////////////////////////////////////////////////////
 
     // Read yaml
-    MPC::MPC_Params mpc_p;
-    setupGains("../config/gains_hardware.yaml", mpc_p);
+    // MPC::MPC_Params mpc_p;
+    setupGains("../config/gains_hardware.yaml");
 
     vector_t state(20);
 
@@ -330,9 +330,9 @@ int main(int argc, char **argv){
 
     scalar_t t_last = -1;
     scalar_t dt_elapsed;
-    scalar_t t_last_MPC = -1;
-    scalar_t t_log_MPC = -1;
-    scalar_t dt_elapsed_MPC;
+    // scalar_t t_last_MPC = -1;
+    // scalar_t t_log_MPC = -1;
+    // scalar_t dt_elapsed_MPC;
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
@@ -340,11 +340,11 @@ int main(int argc, char **argv){
     vector_t u_des(4);
     u_des.setZero();
 
-    MPC opt = MPC(20, 4, mpc_p);
-    vector_t sol(opt.nx*opt.p.N+opt.nu*(opt.p.N-1));
-    vector_t sol_g((opt.nx+1)*opt.p.N+opt.nu*(opt.p.N-1));
-    sol.setZero();
-    sol_g.setZero();
+    // MPC opt = MPC(20, 4, mpc_p);
+    // vector_t sol(opt.nx*opt.p.N+opt.nu*(opt.p.N-1));
+    // vector_t sol_g((opt.nx+1)*opt.p.N+opt.nu*(opt.p.N-1));
+    // sol.setZero();
+    // sol_g.setZero();
 
     //opt = MPC(20,4, mpc_p);
 
@@ -353,12 +353,12 @@ int main(int argc, char **argv){
     vector_3t command;
     vector_2t command_interp;
     std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
-    matrix_t x_pred(21,2);
-    matrix_t u_pred(4,1);
+    // matrix_t x_pred(21,2);
+    // matrix_t u_pred(4,1);
 
-    vector_t x_term(21); x_term.setZero();
-    quat_t quat_term;
-    vector_3t pos_term;
+    // vector_t x_term(21); x_term.setZero();
+    // quat_t quat_term;
+    // vector_3t pos_term;
 
     vector_3t last_state;
 
@@ -384,7 +384,7 @@ int main(int argc, char **argv){
 	  last_state  << OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z;
 	  current_vel << 0,0,0;
 	  previous_vel << 0,0,0;
-          dt = p.MPC_dt_replan;
+          // dt = p.MPC_dt_replan;
           init = true;
         } else {
 	  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-last_t_state_log).count()*1e-9;
@@ -402,71 +402,80 @@ int main(int argc, char **argv){
 	}
 
 
-        // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed
-        //ESPstate: wheel speed, omega, quat;
+  //       // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed
+  //       //ESPstate: wheel speed, omega, quat;
 	
-	dt_elapsed = state(0) - t_last;
-	dt_elapsed_MPC = state(0) - t_last_MPC;
+	// dt_elapsed = state(0) - t_last;
+	// dt_elapsed_MPC = state(0) - t_last_MPC;
 	
 
-        hopper.updateState(state);
-	quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
-	hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
-	// ^ turn the local omega to global omega
-	vector_t q0(21);
-	q0 << hopper.q, hopper.v;
-	vector_t q0_local(21);
-	q0_local = MPC::global2local(q0);
-	bool replan = false;
-	switch (hopper.contact>0.1) {
-		case (0): {
-			//replan = dt_elapsed_MPC >= p.MPC_dt_flight;
-			replan = dt_elapsed_MPC >= p.MPC_dt_replan;
-			break;
-			  }
-		case (1): {
-			//replan = dt_elapsed_MPC >= p.MPC_dt_ground;
-			replan = dt_elapsed_MPC >= p.MPC_dt_replan;
-			break;
-			  }
-	}
-        if (replan) {
-	  t2 = std::chrono::high_resolution_clock::now();
-          t_last_MPC = std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3;
-	  previous_vel = current_vel;
-	  last_state << state(1), state(2), state(3);
-	  last_t_state_log = t1;
+  //       hopper.updateState(state);
+	// quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
+	// hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
+	// // ^ turn the local omega to global omega
+	// vector_t q0(21);
+	// q0 << hopper.q, hopper.v;
+	// vector_t q0_local(21);
+	// q0_local = MPC::global2local(q0);
+	// bool replan = false;
+	// switch (hopper.contact>0.1) {
+	// 	case (0): {
+	// 		//replan = dt_elapsed_MPC >= p.MPC_dt_flight;
+	// 		replan = dt_elapsed_MPC >= p.MPC_dt_replan;
+	// 		break;
+	// 		  }
+	// 	case (1): {
+	// 		//replan = dt_elapsed_MPC >= p.MPC_dt_ground;
+	// 		replan = dt_elapsed_MPC >= p.MPC_dt_replan;
+	// 		break;
+	// 		  }
+	// }
+  //       if (replan) {
+	//   t2 = std::chrono::high_resolution_clock::now();
+  //         t_last_MPC = std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3;
+	//   previous_vel = current_vel;
+	//   last_state << state(1), state(2), state(3);
+	//   last_t_state_log = t1;
 
-	  //std::cout << "State: " << state.transpose().format(CSVFormat) << std::endl;
-	  //std::cout << "dt: " << dt << std::endl;
-          opt.solve(hopper, sol, command, command_interp);
-	  for (int i = 0; i < opt.p.N; i++) {
-            sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
-	  }
-	  sol_g.segment((opt.nx+1)*opt.p.N,opt.nu*(opt.p.N-1)) << sol.segment((opt.nx)*opt.p.N,opt.nu*(opt.p.N-1));
-	  x_pred << MPC::local2global(MPC::xik_to_qk(sol.segment(20,20),q0_local)),MPC::local2global(MPC::xik_to_qk(sol.segment(40,20),q0_local)); 
-	  u_pred << sol.segment(opt.p.N*opt.nx+4,4);
+	//   //std::cout << "State: " << state.transpose().format(CSVFormat) << std::endl;
+	//   //std::cout << "dt: " << dt << std::endl;
+  //         opt.solve(hopper, sol, command, command_interp);
+	//   for (int i = 0; i < opt.p.N; i++) {
+  //           sol_g.segment(i*(opt.nx+1), opt.nx+1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i*opt.nx,opt.nx),q0_local));
+	//   }
+	//   sol_g.segment((opt.nx+1)*opt.p.N,opt.nu*(opt.p.N-1)) << sol.segment((opt.nx)*opt.p.N,opt.nu*(opt.p.N-1));
+	//   x_pred << MPC::local2global(MPC::xik_to_qk(sol.segment(20,20),q0_local)),MPC::local2global(MPC::xik_to_qk(sol.segment(40,20),q0_local)); 
+	//   u_pred << sol.segment(opt.p.N*opt.nx+4,4);
 
-	  t2 = std::chrono::high_resolution_clock::now();
-	  //std::cout <<"Timing: "<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()*1e-6 << "[ms]" << "\n";
+	//   t2 = std::chrono::high_resolution_clock::now();
+	//   //std::cout <<"Timing: "<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()*1e-6 << "[ms]" << "\n";
 
-          t_log_MPC = std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3;
+  //         t_log_MPC = std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3;
 
-	  x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx*(opt.p.N-1),20),q0_local));
+	//   x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx*(opt.p.N-1),20),q0_local));
 
-	}
+	// }
         //vector_t x_des(21);
 	//hopper.css2dss(opt.Ac.block(0,0,opt.nx,opt.nx),opt.Bc.block(0,0,opt.nx,opt.nu),opt.Cc.block(0,0,opt.nx,1),state(0)-t_last_MPC,opt.Ad_,opt.Bd_,opt.Cd_);
 	//x_des << MPC::local2global(MPC::Exp(opt.Ad_*sol.segment(0,20) + opt.Bd_*u_pred + opt.Cd_));
 	//quat_des = Quaternion<scalar_t>(x_des(6), x_des(3), x_des(4), x_des(5));
 	//omega_des << x_des(14), x_des(15),x_des(16);
 	
-	quat_des = Quaternion<scalar_t>(x_pred(6,1), x_pred(3,1), x_pred(4,1), x_pred(5,1));
-	omega_des << x_pred(14,1), x_pred(15,1),x_pred(16,1);
-	u_des = u_pred;
+	// quat_des = Quaternion<scalar_t>(x_pred(6,1), x_pred(3,1), x_pred(4,1), x_pred(5,1));
+	// omega_des << x_pred(14,1), x_pred(15,1),x_pred(16,1);
+	// u_des = u_pred;
 
-	quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));
-	pos_term << x_term(0), x_term(1), x_term(2);
+  Policy policy = Policy();
+  
+  scalar_t x_d = 0;
+  scalar_t y_d = 0;
+  
+  quat_des = policy.DesiredQuaternion(state(1), state(2), x_d, y_d, state(8), state(9));
+  omega_des = policy.DesiredOmega();
+  u_des = policy.DesiredInputs();
+
+	// quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));
+	// pos_term << x_term(0), x_term(1), x_term(2);
 
         {std::lock_guard<std::mutex> lck(des_state_mtx);
 		desstate[0] = quat_des.w();
@@ -497,21 +506,21 @@ int main(int argc, char **argv){
 	//	t_last = state(0);
 	//}
 
-	vector_t v_global(6);
-	vector_t v_local(6);
-	vector_t x_global(21);
-	vector_t x_local(21);
-	vector_t xi_local(21);
-	x_global << hopper.q, hopper.v;
-	x_local = MPC::global2local(x_global);
-	xi_local = MPC::Log(x_local);
-	v_global = hopper.v.segment(0,6);
-	v_local = x_local.segment(11,6);
-        // Log data
-	t2 = std::chrono::high_resolution_clock::now();
-	if (replan)
-    if (fileWrite)
-	    fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+	// vector_t v_global(6);
+	// vector_t v_local(6);
+	// vector_t x_global(21);
+	// vector_t x_local(21);
+	// vector_t xi_local(21);
+	// x_global << hopper.q, hopper.v;
+	// x_local = MPC::global2local(x_global);
+	// xi_local = MPC::Log(x_local);
+	// v_global = hopper.v.segment(0,6);
+	// v_local = x_local.segment(11,6);
+  //       // Log data
+	// t2 = std::chrono::high_resolution_clock::now();
+	// if (replan)
+  //   if (fileWrite)
+	//     fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
 
     }
 
