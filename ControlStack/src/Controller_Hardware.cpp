@@ -467,10 +467,7 @@ int main(int argc, char **argv){
 
   Policy policy = Policy();
   
-  scalar_t x_d = 0;
-  scalar_t y_d = 0;
-  
-  quat_des = policy.DesiredQuaternion(state(1), state(2), x_d, y_d, state(8), state(9));
+  quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9));
   omega_des = policy.DesiredOmega();
   u_des = policy.DesiredInputs();
 
