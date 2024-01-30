@@ -24,23 +24,20 @@
 using namespace Eigen;
 using namespace Hopper_t;
 
-
-quat_t Policy::eulerToQuaternion(scalar_t roll, scalar_t pitch, scalar_t yaw) {
+quat_t Policy::Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw){
+    quat_t q = AngleAxisd(roll, Vector3d::UnitX())
+                    * AngleAxisd(pitch, Vector3d::UnitY())
+                    * AngleAxisd(yaw, Vector3d::UnitZ());
     
-    quat_t quaternion = AngleAxisd(roll, Vector3d::UnitX())
-                      * AngleAxisd(pitch, Vector3d::UnitY())
-                      * AngleAxisd(yaw, Vector3d::UnitZ());
-
-// std::cout<<"Quaternion"<<quaternion.w()<<std::endl<<quaternion.x()<<std::endl<<quaternion.y()<<std::endl<<quaternion.z()<<std::endl;
-    //std::cout<<quaternion.coeffs().transpose()<<std::endl;
-    return quaternion;
+    return q;
+                       
 }
 
 template <typename T> int Policy::sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a){
+quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, vector_3t currentEulerAngles){
     
     //scaling coefficients for the exponential map
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -79,9 +76,12 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
 // std::cout << "Desired Pitch: " << pitch_d << std::endl;
 // std::cout << "Desired Roll: " << roll_d << std::endl;
 
-    quat_t quat_d = eulerToQuaternion(roll_d, pitch_d, yaw_d);
+    vector_3t desiredEulerAngles;
+    desiredEulerAngles << roll_d, pitch_d, yaw_d;
 
-    return quat_d;
+    quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
+    
+    return desiredLocalInput;
 
 }
 
@@ -101,4 +101,34 @@ vector_4t Policy::DesiredInputs(){
     u_des << 0, 0, 0, 0;
     
     return u_des;
+}
+
+
+quat_t Policy::MultiplyQuaternions(quat_t input, quat_t multiplier){
+    quat_t q;
+
+    q = (multiplier)*(input)*(multiplier.inverse());
+
+    return q;
+}
+
+
+quat_t Policy::YawTransformation(vector_3t currentEulerAngles, vector_3t desiredEulerAngles){
+    // EulerAngles == roll, pitch, yaw 
+
+    // generating the quaternion map from current yaw only for mapping back and forth
+    quat_t currentYawQuaternionInverse;
+    currentYawQuaternionInverse = Euler2Quaternion(0, 0, currentEulerAngles(2)).inverse();
+    // Quaternionf currentYawQuaternionInverse = currentYawQuaternion.inverse();
+
+    // converting the desired euler angles for quaternion multiplication [0, roll, pitch, yaw]
+    quat_t desiredEulerAnglesQuatRep;
+    desiredEulerAnglesQuatRep.w() = 0;
+    desiredEulerAnglesQuatRep.vec() = desiredEulerAngles;
+
+    // changing to local basis
+    quat_t inputLocalBasis = MultiplyQuaternions(desiredEulerAnglesQuatRep, currentYawQuaternionInverse);
+    
+    return inputLocalBasis;
+
 }

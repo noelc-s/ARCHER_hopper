@@ -27,7 +27,7 @@ public:
     *  @param [in] yaw  yaw angle of the body frame wrt the world frame
     *  @param [out] quaternion  quaternion representation of the orientation
     */
-    quat_t eulerToQuaternion(scalar_t roll, scalar_t pitch, scalar_t yaw);
+    quat_t Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw);
 
     /*! @brief  evaluate the forward dynamics
     *  @param [in] x_a  current position (x-direction) of the body frame wrt the world frame
@@ -36,7 +36,7 @@ public:
     *  @param [in] y_d  desired position (y-direction) of the body frame wrt the world frame
     *  @param [out] quat_d  desired quaternion for the low level controller
     */
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a);
+    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, vector_3t currentEulerAngles);
     
     /*! @brief  evaluate the forward dynamics
     *  @param [out] omega_d  desired omega (rate of change of quaternion) of the body frame wrt the world fram
@@ -47,5 +47,9 @@ public:
     *  @param [out] u_des  desired feedforward input
     */
     vector_4t DesiredInputs();
+
+    quat_t MultiplyQuaternions(quat_t input, quat_t multiplier);
+
+    quat_t YawTransformation(vector_3t currentEulerAngles, vector_3t desiredEulerAngles);
 
 };
