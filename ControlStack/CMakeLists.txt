@@ -8,14 +8,13 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
 
-SET(PATH_TO_REPOS /home/amberlab/repos) ######################
+SET(PATH_TO_REPOS /home/noelcs/repos) ######################
 
-SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco-2.2.1 CACHE PATH "Path to Mujoco dir")
+SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
 SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
 SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
 SET(OSQP_DIR ${PATH_TO_REPOS}/osqp_install CACHE PATH "Path to osqp dir")
 SET(OSQP_EIGEN_DIR ${PATH_TO_REPOS}/osqp-eigen_install CACHE PATH "Path to osqp-eigen dir")
-SET(GLFW3_DIR ${PATH_TO_REPOS}/glfw-3.3.9 CACHE PATH "Path to glfw3 dir")
 list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${OSQP_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${OSQP_EIGEN_DIR})

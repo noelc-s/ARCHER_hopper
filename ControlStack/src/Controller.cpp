@@ -216,7 +216,8 @@ int main() {
             scalar_t x_d = 0;
             scalar_t y_d = 0;
 
-            quat_des = policy.DesiredQuaternion(state(1), state(2), x_d, y_d, state(8), state(9));
+	    std::cout << command.transpose() << std::endl;
+            quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9));
             omega_des = policy.DesiredOmega();
             u_des = policy.DesiredInputs();
 
@@ -227,6 +228,8 @@ int main() {
             for (int i = 0; i < 4; i++) {
                 TX_torques[i] = hopper.torque[i];
             }
+	    TX_torques[11] = command(0);
+	    TX_torques[12] = command(1);
 
 
             send(*new_socket, &TX_torques, sizeof(TX_torques), 0);

@@ -21,10 +21,10 @@ Simulator:
   # Perturbation Forces
   #pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
   #pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
-  pert_force_x: [80, 0,00, 0]
-  pert_force_y: [00, 80, 00,00]
-  pert_start: [2000, 4100, 11000,14000] # start time for force [milliseconds]
-  pert_end: [2100, 4150, 11150, 14150]  # end time for force [milliseconds
+  pert_force_x: [00, 0,00, 0]
+  pert_force_y: [00, 00, 00,00]
+  pert_start: [2000, 5100, 11000,14000] # start time for force [milliseconds]
+  pert_end: [2500, 5500, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
   
 MPC:
@@ -51,8 +51,8 @@ MPC:
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
 RaibertHeuristic:
-  kx_p: -0.3                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.3                                           # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                                           # p gain for placing foot to manipulate the forward velocity (y-direction)
   kx_d: -0.2                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.2                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
