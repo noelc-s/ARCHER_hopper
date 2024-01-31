@@ -37,7 +37,7 @@ template <typename T> int Policy::sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, vector_3t currentEulerAngles){
+quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles){
     
     //scaling coefficients for the exponential map
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -48,6 +48,8 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     scalar_t kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
     scalar_t ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
     scalar_t angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
+    scalar_t pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
+    scalar_t roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
 
 // quat_t quat_des = Eigen::Quaternion<scalar_t>(1,0,0,0);
 
@@ -71,15 +73,19 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     pitch_d = std::max(pitch_d, -angle_max);
     scalar_t roll_d = std::min(ky_p*del_y + ky_d*yd_a, angle_max);
     roll_d = std::max(roll_d, -angle_max);
-    scalar_t yaw_d = 0;
+    scalar_t yaw_d = yaw_des;
 
 // std::cout << "Desired Pitch: " << pitch_d << std::endl;
 // std::cout << "Desired Roll: " << roll_d << std::endl;
 
-    vector_3t desiredEulerAngles;
-    desiredEulerAngles << roll_d, pitch_d, yaw_d;
 
-    quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
+    // vector_3t desiredEulerAngles;
+    // desiredEulerAngles << roll_d, pitch_d, yaw_d;
+    std::cout<<"Desired Roll, Pitch " << roll_d << pitch_d << std::endl;
+    // std::cout<<"Desired Pitch " << pitch_d << std::endl; 
+    // quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
+
+    quat_t desiredLocalInput = Euler2Quaternion(roll_d - roll_d_offset, pitch_d - pitch_d_offset, yaw_d);
     
     return desiredLocalInput;
 

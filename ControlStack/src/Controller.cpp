@@ -220,7 +220,7 @@ int main() {
         vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
 	    
         std::cout << command.transpose() << std::endl;
-            quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), currentEulerAngles);
+            quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(1), currentEulerAngles);
             omega_des = policy.DesiredOmega();
             u_des = policy.DesiredInputs();
 
