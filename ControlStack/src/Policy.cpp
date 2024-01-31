@@ -81,11 +81,14 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
 
     // vector_3t desiredEulerAngles;
     // desiredEulerAngles << roll_d, pitch_d, yaw_d;
-    std::cout<<"Desired Roll, Pitch " << roll_d << pitch_d << std::endl;
+    //std::cout<<"Desired Roll, Pitch " << roll_d << pitch_d << std::endl;
     // std::cout<<"Desired Pitch " << pitch_d << std::endl; 
     // quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
 
     quat_t desiredLocalInput = Euler2Quaternion(roll_d - roll_d_offset, pitch_d - pitch_d_offset, yaw_d);
+    //std::cout << roll_d << ", " << pitch_d << ", " << yaw_d << std::endl;
+    //std::cout << desiredLocalInput.coeffs().transpose() << std::endl;
+    //std::cout << xd_a << ", " << yd_a << std::endl;
     
     return desiredLocalInput;
 
