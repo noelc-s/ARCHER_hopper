@@ -26,7 +26,7 @@ float x_d[7];
 #define MAX_CURRENT 12  //  15
 #define MIN_CURRENT -12 // -15
 
-#define TIMEOUT_INTERVAL 100 // ms to timeout
+#define TIMEOUT_INTERVAL 1000 // ms to timeout
 
 using vector_3t = Eigen::Matrix<float, 3, 1>;
 using vector_4t = Eigen::Matrix<float, 4, 1>;
@@ -49,9 +49,9 @@ using quat_t = Eigen::Quaternion<float>;
 // These gains are for MPC
 // 10x gain caused massive chatter
 // These gains have almost no tracking
-#define kp_y 15.0
+#define kp_y 180.0
 #define kp_rp 180.0
-#define kd_y 1.0
+#define kd_y 4.0
 #define kd_rp 4.0 // 6 is better, but then I need a filter.
 
 //use volatile if we need to use threading for our robot
