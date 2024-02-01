@@ -34,6 +34,7 @@
 #include "../inc/Types.h"
 // #include "../inc/MPC.h"
 #include "../inc/Policy.h"
+#include "../inc/ZeroDynamicsPolicy.h"
 
 #define MAXLINE 1000
 #define MAX 48
@@ -465,7 +466,8 @@ int main(int argc, char **argv){
 	// omega_des << x_pred(14,1), x_pred(15,1),x_pred(16,1);
 	// u_des = u_pred;
 
-  Policy policy = Policy();
+  // Policy policy = Policy();
+  ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
   
   quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
   vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
