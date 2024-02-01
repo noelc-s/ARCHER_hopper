@@ -25,6 +25,19 @@ public:
       scalar_t roll_d_offset;
     } params;
 
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;
 
     void EvaluateNetwork(const vector_4t state, vector_2t& output);
 
