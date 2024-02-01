@@ -20,6 +20,7 @@
 #include <manif/manif.h>
 
 #include "../inc/Policy.h"
+#include "../inc/ZeroDynamicsPolicy.h"
 #include "../inc/Hopper.h"
 #include "../inc/NeuralGaitPolicy.h"
 #include "../inc/Types.h"
@@ -197,7 +198,8 @@ int main() {
     vector_4t u_des;
 
     // Instantiate a new policy.
-    Policy policy = Policy();
+    //Policy policy = Policy();
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
 
     // MH
     // for infinity, do
