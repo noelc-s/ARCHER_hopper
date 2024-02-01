@@ -21,6 +21,7 @@
 
 #include "../inc/Policy.h"
 #include "../inc/Hopper.h"
+#include "../inc/NeuralGaitPolicy.h"
 #include "../inc/Types.h"
 
 #include "pinocchio/algorithm/jacobian.hpp"
