@@ -8,7 +8,7 @@
 #include <vector>
 #include "Types.h"
 // Header for onnxruntime
-#include "/home/amberlab/repos/onnxruntime_install/include/onnxruntime/onnxruntime_cxx_api.h"
+#include <onnxruntime_cxx_api.h>
 
 using namespace Hopper_t;
 

@@ -7,7 +7,7 @@ project(hopper)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
-# set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE on)
 
 SET(PATH_TO_REPOS /home/noelcs/repos) ######################
 
@@ -16,7 +16,7 @@ SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocch
 SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
 SET(OSQP_DIR ${PATH_TO_REPOS}/osqp_install CACHE PATH "Path to osqp dir")
 SET(OSQP_EIGEN_DIR ${PATH_TO_REPOS}/osqp-eigen_install CACHE PATH "Path to osqp-eigen dir")
-SET(onnxruntime_DIR ${PATH_TO_REPOS}/onnxruntime_install/lib/cmake/onnxruntime CACHE PATH "Path to onnx dir")
+SET(onnxruntime_DIR ${PATH_TO_REPOS}/onnxruntime_install CACHE PATH "Path to onnx dir")
 list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${OSQP_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${OSQP_EIGEN_DIR})
@@ -35,7 +35,7 @@ find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
 find_package(manif REQUIRED HINTS ${MANIF_DIR})
 find_package(roscpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(onnxruntime REQUIRED)
+find_package(onnxruntime REQUIRED HINTS ${onnxruntime_DIR}/lib/cmake/onnxruntime)
 include_directories(${PINOCCHIO_DIR}/include)
 
 include_directories(${MUJOCO_DIR}/include)
@@ -48,7 +48,9 @@ set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/l
 add_executable(hopper_ctrl src/Controller.cpp src/Hopper.cpp src/Policy.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
 target_link_libraries(hopper_ctrl Eigen3::Eigen)
+target_link_libraries(hopper_ctrl onnxruntime::onnxruntime)
 target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
+target_include_directories(hopper_ctrl PUBLIC ${onnxruntime_DIR}/include)
 
 target_link_libraries(hopper_ctrl ${PINOCCHIO_LIBRARIES})
 target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
