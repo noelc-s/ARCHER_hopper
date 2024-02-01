@@ -7,6 +7,7 @@
 #include "yaml-cpp/yaml.h"
 #include <math.h>
 #include <onnxruntime_cxx_api.h>
+#include <numeric>
 
 using namespace Hopper_t;
 using namespace Eigen;
@@ -23,6 +24,9 @@ public:
       scalar_t pitch_d_offset;
       scalar_t roll_d_offset;
     } params;
+
+
+    void EvaluateNetwork(const vector_4t state, vector_2t& output);
 
     quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles);
     vector_3t DesiredOmega();
