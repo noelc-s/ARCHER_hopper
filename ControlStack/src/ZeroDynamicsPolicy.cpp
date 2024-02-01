@@ -26,39 +26,23 @@ ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name) {
 
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
         Ort::SessionOptions session_options;
-        session = new Ort::Session(env, model_name.c_str(), session_options);
+        session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
 
         inputNodeName = session->GetInputNameAllocated(0, allocator).get();
         outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
 
-        *inputTypeInfo = session->GetInputTypeInfo(0);
+        inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
         auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
         inputType = inputTensorInfo.GetElementType();
         inputDims = inputTensorInfo.GetShape();
 
-        *outputTypeInfo = session->GetOutputTypeInfo(0);
+        outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
         auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
         outputType = outputTensorInfo.GetElementType();
         outputDims = outputTensorInfo.GetShape();
 
         inputTensorSize = vectorProduct(inputDims);
         outputTensorSize = vectorProduct(outputDims);
-
-//    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-//        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-//    inputTensors.push_back(Ort::Value::CreateTensor<float>(
-//        memoryInfo, input.data(), inputTensorSize, inputDims.data(),
-//        inputDims.size()));
-//    outputTensors.push_back(Ort::Value::CreateTensor<float>(
-//        memoryInfo, output.data(), outputTensorSize,
-//        outputDims.data(), outputDims.size()));
-//    session.Run(Ort::RunOptions{nullptr}, inputNames.data(),
-//                inputTensors.data(), 1, outputNames.data(),
-//                outputTensors.data(), 1);
-//    for (const auto &e : output)
-//	    std::cout << e << std::endl;
-
-
 }
 
 void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t& output) {
@@ -94,12 +78,14 @@ void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t& outpu
 }
 
 quat_t ZeroDynamicsPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles){
-	quat_t desQuat(1,0,0,0);
 
 	vector_4t state;
-	state << x_a - x_d, y_a - y_d, xd_a, yd_a; 
+	state << x_a - x_d, xd_a, y_a - y_d,  yd_a; 
 	vector_2t rp_des;
 	EvaluateNetwork(state, rp_des);
+	quat_t desQuat = AngleAxisd(rp_des(1), Vector3d::UnitX())
+                    * AngleAxisd(rp_des(0), Vector3d::UnitY())
+                    * AngleAxisd(0, Vector3d::UnitZ());
 
 	return desQuat;
 

@@ -26,15 +26,15 @@ public:
     } params;
 
     Ort::Env env;
-    Ort::Session* session;
+    std::unique_ptr<Ort::Session> session;
     Ort::AllocatorWithDefaultOptions allocator;
     std::string inputNodeName;
     std::string outputNodeName;
-    Ort::TypeInfo* inputTypeInfo;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
     ONNXTensorElementDataType inputType;
     std::vector<int64_t> inputDims;
     size_t inputTensorSize;
-    Ort::TypeInfo* outputTypeInfo;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
     ONNXTensorElementDataType outputType;
     std::vector<int64_t> outputDims;
     size_t outputTensorSize;
