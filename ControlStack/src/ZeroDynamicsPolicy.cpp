@@ -55,54 +55,25 @@ void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t& outpu
     input[3] = state(3);
 
     std::vector<float> outpt(2);
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    Ort::Session session = Ort::Session(env, "../../models/trained_model.onnx", session_options);
-    Ort::AllocatorWithDefaultOptions allocator;
-    size_t numInputNodes = session.GetInputCount();
-    size_t numOutputNodes = session.GetOutputCount();
-    
-    auto inputNodeName = session.GetInputNameAllocated(0, allocator);
-    const char* inputName = inputNodeName.get();
 
-     Ort::TypeInfo inputTypeInfo = session.GetInputTypeInfo(0);
-    auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
 
-    ONNXTensorElementDataType inputType = inputTensorInfo.GetElementType();
+     Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+            OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
-    std::vector<int64_t> inputDims = inputTensorInfo.GetShape();
+     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+         memoryInfo, const_cast<float*>(input.data()), inputTensorSize,
+         inputDims.data(), inputDims.size());
 
-    auto outputNodeName = session.GetOutputNameAllocated(0, allocator);
-    const char* outputName = outputNodeName.get();
+     Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
+         memoryInfo, outpt.data(), outputTensorSize,
+         outputDims.data(), outputDims.size());
 
-    Ort::TypeInfo outputTypeInfo = session.GetOutputTypeInfo(0);
-    auto outputTensorInfo = outputTypeInfo.GetTensorTypeAndShapeInfo();
+     std::vector<const char*> inputNames{inputNodeName.c_str()};
+     std::vector<const char*> outputNames{outputNodeName.c_str()};
 
-    ONNXTensorElementDataType outputType = outputTensorInfo.GetElementType();
-
-    std::vector<int64_t> outputDims = outputTensorInfo.GetShape();
-    for (const auto &e : outputDims)
-
-    
-    size_t inputTensorSize = vectorProduct(inputDims);
-    size_t outputTensorSize = vectorProduct(outputDims);
-
-    std::vector<const char*> inputNames{inputName};
-    std::vector<const char*> outputNames{outputName};
-    std::vector<Ort::Value> inputTensors;
-    std::vector<Ort::Value> outputTensors;
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-    inputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, input.data(), 4, inputDims.data(),
-        inputDims.size()));
-    outputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size()));
-    session.Run(Ort::RunOptions{nullptr}, inputNames.data(),
-                inputTensors.data(), 1, outputNames.data(),
-                outputTensors.data(), 1);
+     session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
 
     output << outpt[0], outpt[1];
 }
