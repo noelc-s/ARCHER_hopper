@@ -276,6 +276,8 @@ int main(int argc, char **argv){
     std::string dataLog = "../data/data_hardware.csv";
     std::ofstream fileHandle;
     fileHandle.open(dataLog);
+    fileHandle <<"t,contact,x,y,z,q_w,q_x,q_y,q_z,l,wheel_pos1,wheel_pos2,wheel_pos3,x_dot,y_dot,z_dot,w_1,w_2,w_3,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,u_spring,tau_1,tau_2,tau_3,command_1,command_2,command_3"<<std::endl;
+
 
     desstate[0] = 1;
     desstate[1] = 0;
@@ -317,11 +319,12 @@ int main(int argc, char **argv){
     // Pinocchio states: pos, quat, leg, flywheeels
 
     // Set up Data logging
-    //bool fileWrite = true;
-    //std::string dataLog = "../data/data.csv";
-    //std::string predictionLog = "../data/prediction.csv";
-    //std::ofstream fileHandle;
-    //fileHandle.open(dataLog);
+    // bool fileWrite = true;
+    // std::string dataLog = "../data/data.csv";
+    // std::string predictionLog = "../data/prediction.csv";
+    // std::ofstream fileHandle;
+    // fileHandle.open(dataLog);
+    // fileHandle <<"t,contact,x,y,z,q_w,q_x,q_y,q_z,l,wheel_pos1,wheel_pos2,wheel_pos3,x_dot,y_dot,z_dot,w_1,w_2,w_3,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,u_spring,tau_1,tau_2,tau_3,command_1,command_2,command_3"<<std::endl;
     //fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
     //std::ofstream fileHandleDebug;
     //fileHandleDebug.open(predictionLog);
@@ -518,10 +521,10 @@ int main(int argc, char **argv){
 	// v_global = hopper.v.segment(0,6);
 	// v_local = x_local.segment(11,6);
   //       // Log data
-	// t2 = std::chrono::high_resolution_clock::now();
+	t2 = std::chrono::high_resolution_clock::now();
 	// if (replan)
-  //   if (fileWrite)
-	//     fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+    if (fileWrite)
+	    fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
 
     }
 
