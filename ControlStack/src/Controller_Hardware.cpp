@@ -182,7 +182,6 @@ void setupGains(const std::string filepath) {
     // mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
     // mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
     // mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
-
 }
 
 volatile bool ESP_initialized = false;
@@ -191,6 +190,7 @@ void getStateFromESP() {
   while(1) {
 
   //receive string states, ESP8266 -> PC
+  std::cout<<"Reading..."<<std::endl;
   read(sockfd, buff, sizeof(buff));
   char oneAdded[8];
   memcpy(oneAdded, buff+52, 8*sizeof(char));
@@ -223,6 +223,8 @@ void getStateFromESP() {
       }
       memcpy(&send_buff[40+i], &oneAdded, 1);
   }
+  
+  std::cout<<"Writing..."<<std::endl;
 
   write(sockfd, send_buff, sizeof(send_buff));
   ESP_initialized = true;
@@ -379,6 +381,8 @@ int main(int argc, char **argv){
     std::chrono::high_resolution_clock::time_point last_t_state_log;
 
     tstart = std::chrono::high_resolution_clock::now();
+    t2 = tstart;
+
     while(ros::ok()){
         ros::spinOnce();
 	t1 = std::chrono::high_resolution_clock::now();
@@ -411,11 +415,11 @@ int main(int argc, char **argv){
 	
 	// dt_elapsed = state(0) - t_last;
 	// dt_elapsed_MPC = state(0) - t_last_MPC;
-	
+	 
 
-  //       hopper.updateState(state);
-	// quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
-	// hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
+  hopper.updateState(state);
+	quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
+	hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
 	// // ^ turn the local omega to global omega
 	// vector_t q0(21);
 	// q0 << hopper.q, hopper.v;
@@ -468,64 +472,70 @@ int main(int argc, char **argv){
 	// quat_des = Quaternion<scalar_t>(x_pred(6,1), x_pred(3,1), x_pred(4,1), x_pred(5,1));
 	// omega_des << x_pred(14,1), x_pred(15,1),x_pred(16,1);
 	// u_des = u_pred;
+  scalar_t replan = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t2).count()*1e-3;
 
-  // Policy policy = Policy();
-  ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+  if(replan > p.dt){
+    
+    t2 = std::chrono::high_resolution_clock::now();
   
-  quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-  vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
-  quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(2), currentEulerAngles);
-  omega_des = policy.DesiredOmega();
-  u_des = policy.DesiredInputs();
+    Policy policy = Policy();
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    
+    quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
+    vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
+    quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(2), currentEulerAngles);
+    omega_des = policy.DesiredOmega();
+    u_des = policy.DesiredInputs();
 
-	// quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));
-	// pos_term << x_term(0), x_term(1), x_term(2);
+    // quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));
+    // pos_term << x_term(0), x_term(1), x_term(2);
 
-        {std::lock_guard<std::mutex> lck(des_state_mtx);
-		desstate[0] = quat_des.w();
-		desstate[1] = quat_des.x();
-		desstate[2] = quat_des.y();
-		desstate[3] = quat_des.z();
-		desstate[4] = omega_des(0);
-		desstate[5] = omega_des(1);
-		desstate[6] = omega_des(2);
-		desstate[7] = u_des(1);
-		desstate[8] = u_des(2);
-		desstate[9] = u_des(3);
-		//desstate[0] = 1;
-		//desstate[1] = 0;
-		//desstate[2] = 0;
-		//desstate[3] = 0;
-		//desstate[4] = 0;
-		//desstate[5] = 0;
-		//desstate[6] = 0;
-		//desstate[7] = 0;
-		//desstate[8] = 0;
-		//desstate[9] = 0;
-	}
-
-	//if (dt_elapsed > p.dt) {
-	//	//quat_des = Quaternion<scalar_t>(1,0,0,0);
-        //	hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
-	//	t_last = state(0);
-	//}
-
-	// vector_t v_global(6);
-	// vector_t v_local(6);
-	// vector_t x_global(21);
-	// vector_t x_local(21);
-	// vector_t xi_local(21);
-	// x_global << hopper.q, hopper.v;
-	// x_local = MPC::global2local(x_global);
-	// xi_local = MPC::Log(x_local);
-	// v_global = hopper.v.segment(0,6);
-	// v_local = x_local.segment(11,6);
-  //       // Log data
-	t2 = std::chrono::high_resolution_clock::now();
-	// if (replan)
-    if (fileWrite)
-	    fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
-
+          {std::lock_guard<std::mutex> lck(des_state_mtx);
+      desstate[0] = quat_des.w();
+      desstate[1] = quat_des.x();
+      desstate[2] = quat_des.y();
+      desstate[3] = quat_des.z();
+      desstate[4] = omega_des(0);
+      desstate[5] = omega_des(1);
+      desstate[6] = omega_des(2);
+      desstate[7] = u_des(1);
+      desstate[8] = u_des(2);
+      desstate[9] = u_des(3);
+      //desstate[0] = 1;
+      //desstate[1] = 0;
+      //desstate[2] = 0;
+      //desstate[3] = 0;
+      //desstate[4] = 0;
+      //desstate[5] = 0;
+      //desstate[6] = 0;
+      //desstate[7] = 0;
+      //desstate[8] = 0;
+      //desstate[9] = 0;
     }
+
+    //if (dt_elapsed > p.dt) {
+    //	//quat_des = Quaternion<scalar_t>(1,0,0,0);
+          //	hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
+    //	t_last = state(0);
+    //}
+
+    // vector_t v_global(6);
+    // vector_t v_local(6);
+    // vector_t x_global(21);
+    // vector_t x_local(21);
+    // vector_t xi_local(21);
+    // x_global << hopper.q, hopper.v;
+    // x_local = MPC::global2local(x_global);
+    // xi_local = MPC::Log(x_local);
+    // v_global = hopper.v.segment(0,6);
+    // v_local = x_local.segment(11,6);
+    //       // Log data
+    // t2 = std::chrono::high_resolution_clock::now();
+    // if (replan)
+      if (fileWrite)
+        fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+
+      }
+  }
 
 }
