@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-SET(PATH_TO_REPOS /home/noelcs/repos) ######################
+SET(PATH_TO_REPOS /home/amberlab/repos) ######################
 
 SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
 SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
@@ -28,7 +28,7 @@ option(HARDWARE "build with hardware support (ros)" ON)
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(osqp REQUIRED)
+find_package(osqp REQUIRED HINTS ${PATH_TO_REPOS}/osqp_install)
 find_package(OsqpEigen REQUIRED HINTS ${PATH_TO_REPOS}/osqp-eigen_install)
 find_package(glfw3 REQUIRED)
 find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
