@@ -27,7 +27,7 @@ int main(int argc, char const *argv[])
     sockaddr_in senderAddr;
     socklen_t senderAddrLen = sizeof(senderAddr);
 
-    size_t recvBytes = 0;
+    ssize_t recvBytes = 0;
     // do {
         recvBytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
         std::cout << recvBytes << std::endl;
