@@ -26,7 +26,7 @@ float x_d[7];
 #define MAX_CURRENT 12  //  15
 #define MIN_CURRENT -12 // -15
 
-#define TIMEOUT_INTERVAL 1000 // ms to timeout
+#define TIMEOUT_INTERVAL 10000 // ms to timeout
 
 using vector_3t = Eigen::Matrix<float, 3, 1>;
 using vector_4t = Eigen::Matrix<float, 4, 1>;
