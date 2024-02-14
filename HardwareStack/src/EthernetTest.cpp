@@ -1,6 +1,10 @@
 #include <iostream>
 #include <chrono>
 #include <string>
+#include <cstring>
+#include <memory>
+#include <bitset>
+#include <cstddef>
 
 #include <arpa/inet.h> // htons, inet_addr
 #include <netinet/in.h> // sockaddr_in
@@ -9,12 +13,12 @@
 #include <unistd.h> // close
 
 int main(int argc, char const *argv[])
-{
-    std::string hostname{"10.0.0.6"};
-    std::string destname{"10.0.0.7"};
-    uint16_t port = 4333;
+{   
+    std::string hostname{"10.0.0.6"};               // IP Adress of the MACHINE communicating with the teensy
+    std::string destname{"10.0.0.7"};               // IP Address of the TEENSY communicating with the machine
+    uint16_t port = 4333;                           // Port over which you want to communicate
 
-    int sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    int sock = ::socket(AF_INET, SOCK_DGRAM, 0);    // AF_INET for IPV4, SOCK_DGRAM for UDP, 0 for IP (protocol value)
 
     sockaddr_in source, destination;
     source.sin_family = AF_INET;
@@ -24,53 +28,76 @@ int main(int argc, char const *argv[])
     destination.sin_family = AF_INET;
     destination.sin_port = htons(port);
     destination.sin_addr.s_addr = inet_addr(destname.c_str());
+    socklen_t destinationAddrLen = sizeof(destination);
 
     int enabled = 1;
     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled));
 
     int val = bind(sock, (struct sockaddr*)&source,
              sizeof(source));
-    std::cout << val << std::endl;
-    perror("bind");
-    printf("Error binding socket: %d\n", errno);
+    // std::cout << val << std::endl;
+    // perror("bind");
+    // printf("Error binding socket: %d\n", errno);
 
-    std::string msg = "So, if you'd like to simplify it down and make it more C-like, including removing all of the type-safe class stuff it does, here are 3 simple and very easy-to-use functions to get timestamps in milliseconds, microseconds, and nanoseconds...that only took me about 12 hrs to write*:";
-
-   char buffer[1024];
+    char buffer[sizeof(float) *4];
     sockaddr_in senderAddr;
     senderAddr.sin_family = AF_INET;
     senderAddr.sin_port = htons(port);
     senderAddr.sin_addr.s_addr = inet_addr(hostname.c_str());
     socklen_t senderAddrLen = sizeof(senderAddr);
 
+    //ssize_t is used for functions whose return value could either be a valid size, or a negative value to indicate an error
     ssize_t recvBytes = 0;
-    // do {
-        //recvBytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
-	//std::cout << recvBytes << std::endl;
-    // } while(recvBytes==0);
+    ssize_t n_bytes = 0;
 
-    int n_bytes = 0;
-
+    /*
+    TIMING
     auto t1 = std::chrono::high_resolution_clock::now();
     auto t2 = std::chrono::high_resolution_clock::now();
     long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
         t2 - t1).count();
+    */
 
     while(1) {
-    n_bytes = ::sendto(sock, msg.c_str(), msg.length(), 0, reinterpret_cast<sockaddr*>(&destination), sizeof(destination));
-    //std::cout << n_bytes << " bytes sent" << std::endl;
-    t2 = std::chrono::high_resolution_clock::now(); 
-    microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
-    std::cout << microseconds<< std::endl;
-    recvBytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
-    std::cout << "Received: " << buffer << std::endl;
-    t2 = std::chrono::high_resolution_clock::now(); 
-    microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
-    std::cout << microseconds<< std::endl;
-    t1 = t2;
+
+        float value[5] = {-1.0, -4.322,3434.2,-242,424.4};
+
+
+        unsigned char line[sizeof(float)*5];
+        memcpy(line, value, sizeof(float)*5);
+
+        // n_bytes = ::sendto(sock, msg.c_str(), msg.length(), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
+        n_bytes = ::sendto(sock, line, sizeof(float)*5, 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
+
+        //std::cout << n_bytes << " bytes sent" << std::endl;
+        
+        /*
+        TIMING
+        t2 = std::chrono::high_resolution_clock::now(); 
+        microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+        std::cout << microseconds<< std::endl;
+        */
+        recvBytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
+        std::cout << "Received: "  << std::endl;
+        
+        float data[4] = {0.0,0.0,0.0,0.0};
+        std::memcpy(data, buffer, sizeof(data));
+
+        for(int i = 0; i<sizeof(data)/sizeof(float); i++){
+            std::cout<<data[i]<< " , ";
+        }
+        std::cout<<std::endl;
+        
+        /*
+        TIMING
+        t2 = std::chrono::high_resolution_clock::now(); 
+        microseconds = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+        std::cout << microseconds<< std::endl;
+        t1 = t2;
+        */
     }
 
-    ::close(sock);
+    ::close(sock);              // close the socket
 
 
     return 0;

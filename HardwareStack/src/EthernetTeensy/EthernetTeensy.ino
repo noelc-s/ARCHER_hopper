@@ -20,11 +20,7 @@ bool read_packet = false;
 //  Main Program
 // --------------------------------------------------------------------------
 
-// Forward declarations (not really needed in the Arduino environment)
-// static void printPrompt();
-void receivePacket();
-static void sendPacket();
-unsigned long t1, t2;
+// unsigned long t1, t2;
 
 // Program setup.
 void setup() {
@@ -53,10 +49,6 @@ void setup() {
     return;
   }
 
-  // if (!Ethernet.waitForLocalIP(kDHCPTimeout)) {
-  //   printf("Failed to get IP address from DHCP\r\n");
-  //   return;
-  // }
   printf("Obtaining the IP, Subnet and Gateway\r\n");
   ip = Ethernet.localIP();
   printf("    Local IP     = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
@@ -72,48 +64,13 @@ void setup() {
   // Start UDP listening on the port
   udp.begin(kPort);
 
-  t1 = micros();
-
-  // printPrompt();
+  // t1 = micros();
 }
 
 void loop() {
   receivePacket();
   sendPacket();
 }
-
-// Tries to read a line from the console and returns whether
-// a complete line was read. This is CR/CRLF/LF EOL-aware.
-static bool readLine(String &line) {
-  static bool inCR = false;  // Keeps track of CR state
-
-  while (Serial.available() > 0) {
-    int c;
-    switch (c = Serial.read()) {
-      case '\r':
-        inCR = true;
-        return true;
-
-      case '\n':
-        if (inCR) {
-          // Ignore the LF
-          inCR = false;
-          break;
-        }
-        return true;
-
-      default:
-        if (c < 0) {
-          return false;
-        }
-        inCR = false;
-        line.append(static_cast<char>(c));
-    }
-  }
-
-  return false;
-};
-
 
 // Control character names.
 static const String kCtrlNames[]{
@@ -125,17 +82,26 @@ static const String kCtrlNames[]{
 
 // Receives and prints chat packets.
 void receivePacket() {
+  
   int size = udp.parsePacket();
   if (size < 0) {
     return;
   };
+
   // Get the packet data and remote address
   const uint8_t *data = udp.data();
-  IPAddress ip = udp.remoteIP();
+  // IPAddress ip = udp.remoteIP();
 
   //printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
+  float rcvdData[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  memcpy(rcvdData, data, sizeof(float) * 5);
 
-  // Print each character
+  for(int i = 0; i<sizeof(rcvdData)/sizeof(float); i++){
+    printf("%f", rcvdData[i]);
+  }
+
+
+  // // Print each character
   // for (int i = 0; i < size; i++) {
   //   uint8_t b = data[i];
   //   if (b < 0x20) {
@@ -146,34 +112,37 @@ void receivePacket() {
   //     printf("<%02xh>", data[i]);
   //   }
   // }
-  // printf("\r\n");
+  printf("\r\n");
   read_packet = true;
-  t2 = micros();
-  // printf("Set read_packet to true\n");
+  // t2 = micros();
 }
 
 static void sendPacket() {
-  static String line;
-  line = "Dane Joe Note that micro-benchmarking is hard. An accurate timer is only a small part of what's necessary to get meaningful results for short timed regions. See Idiomatic way of performance evaluation? for some more general caveats)";
+  // static String line;
+  // line = "Dane Joe Note that micro-benchmarking is hard. An accurate timer is only a small part of what's necessary to get meaningful results for short timed regions. See Idiomatic way of performance evaluation? for some more general caveats)";
 
-  //IPAddress ip = Ethernet.broadcastIP();
-  // printf("    Broadcast IP     = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);  
-  // printf(Ethernet.broadcastIP());
+  float value[4] = {9.12,2.22,3.64,4.005};
+  // Serialize the float value to a byte array
   
-  // Read from the console and send lines
-  // if (readLine(line)) {
-    // printf("Attempting to send.");
+  char line[sizeof(float) * 4];
+  memcpy(line, value, sizeof(float) * 4);
+  
+  // printf(line);
+  // printf('\r\n');
+
+
+  
   if (read_packet) {
-    // printf("Attempting to send.\n");
     IPAddress ip_send(10,0,0,6);
     if (!udp.send(ip_send, kPort,
-                  reinterpret_cast<const uint8_t *>(line.c_str()),
-                  line.length())) {
-      // printf("[Error sending]\r\n");
+                  reinterpret_cast<const uint8_t *>(line),
+                  sizeof(float)*4)) {
+      printf("[Error sending]\r\n");
     }
-    //line = "";
-    read_packet = false;
-    Serial.println(t2-t1);
-    t1 = t2;
+  
+  read_packet = false;
+  // Serial.println(t2-t1);
+  // t1 = t2;
+  
   }
 }
