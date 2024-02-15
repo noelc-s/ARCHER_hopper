@@ -16,7 +16,7 @@ int main(int argc, char const *argv[])
 {   
     std::string hostname{"10.0.0.6"};               // IP Adress of the MACHINE communicating with the teensy
     std::string destname{"10.0.0.7"};               // IP Address of the TEENSY communicating with the machine
-    uint16_t port = 4333;                           // Port over which you want to communicate
+    uint16_t port = 4334;                           // Port over which you want to communicate
 
     int sock = ::socket(AF_INET, SOCK_DGRAM, 0);    // AF_INET for IPV4, SOCK_DGRAM for UDP, 0 for IP (protocol value)
 
