@@ -18,6 +18,7 @@
 #include <math.h>
 #include <signal.h>
 #include<thread>
+#include <unistd.h> // close socket
 
 #include "pinocchio/algorithm/jacobian.hpp"
 
@@ -51,14 +52,18 @@ using namespace pinocchio;
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
-int sockfd, connfd;
-char buff[60];
-char send_buff[46];
+int sock;
+char buff[52];
+char send_buff[40];
 float states[13];
 vector_t ESPstate(13);
 float desstate[10];
 std::mutex state_mtx;
 std::mutex des_state_mtx;
+sockaddr_in source, destination;
+sockaddr_in senderAddr;
+socklen_t destinationAddrLen;
+socklen_t senderAddrLen;
 
 static vector_3t getInput() {
   vector_3t input;
@@ -144,11 +149,6 @@ void setupGains(const std::string filepath) {
     p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
     p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
     p.dt = config["Debug"]["dt"].as<scalar_t>();
-    // p.MPC_dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    // p.MPC_dt_flight = config["MPC"]["dt_flight"].as<scalar_t>();
-    // p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
-    // p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
-    // p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
     p.predHorizon = config["Debug"]["predHorizon"].as<int>();
     p.stop_index = config["Debug"]["stopIndex"].as<int>();
     p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
@@ -156,51 +156,29 @@ void setupGains(const std::string filepath) {
     p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
             p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
             p.leg_kp, p.leg_kd;
-
-        // Read gain yaml
-    // mpc_p.N = config["MPC"]["N"].as<int>();
-    // mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
-    // mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
-    // std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
-    // mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
-    // mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    // mpc_p.groundDuration = config["MPC"]["groundDuration"].as<scalar_t>();
-    // mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
-    // mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
-    // mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
-    // int nx = 20;
-    // int nu = 4;
-    // mpc_p.stateScaling.resize(nx);
-    // mpc_p.inputScaling.resize(nu);
-    // for (int i = 0; i < nx; i++)
-    //     mpc_p.stateScaling(i) = tmp[i];
-    // tmp = config["MPC"]["inputScaling"].as<std::vector<scalar_t>>();
-    // for (int i = 0; i < nu; i++)
-    //     mpc_p.inputScaling(i) = tmp[i];
-    // mpc_p.tau_max = config["MPC"]["tau_max"].as<scalar_t>();
-    // mpc_p.f_max = config["MPC"]["f_max"].as<scalar_t>();
-    // mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
-    // mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
-    // mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
 }
 
 volatile bool ESP_initialized = false;
 
 void getStateFromESP() {
+
+  ssize_t recvBytes = 0;
+  ssize_t n_bytes = 0;
+
   while(1) {
 
   //receive string states, ESP8266 -> PC
   std::cout<<"Reading..."<<std::endl;
-  read(sockfd, buff, sizeof(buff));
-  char oneAdded[8];
-  memcpy(oneAdded, buff+52, 8*sizeof(char));
-  for (int i = 0; i < 8; i++) {
-    for (int j = 1; j < 8; j++) {
-      if(oneAdded[i] & (1 << (8-j))) {
-        buff[i*7+(j-1)] = 0;
-      }
-    }
+  recvBytes = ::recvfrom(sock, buff, sizeof(buff), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
+
+  float data[13] = {0.0,0.0,0.0,0.0,0.0, 0.0, 0.0,
+                            0.0,0.0,0.0,0.0,0.0,0.0};
+  std::memcpy(data, buff, sizeof(data));
+
+  for(int i = 0; i<sizeof(data)/sizeof(float); i++){
+      std::cout<<data[i]<< " , ";
   }
+  std::cout<<std::endl;
 
   memcpy(&states, buff, 13*sizeof(float));
   quat_t quat_a = quat_t(states[6], states[7], states[8], states[9]);
@@ -213,52 +191,54 @@ void getStateFromESP() {
   {std::lock_guard<std::mutex> lck(des_state_mtx);
   memcpy(send_buff, desstate, 10*4);
   }
-  for (int i = 0; i < 6; i++) {
-      char oneAdded = 0b00000001;
-      for (int j = 1; j < 8; j++){
-        if (send_buff[i*7+(j-1)] == 0b00000000) {
-          send_buff[i*7+(j-1)] = 0b00000001;
-          oneAdded += (1 << (8-j));
-        }
-      }
-      memcpy(&send_buff[40+i], &oneAdded, 1);
-  }
   
   std::cout<<"Writing..."<<std::endl;
 
-  write(sockfd, send_buff, sizeof(send_buff));
+  n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
+  // write(sockfd, send_buff, sizeof(send_buff));
   ESP_initialized = true;
   }
+
+  ::close(sock); 
 
 }
 
 void setupSocket() {
-        // socket stuff
-        struct sockaddr_in servaddr, cli;
 
-        // socket create and verification
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sockfd == -1) {
-                printf("socket creation failed...\n");
-                exit(0);
-        }
-        else
-                printf("Socket successfully created..\n");
-        bzero(&servaddr, sizeof(servaddr));
+    std::string hostname{"10.0.0.6"};               // IP Adress of the MACHINE communicating with the teensy
+    std::string destname{"10.0.0.7"};               // IP Address of the TEENSY communicating with the machine
+    uint16_t port = 4333;                           // Port over which you want to communicate
 
-        // assign IP, PORT
-        servaddr.sin_family = AF_INET;
-        servaddr.sin_addr.s_addr = inet_addr("192.168.1.4");
-        servaddr.sin_port = htons(PORT);
+    sock = ::socket(AF_INET, SOCK_DGRAM, 0);    // AF_INET for IPV4, SOCK_DGRAM for UDP, 0 for IP (protocol value)
 
-        // connect the client socket to server socket
-        if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
-                printf("connection with the server failed...\n");
-                exit(0);
-        }
-        else
-                printf("connected to the server..\n");
-        sleep(1);
+    if (sock == -1) {
+      printf("socket creation failed...\n");
+      exit(0);
+    }
+    else{
+      printf("Socket successfully created..\n");
+    }
+
+    source.sin_family = AF_INET;
+    source.sin_port = htons(port);
+    source.sin_addr.s_addr = inet_addr(hostname.c_str());
+
+    destination.sin_family = AF_INET;
+    destination.sin_port = htons(port);
+    destination.sin_addr.s_addr = inet_addr(destname.c_str());
+    destinationAddrLen = sizeof(destination);
+
+    int enabled = 1;
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled));
+
+    int val = bind(sock, (struct sockaddr*)&source,
+             sizeof(source));
+
+    senderAddr.sin_family = AF_INET;
+    senderAddr.sin_port = htons(port);
+    senderAddr.sin_addr.s_addr = inet_addr(hostname.c_str());
+    senderAddrLen = sizeof(senderAddr);
+    sleep(1);
 }
 
 //
@@ -478,8 +458,8 @@ int main(int argc, char **argv){
     
     t2 = std::chrono::high_resolution_clock::now();
   
-    Policy policy = Policy();
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    // Policy policy = Policy();
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
     
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
     vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
