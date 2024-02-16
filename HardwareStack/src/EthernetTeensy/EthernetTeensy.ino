@@ -68,6 +68,7 @@ void setup() {
 }
 
 void loop() {
+  
   receivePacket();
   sendPacket();
   // printf("Receiving Packet\n");
@@ -75,6 +76,7 @@ void loop() {
 
 // Receives and prints chat packets.
 void receivePacket() {
+  // printf("receiving.. \n");
   
   int size = udp.parsePacket();
   if (size < 0) {
@@ -101,6 +103,7 @@ void receivePacket() {
 }
 
 static void sendPacket() {
+  // printf("sending ..\n");
 
   float value[13] = {4.3, 4.2, -1, 9.12, 2.22, 3.64, 4.005,
                       0.44, 42.4, 222.33, 2232.3, 44.33, 31.11};

@@ -160,12 +160,24 @@ void setupGains(const std::string filepath) {
 
 volatile bool ESP_initialized = false;
 
-void getStateFromESP() {
+void getStateFromEthernet() {
 
   ssize_t recvBytes = 0;
   ssize_t n_bytes = 0;
 
   while(1) {
+
+    // encode send_buff
+  {std::lock_guard<std::mutex> lck(des_state_mtx);
+  memcpy(send_buff, desstate, 10*4);
+  }
+  
+  std::cout<<"Writing..."<<std::endl;
+  
+  n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
+  // write(sockfd, send_buff, sizeof(send_buff));
+  
+
 
   //receive string states, ESP8266 -> PC
   std::cout<<"Reading..."<<std::endl;
@@ -185,20 +197,12 @@ void getStateFromESP() {
   quat_a.normalize();
   {std::lock_guard<std::mutex> lck(state_mtx);
   ESPstate << states[0], states[1], states[2], states[3], states[4], states[5], quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), states[10], states[11], states[12];
-  }
-
-  // encode send_buff
-  {std::lock_guard<std::mutex> lck(des_state_mtx);
-  memcpy(send_buff, desstate, 10*4);
-  }
-  
-  std::cout<<"Writing..."<<std::endl;
-
-  n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
-  // write(sockfd, send_buff, sizeof(send_buff));
   ESP_initialized = true;
   }
 
+  }
+
+  
   ::close(sock); 
 
 }
@@ -274,7 +278,7 @@ int main(int argc, char **argv){
 
     signal(SIGINT, signal_callback_handler);
     setupSocket();
-    std::thread thread_object(getStateFromESP);
+    std::thread thread_object(getStateFromEthernet);
 
     std::chrono::high_resolution_clock::time_point t1;
     std::chrono::high_resolution_clock::time_point t2;
