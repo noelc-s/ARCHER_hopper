@@ -53,8 +53,8 @@ SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a
 RaibertHeuristic:
   kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
   ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.2                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.2                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.35                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.35                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
   pitch_d_offset: 0.00
   roll_d_offset: 0

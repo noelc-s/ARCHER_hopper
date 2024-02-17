@@ -172,7 +172,7 @@ void getStateFromEthernet() {
   memcpy(send_buff, desstate, 10*4);
   }
   
-  std::cout<<"Writing..."<<std::endl;
+  // std::cout<<"Writing..."<<std::endl;
   
   n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
   // write(sockfd, send_buff, sizeof(send_buff));
@@ -180,17 +180,17 @@ void getStateFromEthernet() {
 
 
   //receive string states, ESP8266 -> PC
-  std::cout<<"Reading..."<<std::endl;
+  // std::cout<<"Reading..."<<std::endl;
   recvBytes = ::recvfrom(sock, buff, sizeof(buff), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
 
   float data[13] = {0.0,0.0,0.0,0.0,0.0, 0.0, 0.0,
                             0.0,0.0,0.0,0.0,0.0,0.0};
   std::memcpy(data, buff, sizeof(data));
 
-  for(int i = 0; i<sizeof(data)/sizeof(float); i++){
-      std::cout<<data[i]<< " , ";
-  }
-  std::cout<<std::endl;
+  // for(int i = 0; i<sizeof(data)/sizeof(float); i++){
+  //     std::cout<<data[i]<< " , ";
+  // }
+  // std::cout<<std::endl;
 
   memcpy(&states, buff, 13*sizeof(float));
   quat_t quat_a = quat_t(states[6], states[7], states[8], states[9]);
@@ -262,7 +262,7 @@ int main(int argc, char **argv){
     std::string dataLog = "../data/data_hardware.csv";
     std::ofstream fileHandle;
     fileHandle.open(dataLog);
-    fileHandle <<"t,contact,x,y,z,q_w,q_x,q_y,q_z,l,wheel_pos1,wheel_pos2,wheel_pos3,x_dot,y_dot,z_dot,w_1,w_2,w_3,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,u_spring,tau_1,tau_2,tau_3,command_1,command_2,command_3"<<std::endl;
+    fileHandle <<"t,contact,x,y,z,q_w,q_x,q_y,q_z,l,wheel_pos1,wheel_pos2,wheel_pos3,x_dot,y_dot,z_dot,w_1,w_2,w_3,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,u_spring,tau_1,tau_2,tau_3,command_1,command_2,command_3,quat_d_w, quat_d_x, quat_d_y, quat_d_z"<<std::endl;
 
 
     desstate[0] = 1;
@@ -367,6 +367,9 @@ int main(int argc, char **argv){
     tstart = std::chrono::high_resolution_clock::now();
     t2 = tstart;
 
+    Policy policy = Policy();
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+
     while(ros::ok()){
         ros::spinOnce();
 	t1 = std::chrono::high_resolution_clock::now();
@@ -461,9 +464,6 @@ int main(int argc, char **argv){
   if(replan > p.dt){
     
     t2 = std::chrono::high_resolution_clock::now();
-  
-    // Policy policy = Policy();
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
     
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
     vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
@@ -502,7 +502,6 @@ int main(int argc, char **argv){
           //	hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
     //	t_last = state(0);
     //}
-
     // vector_t v_global(6);
     // vector_t v_local(6);
     // vector_t x_global(21);
@@ -516,9 +515,12 @@ int main(int argc, char **argv){
     //       // Log data
     // t2 = std::chrono::high_resolution_clock::now();
     // if (replan)
-      if (fileWrite)
-        fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
-
+      if (fileWrite) {
+        fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," 
+        << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," 
+        << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< "," 
+        << quat_des.coeffs().transpose().format(CSVFormat) << std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+      }
       }
   }
 
