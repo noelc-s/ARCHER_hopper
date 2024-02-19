@@ -3,7 +3,7 @@ LowLevel:
   # For the reaction wheeels multiplying orientation error and angular rate
   Orientation:
     Kp: [ -90,-90,-90 ]
-    Kd: [ 1.5,1.5,1.5 ]
+    Kd: [ 3,3,3]
   # For the leg multiplying deflection error and velocity
   Leg:
     Kp: .5
@@ -11,7 +11,7 @@ LowLevel:
   dt: 0.001
 
 Simulator:
-  p0: [0.0,0,0.5]         # initial position [x,y,z]
+  p0: [0,0,0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
@@ -21,7 +21,7 @@ Simulator:
   # Perturbation Forces
   #pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
   #pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
-  pert_force_x: [00, 0,00, 0]
+  pert_force_x: [0, 0,00, 0]
   pert_force_y: [00, 00, 00,00]
   pert_start: [2000, 5100, 11000,14000] # start time for force [milliseconds]
   pert_end: [2500, 5500, 11150, 14150]  # end time for force [milliseconds
@@ -58,6 +58,8 @@ RaibertHeuristic:
   angle_max: 1.0
   pitch_d_offset: 0.00
   roll_d_offset: 0
+  yaw_damping: 0.0035
+  # yaw_damping: 1.0
 
 UnitTest:
   response: 'n'

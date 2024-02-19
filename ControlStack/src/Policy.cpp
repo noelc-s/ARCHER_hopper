@@ -1,4 +1,5 @@
 #include "../inc/Policy.h"
+#include <manif/manif.h>
 
 // x_d = 0
 // xdot_d = 0
@@ -47,6 +48,7 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     scalar_t ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
     scalar_t kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
     scalar_t ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
+    scalar_t yaw_damping = config["RaibertHeuristic"]["yaw_damping"].as<scalar_t>();
     scalar_t angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
     scalar_t pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
     scalar_t roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
@@ -73,7 +75,10 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     pitch_d = std::max(pitch_d, -angle_max);
     scalar_t roll_d = std::min(ky_p*del_y + ky_d*yd_a, angle_max);
     roll_d = std::max(roll_d, -angle_max);
-    scalar_t yaw_d = yaw_des;
+    static scalar_t yaw_des_rolling = 0;
+    yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
+    std::cout << yaw_des_rolling << std::endl;
+    scalar_t yaw_d = yaw_des_rolling;
 
 // std::cout << "Desired Pitch: " << pitch_d << std::endl;
 // std::cout << "Desired Roll: " << roll_d << std::endl;
@@ -86,7 +91,9 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     // quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
 
     quat_t desiredLocalInput = Euler2Quaternion(roll_d - roll_d_offset, pitch_d - pitch_d_offset, yaw_d);
-    //std::cout << roll_d << ", " << pitch_d << ", " << yaw_d << std::endl;
+
+    // std::cout << del_x << ", " << del_y << ", " << roll_d << ", " << pitch_d << ", " << yaw_d << std::endl;
+    std::printf("%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", del_x, xd_a, del_y, yd_a, roll_d, pitch_d, yaw_d);
     //std::cout << desiredLocalInput.coeffs().transpose() << std::endl;
     //std::cout << xd_a << ", " << yd_a << std::endl;
     

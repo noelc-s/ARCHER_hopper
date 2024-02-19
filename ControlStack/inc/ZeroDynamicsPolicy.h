@@ -23,6 +23,7 @@ public:
       scalar_t angle_max;
       scalar_t pitch_d_offset;
       scalar_t roll_d_offset;
+      scalar_t yaw_damping;
     } params;
 
     Ort::Env env;
