@@ -367,8 +367,8 @@ int main(int argc, char **argv){
     tstart = std::chrono::high_resolution_clock::now();
     t2 = tstart;
 
-    Policy policy = Policy();
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    // Policy policy = Policy();
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
 
     while(ros::ok()){
         ros::spinOnce();
