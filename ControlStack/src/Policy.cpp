@@ -1,143 +1,143 @@
 #include "../inc/Policy.h"
+#include <manif/manif.h>
 
-// x_d = 0
-// xdot_d = 0
-// y_d = 0
-// ydot_d = 0
-
-// rdot_d = 0
-// pdot_d = 0
-// ydot_d = 0
-
-// control algorithm
-// 1. Desired Forward velocity
-// xf_0 = xdot*T/2         xdot = known, T = unknown; can be calculated from the stance phase from the previous iteration. What about the first iteration?
-// xf_delta = kx*(xdot - xdot_des) = kx(xdot)
-// xf = xf_0 + xf_delta
-// Inverse Map: Foot Position to (r, p, y, l) <- this gives the desired Roll, Pitch, Yaw and length (r_d, p_d, y_d, l_d)
-// RPY2Quat(r_d, p_d, y_d) -> (q0_d, q1_d, q2_d, q3_d)
-// Quaternion2FlywheelAngles(q0_d, q1_d, q2_d, q3_d) -> (theta_1, theta_2, theta_3)
-
-
-// 2. Desired Attitude
-// 3. Desired Height
 using namespace Eigen;
 using namespace Hopper_t;
 
-quat_t Policy::Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw){
-    quat_t q = AngleAxisd(roll, Vector3d::UnitX())
-                    * AngleAxisd(pitch, Vector3d::UnitY())
-                    * AngleAxisd(yaw, Vector3d::UnitZ());
-    
-    return q;
-                       
-}
+void Policy::loadParams(const std::string filepath, Params& params) {
+    YAML::Node config = YAML::LoadFile(filepath);
 
-template <typename T> int Policy::sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
-
-quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles){
-    
-    //scaling coefficients for the exponential map
-    YAML::Node config = YAML::LoadFile("../config/gains.yaml");
     scalar_t stance_time = config["MPC"]["groundDuration"].as<scalar_t>();
+    params.kx_p = config["RaibertHeuristic"]["kx_p"].as<scalar_t>();
+    params.ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
+    params.kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
+    params.ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
+    params.angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
+    params.pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
+    params.roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
+    params.yaw_damping = config["RaibertHeuristic"]["yaw_damping"].as<scalar_t>();
+}
 
-    scalar_t kx_p = config["RaibertHeuristic"]["kx_p"].as<scalar_t>();
-    scalar_t ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
-    scalar_t kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
-    scalar_t ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
-    scalar_t angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
-    scalar_t pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
-    scalar_t roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
+RaibertPolicy::RaibertPolicy() {
+    loadParams("../config/gains.yaml", params);
+}
 
-// quat_t quat_des = Eigen::Quaternion<scalar_t>(1,0,0,0);
-
-// scalar_t xdot = states(8); 
-// scalar_t ydot = states(9);
-
-// xf_0 = (xdot*T)/2;
-// yf_0 = (ydot*T)/2;
-
-// xf = xf_0 + kx(xdot - xdot_d);
-// yf = yf_0 + kx(ydot - ydot_d);// std::cout << "Desired Pitch: " << pitch_d << std::endl;
-// std::cout << "Desired Roll: " << roll_d << std::endl;
-    
+quat_t RaibertPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des){    
     //position error
     scalar_t del_x = x_a - x_d;
     scalar_t del_y = y_a - y_d;
-// std::cout<<sgn(del_x);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = std::min(kx_p*del_x + kx_d*xd_a, angle_max);
-    pitch_d = std::max(pitch_d, -angle_max);
-    scalar_t roll_d = std::min(ky_p*del_y + ky_d*yd_a, angle_max);
-    roll_d = std::max(roll_d, -angle_max);
-    scalar_t yaw_d = yaw_des;
+    scalar_t pitch_d = std::min(params.kx_p*del_x + params.kx_d*xd_a, params.angle_max);
+    pitch_d = std::max(pitch_d, -params.angle_max);
+    scalar_t roll_d = std::min(params.ky_p*del_y + params.ky_d*yd_a, params.angle_max);
+    roll_d = std::max(roll_d, -params.angle_max);
+    static scalar_t yaw_des_rolling = 0;
+    // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
+    yaw_des_rolling += params.yaw_damping*(yaw_des);
+    scalar_t yaw_d = yaw_des_rolling;
 
-// std::cout << "Desired Pitch: " << pitch_d << std::endl;
-// std::cout << "Desired Roll: " << roll_d << std::endl;
-
-
-    // vector_3t desiredEulerAngles;
-    // desiredEulerAngles << roll_d, pitch_d, yaw_d;
-    //std::cout<<"Desired Roll, Pitch " << roll_d << pitch_d << std::endl;
-    // std::cout<<"Desired Pitch " << pitch_d << std::endl; 
-    // quat_t desiredLocalInput = YawTransformation(currentEulerAngles, desiredEulerAngles);
-
-    quat_t desiredLocalInput = Euler2Quaternion(roll_d - roll_d_offset, pitch_d - pitch_d_offset, yaw_d);
-    //std::cout << roll_d << ", " << pitch_d << ", " << yaw_d << std::endl;
-    //std::cout << desiredLocalInput.coeffs().transpose() << std::endl;
-    //std::cout << xd_a << ", " << yd_a << std::endl;
+    quat_t desiredLocalInput = Euler2Quaternion(roll_d - params.roll_d_offset, pitch_d - params.pitch_d_offset, yaw_d);
     
     return desiredLocalInput;
 
 }
 
-
-vector_3t Policy::DesiredOmega(){
-   
+vector_3t RaibertPolicy::DesiredOmega(){
     vector_3t omega_des;
     omega_des << 0, 0, 0;
-    
     return omega_des;
-
 }
 
-vector_4t Policy::DesiredInputs(){
-
+vector_4t RaibertPolicy::DesiredInputs(){
     vector_4t u_des;
     u_des << 0, 0, 0, 0;
-    
     return u_des;
 }
 
+ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name) {
+    loadParams("../config/gains.yaml", params);
 
-quat_t Policy::MultiplyQuaternions(quat_t input, quat_t multiplier){
-    quat_t q;
+    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
+    Ort::SessionOptions session_options;
+    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
 
-    q = (multiplier)*(input)*(multiplier.inverse());
+    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
+    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
 
-    return q;
+    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    inputType = inputTensorInfo.GetElementType();
+    inputDims = inputTensorInfo.GetShape();
+    inputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    outputType = outputTensorInfo.GetElementType();
+    outputDims = outputTensorInfo.GetShape();
+    outputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    inputTensorSize = vectorProduct(inputDims);
+    outputTensorSize = vectorProduct(outputDims);
 }
 
 
-quat_t Policy::YawTransformation(vector_3t currentEulerAngles, vector_3t desiredEulerAngles){
-    // EulerAngles == roll, pitch, yaw 
-
-    // generating the quaternion map from current yaw only for mapping back and forth
-    quat_t currentYawQuaternionInverse;
-    currentYawQuaternionInverse = Euler2Quaternion(0, 0, currentEulerAngles(2)).inverse();
-    // Quaternionf currentYawQuaternionInverse = currentYawQuaternion.inverse();
-
-    // converting the desired euler angles for quaternion multiplication [0, roll, pitch, yaw]
-    quat_t desiredEulerAnglesQuatRep;
-    desiredEulerAnglesQuatRep.w() = 0;
-    desiredEulerAnglesQuatRep.vec() = desiredEulerAngles;
-
-    // changing to local basis
-    quat_t inputLocalBasis = MultiplyQuaternions(desiredEulerAnglesQuatRep, currentYawQuaternionInverse);
+void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t& output) {
     
-    return inputLocalBasis;
+    std::vector<float> input(4);
+    input[0] = state(0);
+    input[1] = state(1);
+    input[2] = state(2);
+    input[3] = state(3);
 
+    std::vector<float> outpt(2);
+
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float*>(input.data()), inputTensorSize,
+        inputDims.data(), inputDims.size());
+
+    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, outpt.data(), outputTensorSize,
+        outputDims.data(), outputDims.size());
+
+    std::vector<const char*> inputNames{inputNodeName.c_str()};
+    std::vector<const char*> outputNames{outputNodeName.c_str()};
+
+    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
+
+    output << outpt[0], outpt[1];
+}
+
+quat_t ZeroDynamicsPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des){
+
+	vector_4t state;
+	state << x_a - x_d, y_a - y_d, xd_a, yd_a; 
+	vector_2t rp_des;
+	EvaluateNetwork(state, rp_des);
+
+    static scalar_t yaw_des_rolling = 0;
+    // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
+    yaw_des_rolling += params.yaw_damping*(yaw_des);
+    scalar_t yaw_d = yaw_des_rolling;
+
+    quat_t desQuat = Euler2Quaternion(-rp_des(1) - params.roll_d_offset, rp_des(0) - params.pitch_d_offset, yaw_des_rolling);
+	return desQuat;
+}
+
+vector_3t ZeroDynamicsPolicy::DesiredOmega() {
+	vector_3t omega;
+	omega.setZero();
+	return omega;
+}
+
+vector_4t ZeroDynamicsPolicy::DesiredInputs() {
+	vector_4t inputs;
+	inputs.setZero();
+	return inputs;
 }

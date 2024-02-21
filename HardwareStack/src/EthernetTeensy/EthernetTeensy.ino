@@ -68,20 +68,15 @@ void setup() {
 }
 
 void loop() {
+  
   receivePacket();
   sendPacket();
+  // printf("Receiving Packet\n");
 }
-
-// Control character names.
-static const String kCtrlNames[]{
-  "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-  "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
-  "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-  "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US",
-};
 
 // Receives and prints chat packets.
 void receivePacket() {
+  // printf("receiving.. \n");
   
   int size = udp.parsePacket();
   if (size < 0) {
@@ -93,56 +88,38 @@ void receivePacket() {
   // IPAddress ip = udp.remoteIP();
 
   //printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
-  float rcvdData[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
-  memcpy(rcvdData, data, sizeof(float) * 5);
+  float rcvdData[10] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
+  memcpy(rcvdData, data, sizeof(float) * 10);
+
+  // printf("%u", sizeof(rcvdData));
+  // printf("%u", sizeof(float));
   for(int i = 0; i<sizeof(rcvdData)/sizeof(float); i++){
     printf("%f", rcvdData[i]);
   }
 
-
-  // // Print each character
-  // for (int i = 0; i < size; i++) {
-  //   uint8_t b = data[i];
-  //   if (b < 0x20) {
-  //     printf("<%s>", kCtrlNames[b].c_str());
-  //   } else if (b < 0x7f) {
-  //     putchar(data[i]);
-  //   } else {
-  //     printf("<%02xh>", data[i]);
-  //   }
-  // }
   printf("\r\n");
   read_packet = true;
-  // t2 = micros();
 }
 
 static void sendPacket() {
-  // static String line;
-  // line = "Dane Joe Note that micro-benchmarking is hard. An accurate timer is only a small part of what's necessary to get meaningful results for short timed regions. See Idiomatic way of performance evaluation? for some more general caveats)";
+  // printf("sending ..\n");
 
-  float value[4] = {9.12,2.22,3.64,4.005};
+  float value[13] = {4.3, 4.2, -1, 9.12, 2.22, 3.64, 4.005,
+                      0.44, 42.4, 222.33, 2232.3, 44.33, 31.11};
   // Serialize the float value to a byte array
   
-  char line[sizeof(float) * 4];
-  memcpy(line, value, sizeof(float) * 4);
-  
-  // printf(line);
-  // printf('\r\n');
-
-
+  char line[sizeof(float) * 13];
+  memcpy(line, value, sizeof(float) * 13);
   
   if (read_packet) {
     IPAddress ip_send(10,0,0,6);
     if (!udp.send(ip_send, kPort,
                   reinterpret_cast<const uint8_t *>(line),
-                  sizeof(float)*4)) {
+                  sizeof(float)*13)) {
       printf("[Error sending]\r\n");
     }
   
   read_packet = false;
-  // Serial.println(t2-t1);
-  // t1 = t2;
-  
   }
 }

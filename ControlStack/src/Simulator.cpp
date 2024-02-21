@@ -382,11 +382,17 @@ int main(int argc, const char **argv) {
             read(*new_socket, &RX_torques, sizeof(RX_torques));
 
             //override the communication based on the received toruqe comands from ctrl
-            d->ctrl = RX_torques;
+            for (int i = 0; i < 4; i++) {
+                d->ctrl[i] = RX_torques[i];
+            }
+            // d->ctrl = RX_torques;
 
             // Take integrator step
             mj_step(m, d);
-	    iter++;
+            iter++;
+            d->qvel[6] = 0;
+            d->qvel[7] = 0;
+            d->qvel[8] = 0;
         } 
 
 	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
@@ -403,18 +409,25 @@ int main(int argc, const char **argv) {
 	d->qpos[body_offset+5] = RX_torques[9];
 	d->qpos[body_offset+6] = RX_torques[10];
 
+    d->qpos[18] = RX_torques[21];
+    d->qpos[19] = RX_torques[21];
+    d->qpos[20] = RX_torques[21];
+    d->qpos[21] = RX_torques[21];
+
+    // Red dots
 	d->qpos[22] = RX_torques[11];
 	d->qpos[23] = RX_torques[12];
-	d->qpos[24] = RX_torques[13];
-	d->qpos[25] = RX_torques[14];
-	d->qpos[26] = RX_torques[15];
-	d->qpos[27] = RX_torques[16];
-	d->qpos[28] = RX_torques[17];
-	d->qpos[29] = RX_torques[18];
-	d->qpos[30] = RX_torques[19];
-	d->qpos[31] = RX_torques[20];
-	d->qpos[32] = RX_torques[21];
-	d->qpos[33] = RX_torques[22];
+    // Yellow dots
+	// d->qpos[24] = RX_torques[13];
+	// d->qpos[25] = RX_torques[14];
+	// d->qpos[26] = RX_torques[15];
+	// d->qpos[27] = RX_torques[16];
+	// d->qpos[28] = RX_torques[17];
+	// d->qpos[29] = RX_torques[18];
+	// d->qpos[30] = RX_torques[19];
+	// d->qpos[31] = RX_torques[20];
+	// d->qpos[32] = RX_torques[21];
+	// d->qpos[33] = RX_torques[22];
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport

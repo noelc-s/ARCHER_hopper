@@ -11,14 +11,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <QNEthernet.h>   // Library for Ethernet Communication
+
 //#define TEST_TEENSY
 
 using namespace Archer;
 using namespace Eigen;
+using namespace qindesign::network;     // Namespace for QNEthernet
 
 //==================CONSTANTS
 TripENC tENC(trip_CS1, trip_CS2, trip_CS3);
 ELMO_CANt4 elmo;
+bool ethernet_connected = false;
 
 float x_d[7];
 #define torque_to_current 1.0/0.083
@@ -26,7 +30,7 @@ float x_d[7];
 #define MAX_CURRENT 12  //  15
 #define MIN_CURRENT -12 // -15
 
-#define TIMEOUT_INTERVAL 10000 // ms to timeout
+#define TIMEOUT_INTERVAL 100 // ms to timeout
 
 using vector_3t = Eigen::Matrix<float, 3, 1>;
 using vector_4t = Eigen::Matrix<float, 4, 1>;
@@ -81,16 +85,26 @@ bool rt = 0;
 
 boolean newData = false;
 //this is only for the first debugging run
-float state[13];
+float state[13];    //current_state
+float state_d[10];  //desired_state
+
+// --------------------------------------------------------------------------
+//  Ethernet Configuration
+// --------------------------------------------------------------------------
+
+constexpr uint16_t kPort = 4333;  // Chat port
+EthernetUDP udp;                  //UDP Port
+bool read_packet = false;
+
 
 //===========SPEEDING UP BABY
 char additional_read_buffer[3000]; //this values are out of nowhere
 char additional_write_buffer[3000];
 
 
-unsigned long last_ESP_message;
-unsigned long current_ESP_message;
-char receivedCharsESP[46];
+unsigned long last_Ethernet_message;
+unsigned long current_Ethernet_message;
+// char receivedCharsESP[46];
 float foot_state[3];
 
 //=================SETUP=============
@@ -103,11 +117,12 @@ void setup() {
   //====================WIFI==============
   delay(100); //give time to open and print
   Serial.begin(115200); //this is for the monitor
-  Serial7.begin(115200); //baud rates must be the same
-  while (!Serial7) {
-    ;
-  }
-  delay(100);
+  setupEthernet();      //Ethernet Setup
+  // Serial7.begin(115200); //baud rates must be the same
+  // while (!Serial7) {
+  //   ;
+  // }
+  // delay(100);
 
   //start a diode to be sure all is working
   pinMode(LED_BUILTIN, OUTPUT);
@@ -140,7 +155,7 @@ void setup() {
   threads.addThread(imuThread);
   threads.addThread(BiaThread);
 #endif
-  threads.addThread(ESPthread);
+  threads.addThread(EthernetThread);
   delay(5000);
   foot_state[0] = 0;
   foot_state[1] = 0;
@@ -154,6 +169,106 @@ void setup() {
 }
 
 //============FUNCTIONS==========
+
+// ===========ETHERNET=================
+void setupEthernet(){
+
+  printf("Starting...\r\n");
+
+  uint8_t mac[6];
+  Ethernet.macAddress(mac);  // This is informative; it retrieves, not sets
+  printf("MAC = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+  Ethernet.onLinkState([](bool state) {
+    printf("[Ethernet] Link %s\r\n", state ? "ON" : "OFF");
+  });
+
+  IPAddress ip(10, 0, 0, 7);
+  IPAddress sn{255,255,255,0};  // Subnet Mask
+  IPAddress gw{10,0,0,1};       // Default Gateway
+
+  if (!Ethernet.begin(ip, sn, gw)) {
+    printf("Failed to start Ethernet\r\n");
+    return;
+  }
+
+  printf("Obtaining the IP, Subnet and Gateway\r\n");
+  ip = Ethernet.localIP();
+  printf("    Local IP     = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  ip = Ethernet.subnetMask();
+  printf("    Subnet mask  = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  ip = Ethernet.broadcastIP();
+  printf("    Broadcast IP = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  ip = Ethernet.gatewayIP();
+  printf("    Gateway      = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  ip = Ethernet.dnsServerIP();
+  printf("    DNS          = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+
+  // Start UDP listening on the port
+  udp.begin(kPort);
+
+  // t1 = micros();
+}
+
+// Receives and prints chat packets.
+void receivePacket() {
+  // printf("receiving.. \n");
+  
+  int size = udp.parsePacket();
+  if (size < 0) {
+    threads.yield();
+    return;
+  };
+
+  // Get the packet data and remote address
+  const uint8_t *data = udp.data();
+  // IPAddress ip = udp.remoteIP();
+
+  //printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
+  
+  for(int i = 0; i < (sizeof(state_d)/sizeof(float)); i++){
+    state_d[i] = 0.0;
+  }
+
+  memcpy(state_d, data, sizeof(float) * 10);
+
+  // printf("%u", sizeof(rcvdData));
+  // printf("%u", sizeof(float));
+  // for(int i = 0; i<sizeof(rcvdData)/sizeof(float); i++){
+  //   printf("%f", rcvdData[i]);
+  // }
+
+  // printf("\r\n");
+  read_packet = true;
+  last_Ethernet_message = millis();
+  ethernet_connected = true;
+}
+
+static void sendPacket() {
+  // printf("sending ..\n");
+
+  // float value[13] = {4.3, 4.2, -1, 9.12, 2.22, 3.64, 4.005,
+  //                     0.44, 42.4, 222.33, 2232.3, 44.33, 31.11};
+  // Serialize the float value to a byte array
+  
+  char line[sizeof(float) * 13];
+  memcpy(line, state, sizeof(float) * 13);
+  
+  if (read_packet) {
+    IPAddress ip_send(10,0,0,6);
+    if (!udp.send(ip_send, kPort,
+                  reinterpret_cast<const uint8_t *>(line),
+                  sizeof(float)*13)) {
+      printf("[Error sending]\r\n");
+    }
+  
+  read_packet = false;
+  threads.delay_us(100);
+  }
+}
+
+
 void delayLoop(uint32_t T1, uint32_t L) {
   uint32_t T2 = micros();
   if ((T2 - T1) < L) {
@@ -162,7 +277,7 @@ void delayLoop(uint32_t T1, uint32_t L) {
   }
 }
 
-volatile bool ESP_connected = false;
+// volatile bool ESP_connected = false;
 
 Threads::Mutex state_mtx;
 Threads::Mutex foot_state_mtx;
@@ -217,54 +332,59 @@ void BiaThread() {
   }
 }
 
-void ESPthread() {
-  bool read_data = true;
+void EthernetThread() {
+  // bool read_data = true;
   while (1) {
-    if (initialized) {
-      if (read_data) {
-        char receivedCharsTeensy[13 * sizeof(float) + 8 + 1];
-        { Threads::Scope scope(state_mtx);
-          memcpy(receivedCharsTeensy, state, 52);
-        }
-  
-        for (int i = 0; i < 8; i++) {
-          byte oneAdded = 0b00000001;
-          for (int j = 1; j < 8; j++) {
-            if (receivedCharsTeensy[i * 7 + (j - 1)] == 0b00000000) {
-              receivedCharsTeensy[i * 7 + (j - 1)] = 0b00000001;
-              oneAdded += (1 << (8 - j));
-            }
-          }
-          memcpy(&receivedCharsTeensy[52 + i], &oneAdded, 1);
-        }
-        receivedCharsTeensy[60] = 0b0;
-  
-        Serial7.print(receivedCharsTeensy);
-        Serial7.flush();
-        read_data = false;
-      }
+    if (initialized){
+      receivePacket();
+      sendPacket();
 
-      int index = 0;
-      if (Serial7.available() > 0) {
-        while (index < 46) {
-          if (Serial7.available() > 0) {
-            receivedCharsESP[index] = Serial7.read();
-            index++;
-          }
+
+    // if (initialized) {
+    //   if (read_data) {
+    //     char receivedCharsTeensy[13 * sizeof(float) + 8 + 1];
+    //     { Threads::Scope scope(state_mtx);
+    //       memcpy(receivedCharsTeensy, state, 52);
+    //     }
+  
+    //     for (int i = 0; i < 8; i++) {
+    //       byte oneAdded = 0b00000001;
+    //       for (int j = 1; j < 8; j++) {
+    //         if (receivedCharsTeensy[i * 7 + (j - 1)] == 0b00000000) {
+    //           receivedCharsTeensy[i * 7 + (j - 1)] = 0b00000001;
+    //           oneAdded += (1 << (8 - j));
+    //         }
+    //       }
+    //       memcpy(&receivedCharsTeensy[52 + i], &oneAdded, 1);
+    //     }
+    //     receivedCharsTeensy[60] = 0b0;
+  
+    //     Serial7.print(receivedCharsTeensy);
+    //     Serial7.flush();
+    //     read_data = false;
+    //   }
+
+    //   int index = 0;
+    //   if (Serial7.available() > 0) {
+    //     while (index < 46) {
+    //       if (Serial7.available() > 0) {
+    //         receivedCharsESP[index] = Serial7.read();
+    //         index++;
+    //       }
           
-        }
-        if (!time_initialized) {
-          last_ESP_message = millis();
-          time_initialized = true;
-        } else {
-          last_ESP_message = millis();
-        }
-        ESP_connected = true;
-        read_data = true;
-        threads.delay_us(100);
-      } else {
-        threads.yield();
-      }
+    //     }
+        // if (!time_initialized) {
+        //   last_Ethernet_message = millis();
+        //   time_initialized = true;
+        // } else {
+        //   last_Ethernet_message = millis();
+        // }
+    //     ESP_connected = true;
+    //     read_data = true;
+    //     threads.delay_us(100);
+    //   } else {
+    //     threads.yield();
+    //   }
       
     } else {
       threads.delay_us(2000);
@@ -610,7 +730,7 @@ void loop() {
     }
   }
 
-  while (!ESP_connected) {threads.delay_us(100);}
+  while (!ethernet_connected) {threads.delay_us(100);}
 
   ///////////////////Print Binary////////////////////
   //  for (int i = 0; i < 34; i++) {
@@ -698,17 +818,17 @@ void loop() {
       state[9] = quat_a.z();
   }
 
-  memcpy(oneAdded, receivedCharsESP + 40, 6 * sizeof(char));
-  for (int i = 0; i < 6; i++) {
-    for (int j = 1; j < 8; j++) {
-      if (oneAdded[i] & (1 << (8 - j))) {
-        receivedCharsESP[i * 7 + (j - 1)] = 0;
-      }
-    }
-  }
+  // memcpy(oneAdded, receivedCharsESP + 40, 6 * sizeof(char));
+  // for (int i = 0; i < 6; i++) {
+  //   for (int j = 1; j < 8; j++) {
+  //     if (oneAdded[i] & (1 << (8 - j))) {
+  //       receivedCharsESP[i * 7 + (j - 1)] = 0;
+  //     }
+  //   }
+  // }
 
-  float state_d[10];
-  memcpy(state_d, receivedCharsESP, 10 * 4);
+  // float state_d[10];
+  // memcpy(state_d, receivedCharsESP, 10 * 4);
 
   //////////////// Print the desired state ////////////////////////////
 //         Serial.print(state_d[0]); Serial.print(", ");
@@ -792,14 +912,14 @@ void loop() {
   data.print(current[2],4);     data.println(); 
 
 
-    if (time_initialized) {
-      current_ESP_message = millis();
-      if (current_ESP_message - last_ESP_message > TIMEOUT_INTERVAL) {
-        Serial.print("Exiting because ESP message took: ");
-        Serial.println(current_ESP_message - last_ESP_message);
-        exitProgram();
-      }
+  if (ethernet_connected) {
+    current_Ethernet_message = millis();
+    if (current_Ethernet_message - last_Ethernet_message > TIMEOUT_INTERVAL) {
+      Serial.print("Exiting because Ethernet message took: ");
+      Serial.println(current_Ethernet_message - last_Ethernet_message);
+      exitProgram();
     }
+  }
    
   //  Serial.println(Tc1-Tc0);
 

@@ -12,6 +12,8 @@
 #include <sys/socket.h> // socket, sendto
 #include <unistd.h> // close
 
+
+
 int main(int argc, char const *argv[])
 {   
     std::string hostname{"10.0.0.6"};               // IP Adress of the MACHINE communicating with the teensy
@@ -39,7 +41,6 @@ int main(int argc, char const *argv[])
     // perror("bind");
     // printf("Error binding socket: %d\n", errno);
 
-    char buffer[sizeof(float) *4];
     sockaddr_in senderAddr;
     senderAddr.sin_family = AF_INET;
     senderAddr.sin_port = htons(port);
@@ -58,16 +59,19 @@ int main(int argc, char const *argv[])
         t2 - t1).count();
     */
 
+    char buffer[sizeof(float) * 13];
+    
     while(1) {
 
-        float value[5] = {-1.0, -4.322,3434.2,-242,424.4};
+        float value[10] = {-1.0, -4.322, 3434.2, -242, 424.4, 0.98,
+                            4.3, 33.44, 9.9, 3.1};
 
 
-        unsigned char line[sizeof(float)*5];
-        memcpy(line, value, sizeof(float)*5);
+        unsigned char line[sizeof(float)*10];
+        memcpy(line, value, sizeof(float)*10);
 
         // n_bytes = ::sendto(sock, msg.c_str(), msg.length(), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
-        n_bytes = ::sendto(sock, line, sizeof(float)*5, 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
+        n_bytes = ::sendto(sock, line, sizeof(float)*10, 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
 
         //std::cout << n_bytes << " bytes sent" << std::endl;
         
@@ -80,7 +84,8 @@ int main(int argc, char const *argv[])
         recvBytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrLen);
         std::cout << "Received: "  << std::endl;
         
-        float data[4] = {0.0,0.0,0.0,0.0};
+        float data[13] = {0.0,0.0,0.0,0.0,0.0, 0.0, 0.0,
+                            0.0,0.0,0.0,0.0,0.0,0.0};
         std::memcpy(data, buffer, sizeof(data));
 
         for(int i = 0; i<sizeof(data)/sizeof(float); i++){
