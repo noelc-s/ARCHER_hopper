@@ -315,7 +315,7 @@ int main() {
     vector_4t u_des;
 
     // Instantiate a new policy.
-    Policy policy = Policy();
+    RaibertPolicy policy = RaibertPolicy();
     // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
 
     // MH

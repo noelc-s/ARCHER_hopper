@@ -43,13 +43,6 @@ public:
 
     vector_4t torque;
 
-    pinocchio::Model model;
-    pinocchio::Data data;
-    std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_ground;
-    std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_ground;
-    std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_flight;
-    std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_flight;
-
     quat_t quat_actuator;
 
     struct Gains {
@@ -58,8 +51,6 @@ public:
         scalar_t leg_kp;
         scalar_t leg_kd;
     } gains;
-
-    scalar_t springStiffness;
 
     Hopper();
 
@@ -75,85 +66,6 @@ public:
      * @param [in] u_des feed forward torque
      */
     void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
-
-    /*! @brief  evaluate the forward dynamics
-    *  @param [in] q  pos to evaluate the dynamics at
-    *  @param [in] v  vel to evaluate the dynamics at
-    *  @param [in] a  acc to evaluate the dynamics at
-    *  @param [out] x_dot  the dynamics (dq, ddq)
-    */
-    vector_t f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d);
-
-    /*! @brief  compute the linearizations of f
-    *  @param [in]     q, v, a  - state to compute the jacobians at
-    *  @param [out]    A, B, C  - df/dx, df/du, and the residual
-    */
-    void Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
-            matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
-
-    /*! @brief  compute the discretization of the system
-    *  @param [in]     Ac Continuous A matrix
-    *  @param [in]     Bc Continuous B matrix
-    *  @param [in]     Cc Continuous C matrix
-    *  @param [out]     &Ad Discrete A matrix
-    *  @param [out]     &Bd Discrete B matrix
-    *  @param [out]     &Cd Discrete C matrix
-    */
-    void css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc,
-            const float dt, matrix_t &Ad, matrix_t &Bd, matrix_t &Cd);
-
-    /*!  @brief  compute the discretization of the system
-    *  @param [in]     Ac, Bc, Cc - continuous time dynamics of the system
-    *  @param [out]    Ad, Bd, Cd - discrete time dynamics of the system
-    */
-    void DiscreteDynamics(const vector_t &x, const vector_t &u, const domain &d, const float dt,
-                          matrix_t &Ac, matrix_t &Bc, matrix_t &Cc,
-                          matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
-			  const vector_t q0);
-
-    /*! @brief  compute the discrete dynamics at impact. calls impulse-dynamics
-    *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
-    *  @param [out]    x_plus   - the post impact state (q+, dq+)
-    */
-    vector_t delta_f(const vector_t q, const vector_t v, const domain d);
-
-    /*! @brief  compute the jacobian of the discrete dynamics at impact
-    *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
-    *  @param [out]    A, B, C   -  ddelta_f/dx, ddelta_f/du, and the residual
-    */
-    void Ddelta_f(const vector_t q, const vector_t v, const domain d,
-                  matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
-
-    /*! @brief Take the state and apply the log of the orientation to get elements of the Lie Algebra
-    * @param[in] x Lie Group elements
-    * @param[out] xi Lie Algebra elements
-    */
-    static vector_t Log(vector_t x);
-
-    /*! @brief Take elements of the Lie Algebra and Exp them to the Lie Group
-    * @param[in] xi Lie Algebra elements
-    * @param[out] x Lie Group elements
-    */
-    static vector_t Exp(vector_t xi);
-
-    /*! @brief apply q0_inverse and then perform Log
-    * @param[in] qk the Lie Group element
-    * @param[in] q0 the base point
-    * @param[out] xik the Lie Algebra element
-    */
-
-    vector_t qk_to_xik(vector_t qk, vector_t q0);
-   
-     /*! @brief apply q0 and then perform Exp
-    *
-    * @param[in] xik the Lie Algebra element
-    * @param[in] q0 the base point
-    * @param[out] qk the Lie Group element
-    */   
-    vector_t xik_to_qk(vector_t xik, vector_t q0);
-    
-
-
 
 };
 
