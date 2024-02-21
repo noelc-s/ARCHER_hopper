@@ -117,8 +117,14 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     quat_a << quat_a_.w(), quat_a_.x(), quat_a_.y(), quat_a_.z();
 
     vector_3t delta_quat;
-    delta_quat << quat_a[0] * quat_d.segment(1, 3) - quat_d[0] * quat_a.segment(1, 3) -
-                  cross(quat_a.segment(1, 3)) * quat_d.segment(1, 3);
+    // delta_quat << quat_a[0] * quat_d.segment(1, 3) - quat_d[0] * quat_a.segment(1, 3) -
+                //   cross(quat_a.segment(1, 3)) * quat_d.segment(1, 3);
+
+    quat_t e = quat_d_.inverse() * quat;
+    manif::SO3Tangent<scalar_t> xi;
+    auto e_ = manif::SO3<scalar_t>(e);
+    xi = e_.log();
+    delta_quat << xi.coeffs();
      
     matrix_3t Kp, Kd;
     Kp.setZero();
@@ -127,8 +133,8 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     Kd.diagonal() << gains.orientation_kd;
 
     vector_3t tau;
-    omega_a = -quat_actuator.inverse()._transformVector(omega);
-    tau = quat_actuator.inverse()._transformVector(Kp * delta_quat) - Kd * (omega_a - omega_d);
+    
+    tau = quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (omega - omega_d));
 
     scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
     torque << spring_f, tau;

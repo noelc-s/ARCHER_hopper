@@ -34,11 +34,7 @@ quat_t Policy::Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw){
                        
 }
 
-template <typename T> int Policy::sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
-
-quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles){
+quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des){
     
     //scaling coefficients for the exponential map
     YAML::Node config = YAML::LoadFile("../config/gains.yaml");
@@ -52,23 +48,10 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     scalar_t angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
     scalar_t pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
     scalar_t roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
-
-// quat_t quat_des = Eigen::Quaternion<scalar_t>(1,0,0,0);
-
-// scalar_t xdot = states(8); 
-// scalar_t ydot = states(9);
-
-// xf_0 = (xdot*T)/2;
-// yf_0 = (ydot*T)/2;
-
-// xf = xf_0 + kx(xdot - xdot_d);
-// yf = yf_0 + kx(ydot - ydot_d);// std::cout << "Desired Pitch: " << pitch_d << std::endl;
-// std::cout << "Desired Roll: " << roll_d << std::endl;
     
     //position error
     scalar_t del_x = x_a - x_d;
     scalar_t del_y = y_a - y_d;
-// std::cout<<sgn(del_x);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
     scalar_t pitch_d = std::min(kx_p*del_x + kx_d*xd_a, angle_max);
@@ -76,8 +59,8 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     scalar_t roll_d = std::min(ky_p*del_y + ky_d*yd_a, angle_max);
     roll_d = std::max(roll_d, -angle_max);
     static scalar_t yaw_des_rolling = 0;
-    yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
-    std::cout << yaw_des_rolling << std::endl;
+    // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
+    yaw_des_rolling += yaw_damping*(yaw_des);
     scalar_t yaw_d = yaw_des_rolling;
 
 // std::cout << "Desired Pitch: " << pitch_d << std::endl;
@@ -93,7 +76,7 @@ quat_t Policy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scala
     quat_t desiredLocalInput = Euler2Quaternion(roll_d - roll_d_offset, pitch_d - pitch_d_offset, yaw_d);
 
     // std::cout << del_x << ", " << del_y << ", " << roll_d << ", " << pitch_d << ", " << yaw_d << std::endl;
-    std::printf("%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", del_x, xd_a, del_y, yd_a, roll_d, pitch_d, yaw_d);
+    // std::printf("%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f\n", del_x, xd_a, del_y, yd_a, roll_d, pitch_d, yaw_d);
     //std::cout << desiredLocalInput.coeffs().transpose() << std::endl;
     //std::cout << xd_a << ", " << yd_a << std::endl;
     

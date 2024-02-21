@@ -13,13 +13,7 @@ using namespace Eigen;
 class Policy{
 public:
     Policy(){};
-    ~Policy(){};        
-
-    /*! @brief  evaluate the forward dynamics
-    *  @param [in] val  signed variable
-    *  @param [out] sign sign of the variable (+/-1)
-    */
-    template <typename T> int sgn(T val);
+    ~Policy(){};    
 
     /*! @brief  evaluate the forward dynamics
     *  @param [in] roll  roll angle of the body frame wrt the world frame
@@ -36,7 +30,7 @@ public:
     *  @param [in] y_d  desired position (y-direction) of the body frame wrt the world frame
     *  @param [out] quat_d  desired quaternion for the low level controller
     */
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, vector_3t currentEulerAngles);
+    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des);
     
     /*! @brief  evaluate the forward dynamics
     *  @param [out] omega_d  desired omega (rate of change of quaternion) of the body frame wrt the world fram
