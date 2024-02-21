@@ -17,6 +17,12 @@
 #include <string.h>
 #include <math.h>
 
+// for joystick inputs
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/joystick.h>
+
 #include <manif/manif.h>
 
 #include "../inc/Policy.h"
@@ -78,6 +84,118 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
    command << input;
   }
 }
+
+// Reads a joystick event from the joystick device.
+// Returns 0 on success. Otherwise -1 is returned.
+int read_event(int dev, struct js_event *event)
+{
+    ssize_t bytes;
+    bytes = read(dev, event, sizeof(*event)); // read bytes sent by controller
+
+    if (bytes == sizeof(*event))
+        return 0;
+
+    /* Error, could not read full event. */
+    return -1;
+}
+
+// Current state of an axis.
+struct axis_state {
+    short x, y;
+};
+
+// simple list for button map
+char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
+
+// get PS4 LS and RS joystick axis information
+size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
+{
+  /* hard code for PS4 controller
+     Left Stick:  +X is Axis 0 and right, +Y is Axis 1 and down
+     Right Stick: +X is Axis 3 and right, +Y is Axis 4 and down 
+  */
+  size_t axis;
+
+  // Left Stick (LS)
+  if (event->number==0 || event->number==1) {
+    axis = 0;  // arbitrarily call LS Axis 0
+    if (event->number == 0)
+      axes[axis].x = event->value;
+    else
+      axes[axis].y = event->value;
+  }
+
+  // Right Stick (RS)
+  else {
+    axis = 1;  // arbitrarily call RS Axis 1
+    if (event->number == 3)
+      axes[axis].x = event->value;
+    else 
+      axes[axis].y = event->value;
+  }
+
+  return axis;
+}
+
+void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
+{
+  vector_3t input; input.setZero();
+  std::chrono::seconds timeout(50000);
+  const char *device;
+  int js;
+  struct js_event event;
+  struct axis_state axes[3] = {0};
+  size_t axis;
+  dist.setZero();
+
+  // if only one joystick input, almost always "/dev/input/js0"
+  device = "/dev/input/js0";
+
+  // joystick device index
+  js = open(device, O_RDONLY); 
+  if (js == -1)
+      perror("Could not open joystick");
+  else
+      std::cout << "joystick connected" << std::endl;
+
+  //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
+  double comm_scale = 100000.;
+  double dist_scale = 10000.;
+
+  /* This loop will exit if the controller is unplugged. */
+  while (read_event(js, &event) == 0)
+  {
+    switch(event.type) {
+      
+      // moving a joystick
+      case JS_EVENT_AXIS:
+        axis = get_axis_state(&event, axes);
+        if (axis == 0) { 
+          command << axes[axis].x / comm_scale, -axes[axis].y / comm_scale, 0; // Left Joy Stick
+        //   std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
+        }
+        if (axis == 1) {
+          dist << axes[axis].x / dist_scale, -axes[axis].y / dist_scale; // Right Joy Stick
+        //   std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
+        }
+        break;
+
+      // pressed a button
+      case JS_EVENT_BUTTON:
+        // can do something cool with buttons
+        break;
+      
+      // ignore init events
+      default:
+        break;
+    }
+  }
+
+  close(js);
+}
+
+
+
 // MH
 // what are TX_torques and RX_state? The name suggests that it is transmitting torque commands and recieving the system state. 
 // The number of states is consistent, what is the number of torques?
@@ -181,9 +299,6 @@ int main() {
     scalar_t t_last = -1;
     scalar_t dt_elapsed;
 
-
-
-
     // MH
     // condition variable and mutex are used for multi-threading. Ignore for now.
     // assuming, command is the global position of the robot? command_interp is the function for performing a particular action?
@@ -191,15 +306,17 @@ int main() {
     std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    vector_2t dist;
+    // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
     vector_4t u_des;
 
     // Instantiate a new policy.
-    // Policy policy = Policy();
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    RaibertPolicy policy = RaibertPolicy();
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
 
     // MH
     // for infinity, do
@@ -211,52 +328,55 @@ int main() {
         
         hopper.updateState(state);
 
-        if (dt_elapsed > p.dt) {
-            // Uncomment below to isolate the low level controller for testing
-            // quat_des = Quaternion<scalar_t>(1,0,0,0);
-            // omega_des << 0,0,0;
-            // u_des << 0,0,0,0;
             scalar_t x_d = 0;
             scalar_t y_d = 0;
 
         quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
         vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
 	    
-            quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(2), currentEulerAngles);
-            omega_des = policy.DesiredOmega();
-            u_des = policy.DesiredInputs();
+        quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
+            state(8), state(9), dist(0));
+        omega_des = policy.DesiredOmega();
+        u_des = policy.DesiredInputs();
 
-            hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
-            t_last = state(0);
-        }
+        hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
+        t_last = state(0);
 
-        // vector_t v_global(6);
-        // vector_t v_local(6);
-        // vector_t x_global(21);
-        // vector_t x_local(21);
-        // vector_t xi_local(21);
-        // x_global << hopper.q, hopper.v;
-        // x_local = MPC::global2local(x_global);
-        // xi_local = MPC::Log(x_local);
-        // v_global = hopper.v.segment(0,6);
-        // v_local = x_local.segment(11,6);
+        vector_3t error;
+
+        quat_t e = quat_des.inverse() * hopper.quat;
+        manif::SO3Tangent<scalar_t> xi;
+        auto e_ = manif::SO3<scalar_t>(e);
+        xi = e_.log();
+        error << xi.coeffs();
 
         // Log data
         if (fileWrite)
-	    // Local
-            //fileHandle <<state[0] << "," << hopper.contact << "," << xi_local.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) << "," << t_last_MPC << "," << sol.transpose().format(CSVFormat)<< "," << replan << std::endl;
-            // Global
-	    fileHandle <<state[0] << "," << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl; //<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< std::endl;
+	        fileHandle <<state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+            << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
+            << "," << quat_des.coeffs().transpose().format(CSVFormat)
+            << "," << hopper.omega.transpose().format(CSVFormat)
+            << "," << hopper.torque.transpose().format(CSVFormat)
+            << "," << error.transpose().format(CSVFormat) 
+            << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
 
-
-            for (int i = 0; i < 4; i++) {
-                TX_torques[i] = hopper.torque[i];
-            }
-	    TX_torques[11] = command(0);
-	    TX_torques[12] = command(1);
-
-
-            send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+        for (int i = 0; i < 4; i++) {
+            TX_torques[i] = hopper.torque[i];
         }
 
+        // red dot
+	    TX_torques[11] = command(0)+state(1);
+	    TX_torques[12] = command(1)+state(2);
+
+        // floating ghost body
+        TX_torques[4] = state(1);
+	    TX_torques[5] = state(2);
+        TX_torques[6] = 1;
+        TX_torques[7] = quat_des.w();
+	    TX_torques[8] = quat_des.x();
+        TX_torques[9] = quat_des.y();
+        TX_torques[10] = quat_des.z();
+
+        send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+    }
 }
