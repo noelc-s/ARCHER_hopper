@@ -109,17 +109,14 @@ namespace Archer
 
   void Koios::initKoios1(int MC){
     setLogo('R');
-    flashR(1);
-    delay(5000);
+    setLEDs("1000");
+    delay(3000);
     rt = initComm(MC);
-    delay(1000);
     if(rt>0){
-      flashA1(2); }
+      setLEDs("0100"); }
     else{
       flashR(10); }
     initIMU();
-    delay(10);
-    initSD();
     delay(10);
   }
 
@@ -304,7 +301,7 @@ namespace Archer
     rt2 = elmo_.motorOn(IDX_K2);
     delay(10);
     rt3 = elmo_.motorOn(IDX_K3);
-    delay(7500);
+    delay(10);
     ret = rt1*rt2*rt3;
     setLEDs("2202");
     return ret;

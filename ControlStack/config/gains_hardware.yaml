@@ -48,3 +48,14 @@ MPC:
   circle_amp: -0.2
   circle_freq: 10
   max_vel: 1
+
+RaibertHeuristic:
+  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  angle_max: 1.0
+  yaw_damping: 0.0035
+
+roll_offset: -0.0011
+pitch_offset: -0.0154

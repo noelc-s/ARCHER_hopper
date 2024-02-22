@@ -44,6 +44,9 @@ using namespace pinocchio;
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
+scalar_t roll_increment = 0.01;
+scalar_t pitch_increment = 0.01;
+
 // MH
 // reads the user input from the command line and saves it to the 3x1 vector input
 // what are the inputs?
@@ -137,7 +140,7 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
   return axis;
 }
 
-void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
+void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
 {
   vector_3t input; input.setZero();
   std::chrono::seconds timeout(50000);
@@ -182,7 +185,18 @@ void getJoystickInput(vector_3t &command, vector_2t &dist, std::condition_variab
 
       // pressed a button
       case JS_EVENT_BUTTON:
+        if (event.number == 5 && event.value == 1)
+          std::cout << "reset" << std::endl;
         // can do something cool with buttons
+        if (event.number == 0 && event.value == 1)
+          offsets[1] -= pitch_increment;
+        if (event.number == 1 && event.value == 1)
+          offsets[0] += roll_increment;
+        if (event.number == 2 && event.value == 1)
+          offsets[1] += pitch_increment;
+        if (event.number == 3 && event.value == 1)
+          offsets[0] -= roll_increment;
+        std::cout << "Offsets: " << offsets.transpose() << std::endl;
         break;
       
       // ignore init events
@@ -307,8 +321,10 @@ int main() {
     vector_3t command;
     vector_2t command_interp;
     vector_2t dist;
+    vector_2t offsets;
+    offsets.setZero();
     // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
-    std::thread userInput(getJoystickInput, std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
@@ -334,6 +350,7 @@ int main() {
         quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
         vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
 	    
+        policy.updateOffsets(offsets);
         quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
             state(8), state(9), dist(0));
         omega_des = policy.DesiredOmega();

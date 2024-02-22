@@ -13,13 +13,20 @@ void Policy::loadParams(const std::string filepath, Params& params) {
     params.kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
     params.ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
     params.angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
-    params.pitch_d_offset = config["RaibertHeuristic"]["pitch_d_offset"].as<scalar_t>();
-    params.roll_d_offset = config["RaibertHeuristic"]["roll_d_offset"].as<scalar_t>();
+    params.pitch_d_offset = config["pitch_offset"].as<scalar_t>();
+    params.roll_d_offset = config["roll_offset"].as<scalar_t>();
     params.yaw_damping = config["RaibertHeuristic"]["yaw_damping"].as<scalar_t>();
+    std::cout<<"loadParams OK"<<std::endl;
+
+}
+
+void Policy::updateOffsets(const vector_2t offsets) {
+    params.roll_d_offset = offsets[0];
+    params.pitch_d_offset = offsets[1];
 }
 
 RaibertPolicy::RaibertPolicy() {
-    loadParams("../config/gains.yaml", params);
+    loadParams("../config/gains_hardware.yaml", params);
 }
 
 quat_t RaibertPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des){    
@@ -56,7 +63,7 @@ vector_4t RaibertPolicy::DesiredInputs(){
 }
 
 ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name) {
-    loadParams("../config/gains.yaml", params);
+    loadParams("../config/gains_hardware.yaml", params);
 
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
     Ort::SessionOptions session_options;

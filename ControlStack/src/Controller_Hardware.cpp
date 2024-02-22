@@ -20,6 +20,12 @@
 #include<thread>
 #include <unistd.h> // close socket
 
+// for joystick inputs
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <linux/joystick.h>
+
 #include "pinocchio/algorithm/jacobian.hpp"
 
 #include "ros/ros.h"
@@ -52,6 +58,9 @@ using namespace pinocchio;
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
+scalar_t roll_increment = 0.0001;
+scalar_t pitch_increment = 0.0001;
+
 int sock;
 char buff[52];
 char send_buff[40];
@@ -64,6 +73,7 @@ sockaddr_in source, destination;
 sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
+bool send_reset = false;
 
 static vector_3t getInput() {
   vector_3t input;
@@ -92,6 +102,129 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
   }
 }
 
+
+// Reads a joystick event from the joystick device.
+// Returns 0 on success. Otherwise -1 is returned.
+int read_event(int dev, struct js_event *event)
+{
+    ssize_t bytes;
+    bytes = read(dev, event, sizeof(*event)); // read bytes sent by controller
+
+    if (bytes == sizeof(*event))
+        return 0;
+
+    /* Error, could not read full event. */
+    return -1;
+}
+
+// Current state of an axis.
+struct axis_state {
+    short x, y;
+};
+
+// simple list for button map
+char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
+
+// get PS4 LS and RS joystick axis information
+size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
+{
+  /* hard code for PS4 controller
+     Left Stick:  +X is Axis 0 and right, +Y is Axis 1 and down
+     Right Stick: +X is Axis 3 and right, +Y is Axis 4 and down 
+  */
+  size_t axis;
+
+  // Left Stick (LS)
+  if (event->number==0 || event->number==1) {
+    axis = 0;  // arbitrarily call LS Axis 0
+    if (event->number == 0)
+      axes[axis].x = event->value;
+    else
+      axes[axis].y = event->value;
+  }
+
+  // Right Stick (RS)
+  else {
+    axis = 1;  // arbitrarily call RS Axis 1
+    if (event->number == 3)
+      axes[axis].x = event->value;
+    else 
+      axes[axis].y = event->value;
+  }
+
+  return axis;
+}
+
+void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
+{
+  vector_3t input; input.setZero();
+  std::chrono::seconds timeout(50000);
+  const char *device;
+  int js;
+  struct js_event event;
+  struct axis_state axes[3] = {0};
+  size_t axis;
+  dist.setZero();
+
+  // if only one joystick input, almost always "/dev/input/js0"
+  device = "/dev/input/js0";
+
+  // joystick device index
+  js = open(device, O_RDONLY); 
+  if (js == -1)
+      perror("Could not open joystick");
+  else
+      std::cout << "joystick connected" << std::endl;
+
+  //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
+  double comm_scale = 100000.;
+  double dist_scale = 10000.;
+
+  /* This loop will exit if the controller is unplugged. */
+  while (read_event(js, &event) == 0)
+  {
+    switch(event.type) {
+      
+      // moving a joystick
+      case JS_EVENT_AXIS:
+        axis = get_axis_state(&event, axes);
+        if (axis == 0) { 
+          command << axes[axis].x / comm_scale, -axes[axis].y / comm_scale, 0; // Left Joy Stick
+        //   std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
+        }
+        if (axis == 1) {
+          dist << axes[axis].x / dist_scale, -axes[axis].y / dist_scale; // Right Joy Stick
+        //   std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
+        }
+        break;
+
+      // pressed a button
+      case JS_EVENT_BUTTON:
+        if (event.number == 5 && event.value == 1) {
+          std::cout << "reset" << std::endl;
+          send_reset = 1;
+        }
+        // can do something cool with buttons
+        if (event.number == 0 && event.value == 1)
+          offsets[1] -= pitch_increment;
+        if (event.number == 1 && event.value == 1)
+          offsets[0] += roll_increment;
+        if (event.number == 2 && event.value == 1)
+          offsets[1] += pitch_increment;
+        if (event.number == 3 && event.value == 1)
+          offsets[0] -= roll_increment;
+        std::cout << "Offsets: " << offsets.transpose() << std::endl;
+        break;
+      
+      // ignore init events
+      default:
+        break;
+    }
+  }
+
+  close(js);
+}
+
 struct Parameters {
     std::vector<scalar_t> orientation_kp;
     std::vector<scalar_t> orientation_kd;
@@ -107,6 +240,8 @@ struct Parameters {
     int stop_index; 
     vector_t gains;
     std::vector<scalar_t> p0;
+    scalar_t roll_offset;
+    scalar_t pitch_offset;
 } p;
 
 void signal_callback_handler(int signum) {
@@ -152,10 +287,13 @@ void setupGains(const std::string filepath) {
     p.predHorizon = config["Debug"]["predHorizon"].as<int>();
     p.stop_index = config["Debug"]["stopIndex"].as<int>();
     p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
+    p.roll_offset = config["roll_offset"].as<scalar_t>();
+    p.pitch_offset = config["pitch_offset"].as<scalar_t>();
     p.gains.resize(8);
     p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
             p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
             p.leg_kp, p.leg_kd;
+    std::cout<<"setupGains OK"<<std::endl;
 }
 
 volatile bool ESP_initialized = false;
@@ -173,6 +311,11 @@ void getStateFromEthernet() {
   }
   
   // std::cout<<"Writing..."<<std::endl;
+  if (send_reset == true) {
+    send_buff[0] = 1; send_buff[1] = 2; send_buff[2] = 3; send_buff[3] = 4;
+    send_buff[4] = 5; send_buff[5] = 6; send_buff[6] = 7; send_buff[7] = 8;
+    send_reset = false;
+  }
   
   n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
   // write(sockfd, send_buff, sizeof(send_buff));
@@ -342,7 +485,11 @@ int main(int argc, char **argv){
     std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    vector_2t dist;
+    vector_2t offsets;
+    offsets << p.roll_offset, p.pitch_offset;
+    // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
     // matrix_t x_pred(21,2);
     // matrix_t u_pred(4,1);
 
@@ -367,34 +514,34 @@ int main(int argc, char **argv){
     tstart = std::chrono::high_resolution_clock::now();
     t2 = tstart;
 
-    // Policy policy = Policy();
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    RaibertPolicy policy = RaibertPolicy();
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
 
     while(ros::ok()){
-        ros::spinOnce();
-	t1 = std::chrono::high_resolution_clock::now();
+      ros::spinOnce();
+      t1 = std::chrono::high_resolution_clock::now();
 
-	if (!init) {
-          state_init << OptiState.x,OptiState.y,OptiState.z;
-	  last_state  << OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z;
-	  current_vel << 0,0,0;
-	  previous_vel << 0,0,0;
+      if (!init) {
+        state_init << OptiState.x,OptiState.y,OptiState.z;
+	      last_state  << OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z;
+	      current_vel << 0,0,0;
+	      previous_vel << 0,0,0;
           // dt = p.MPC_dt_replan;
           init = true;
-        } else {
-	  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-last_t_state_log).count()*1e-9;
-	}
+      } else {
+        dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-last_t_state_log).count()*1e-9;
+      }
 
-	{std::lock_guard<std::mutex> lck(state_mtx);
-	current_vel << ((OptiState.x-state_init(0))-last_state(0))/dt, ((OptiState.y-state_init(1))-last_state(1))/dt, ((OptiState.z)-last_state(2))/dt;
-	state << std::chrono::duration_cast<std::chrono::milliseconds>(t1-tstart).count()*1e-3,
-	      OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z,
-	      ESPstate(6),ESPstate(7),ESPstate(8),ESPstate(9),
-	      (current_vel(0)+previous_vel(0))/2, (current_vel(1)+previous_vel(1))/2, (current_vel(2)+previous_vel(2))/2,
-	      //current_vel(0), current_vel(1), current_vel(2), 
-	      ESPstate(3),ESPstate(4),ESPstate(5),
-	      ESPstate(10),ESPstate(11),ESPstate(12),ESPstate(0),ESPstate(1),ESPstate(2);
-	}
+      {std::lock_guard<std::mutex> lck(state_mtx);
+      current_vel << ((OptiState.x-state_init(0))-last_state(0))/dt, ((OptiState.y-state_init(1))-last_state(1))/dt, ((OptiState.z)-last_state(2))/dt;
+      state << std::chrono::duration_cast<std::chrono::milliseconds>(t1-tstart).count()*1e-3,
+            OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z,
+            ESPstate(6),ESPstate(7),ESPstate(8),ESPstate(9),
+            (current_vel(0)+previous_vel(0))/2, (current_vel(1)+previous_vel(1))/2, (current_vel(2)+previous_vel(2))/2,
+            //current_vel(0), current_vel(1), current_vel(2), 
+            ESPstate(3),ESPstate(4),ESPstate(5),
+            ESPstate(10),ESPstate(11),ESPstate(12),ESPstate(0),ESPstate(1),ESPstate(2);
+      }
 
 
   //       // time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed
@@ -467,6 +614,7 @@ int main(int argc, char **argv){
     
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
     vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
+    policy.updateOffsets(offsets);
     quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(2));
     omega_des = policy.DesiredOmega();
     u_des = policy.DesiredInputs();
