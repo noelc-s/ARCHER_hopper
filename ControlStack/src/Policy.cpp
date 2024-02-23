@@ -16,7 +16,6 @@ void Policy::loadParams(const std::string filepath, Params& params) {
     params.pitch_d_offset = config["pitch_offset"].as<scalar_t>();
     params.roll_d_offset = config["roll_offset"].as<scalar_t>();
     params.yaw_damping = config["RaibertHeuristic"]["yaw_damping"].as<scalar_t>();
-    std::cout<<"loadParams OK"<<std::endl;
 
 }
 
@@ -25,8 +24,8 @@ void Policy::updateOffsets(const vector_2t offsets) {
     params.pitch_d_offset = offsets[1];
 }
 
-RaibertPolicy::RaibertPolicy() {
-    loadParams("../config/gains_hardware.yaml", params);
+RaibertPolicy::RaibertPolicy(const std::string yamlPath) {
+    loadParams(yamlPath, params);
 }
 
 quat_t RaibertPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des){    
@@ -62,8 +61,8 @@ vector_4t RaibertPolicy::DesiredInputs(){
     return u_des;
 }
 
-ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name) {
-    loadParams("../config/gains_hardware.yaml", params);
+ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath) {
+    loadParams(yamlPath, params);
 
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
     Ort::SessionOptions session_options;

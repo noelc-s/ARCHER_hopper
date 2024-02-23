@@ -69,7 +69,7 @@ public:
 
 class RaibertPolicy : public Policy{
 public:
-    RaibertPolicy();
+    RaibertPolicy(const std::string yamlPath);
     quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs();
@@ -79,7 +79,7 @@ public:
 // https://github.com/microsoft/onnxruntime-inference-examples/blob/main/c_cxx/OpenVINO_EP/Linux/squeezenet_classification/squeezenet_cpp_app.cpp
 class ZeroDynamicsPolicy : public Policy{
 public:
-    ZeroDynamicsPolicy(std::string model_name);
+    ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
     void EvaluateNetwork(const vector_4t state, vector_2t& output);
     quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d, scalar_t y_d, scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des);
     vector_3t DesiredOmega();

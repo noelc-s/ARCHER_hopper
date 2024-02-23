@@ -752,9 +752,18 @@ void loop() {
       // q.z() = cr * cp * sy - sr * sp * cy;
       
       // quat_init = quat_t((float)state[9], (float)state[6], (float)state[7], (float)state[8]);
-      quat_init = quat_t(1,0,0,0);
+      auto initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
+      quat_t initYawQuat;
+      initYawQuat = AngleAxisf(0, Vector3f::UnitX())
+                  * AngleAxisf(0, Vector3f::UnitY())
+                    * AngleAxisf(initEuler[2], Vector3f::UnitZ());
+
+      quat_init_inverse = initYawQuat.inverse();
+
+
+      // quat_init = quat_t(1,0,0,0);
 //      quat_init  = q;
-      quat_init_inverse = quat_init.inverse();
+      // quat_init_inverse = quat_init.inverse();
       initialized = true;
       koios->setLogo('G');
     { Threads::Scope scope(state_mtx);
