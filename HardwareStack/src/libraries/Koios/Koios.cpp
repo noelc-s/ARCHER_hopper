@@ -32,7 +32,7 @@ namespace Archer
   }
 
   int32_t Koios::initComm(int MC){
-    setLEDs("1000");
+    setLEDs("0010");
     delay(10);
     digitalWrite(_sOUT,HIGH);
     delay(10);
@@ -83,23 +83,23 @@ namespace Archer
   void Koios::initIMU(){
     Serial.println("Initializing VN-100 Serial..");
     IMU_PORT.print("$VNASY,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,05,921600*XX\r\n");
     delay(10);
     IMU_PORT.flush();
     delay(10);
     IMU_PORT.begin(921600);
-    delay(475);
+    delay(45);
     IMU_PORT.print("$VNASY,1*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNASY,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,06,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,75,2,1,01,0030*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNASY,1*XX\r\n");
-    delay(100);
+    delay(10);
     while (IMU_PORT.available() > 0) {
       IMU_PORT.read();
     }

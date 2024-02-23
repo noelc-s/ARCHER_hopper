@@ -204,6 +204,10 @@ void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, s
           std::cout << "reset" << std::endl;
           send_reset = 1;
         }
+        if (event.number == 4 && event.value == 1) {
+          std::cout << "Killing" << std::endl;
+          exit(0);
+        }
         // can do something cool with buttons
         if (event.number == 0 && event.value == 1)
           offsets[1] -= pitch_increment;

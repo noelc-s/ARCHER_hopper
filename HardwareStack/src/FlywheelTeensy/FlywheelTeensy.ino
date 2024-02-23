@@ -57,7 +57,7 @@ volatile float q0  = 1;
 volatile float q1 = 0;
 volatile float q2 = 0;
 volatile float q3 = 0;
-quat_t q_pitch(0,0,-1,0); // negative 180 pitch to flip IMU right way around
+quat_t q_pitch; // negative 180 pitch to flip IMU right way around
 // FYI, IMU is installed upside down
 
 int reset_cmd = 0;
@@ -125,6 +125,8 @@ double foot_on;       // 1 foot is on, 0 foot is off.
 double flywheel_on;   // 1 flywheels on, 0 flywheels off. 
 double debug_on;      // 1 if consant upright position, 0 if MPC trajs
 double send_torque;
+double pitch_offset;
+
 // for parsing SD card txt files, line-by-line
 void parseRecord(byte index){
   char * ptr;
@@ -272,7 +274,12 @@ void readParams() {
   comms_on  = atof(parameterArray[6]);
   foot_on  = atof(parameterArray[7]);
   send_torque  = atof(parameterArray[8]);
-  // debug  = atof(parameterArray[9]);
+  pitch_offset  = atof(parameterArray[9]);
+
+  if (pitch_offset > 0)
+    q_pitch = quat_t(0,0,-1,0);
+  else
+    q_pitch = quat_t(1,0,0,0);
 
   Serial.println("Loaded Parameters: ");
   Serial.print("kp_y = ");     Serial.println(kp_y,2);
@@ -284,7 +291,7 @@ void readParams() {
   Serial.print("comms_on = ");  Serial.println(comms_on,0);
   Serial.print("foot_on = ");  Serial.println(foot_on,0);
   Serial.print("send_torque = "); Serial.println(send_torque,0);
-  // Serial.print("flywheel_on = "); Serial.println(flywheel_on,0);
+  Serial.print("pitch_offset = "); Serial.println(pitch_offset,0);
 
   //=================================================
 }
