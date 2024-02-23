@@ -51,15 +51,16 @@ MPC:
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
 RaibertHeuristic:
-  kx_p: -0.0                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.0                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
-  pitch_d_offset: -0.02
-  roll_d_offset: -0.005
   yaw_damping: 0.0035
   # yaw_damping: 1.0
+
+pitch_offset: -0.02
+roll_offset: -0.005
 
 UnitTest:
   response: 'n'
