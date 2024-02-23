@@ -127,6 +127,8 @@ double debug_on;      // 1 if consant upright position, 0 if MPC trajs
 double send_torque;
 double pitch_offset;
 
+vector_3t initEuler;
+
 // for parsing SD card txt files, line-by-line
 void parseRecord(byte index){
   char * ptr;
@@ -684,79 +686,19 @@ void loop() {
       }
       q_tmp = quat_a;
     }
-//      vector_4t quat_vec = vector_4t((float)state[9], (float)state[6], (float)state[7], (float)state[8]);
-//      vector_3t log_quat_vec;
-//      log_quat_vec = quat_vec.segment(1,3)/quat_vec.segment(1,3).norm()*acos(quat_vec(0)/quat_vec.norm());
-//      vector_3t xi_0;
-//      xi_0 << r_offset, p_offset+1.5708, log_quat_vec(2);
-//      vector_4t quat_init_vec;
-//      quat_init_vec << cos(xi_0.norm()), xi_0/xi_0.norm()*sin(xi_0.norm());
-//      quat_init = quat_t(quat_init_vec(0), quat_init_vec(1), quat_init_vec(2), quat_init_vec(3));
-//
-//      Serial.println();
-//      Serial.print(log_quat_vec[0]); Serial.print(", ");
-//      Serial.print(log_quat_vec[1]); Serial.print(", ");
-//      Serial.print(log_quat_vec[2]); Serial.print(", ");
-//      Serial.println();
-//      Serial.print(xi_0[0]); Serial.print(", ");
-//      Serial.print(xi_0[1]); Serial.print(", ");
-//      Serial.print(xi_0[2]); Serial.print(", ");
-//      Serial.println();
-//      Serial.println();
-//            
-//      Serial.print(state[9]); Serial.print(", ");
-//      Serial.print(state[6]); Serial.print(", ");
-//      Serial.print(state[7]); Serial.print(", ");
-//      Serial.print(state[8]); Serial.print(", ");
-//      Serial.println();
-//      Serial.println();
-//
-//      Serial.print(quat_init.w()); Serial.print(", ");
-//      Serial.print(quat_init.x()); Serial.print(", ");
-//      Serial.print(quat_init.y()); Serial.print(", ");
-//      Serial.print(quat_init.z()); Serial.print(", ");
-//      Serial.println();
-
-      //      // roll (x-axis rotation)
-      // float sinr_cosp = 2 * (quat_a.w() * quat_a.x() + quat_a.y() * quat_a.z());
-      // float cosr_cosp = 1 - 2 * (quat_a.x() * quat_a.x() + quat_a.y() * quat_a.y());
-      // float roll = std::atan2(sinr_cosp, cosr_cosp);
-
-      // // pitch (y-axis rotation)
-      // float sinp = 2 * (quat_a.w() * quat_a.y() - quat_a.z() * quat_a.x());
-      // float pitch;
-      // if (std::abs(sinp) >= 1)
-      //     pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-      // else
-      //     pitch = std::asin(sinp);
-
-      // // yaw (z-axis rotation)
-      // float siny_cosp = 2 * (quat_a.w() * quat_a.z() + quat_a.x() * quat_a.y());
-      // float cosy_cosp = 1 - 2 * (quat_a.y() * quat_a.y() + quat_a.z() * quat_a.z());
-      // float yaw = std::atan2(siny_cosp, cosy_cosp);
-
-      // static float r_offset = 0.002;
-      // static float p_offset = -0.02;
-
-      // float cy = cos(yaw * 0.5);
-      // float sy = sin(yaw * 0.5);
-      // float cp = cos((p_offset) * 0.5);
-      // float sp = sin((p_offset) * 0.5);
-      // float cr = cos(((-1*(roll<0))*3.14+r_offset) * 0.5);
-      // float sr = sin(((-1*(roll<0))*3.14+r_offset) * 0.5);
-
-      // quat_t q;
-      // q.w() = cr * cp * cy + sr * sp * sy;
-      // q.x() = sr * cp * cy - cr * sp * sy;
-      // q.y() = cr * sp * cy + sr * cp * sy;
-      // q.z() = cr * cp * sy - sr * sp * cy;
-      
-      // quat_init = quat_t((float)state[9], (float)state[6], (float)state[7], (float)state[8]);
-      auto initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
+    
+      // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
+      initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
       quat_t initYawQuat;
-      initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-                  * AngleAxisf(0, Vector3f::UnitY())
-                    * AngleAxisf(initEuler[2], Vector3f::UnitZ());
+      if (quat_a.z() > 0) {
+        initYawQuat = AngleAxisf(0, Vector3f::UnitX())
+          * AngleAxisf(0, Vector3f::UnitY())
+          * AngleAxisf(initEuler[2]-M_PI, Vector3f::UnitZ());
+      } else {
+        initYawQuat = AngleAxisf(0, Vector3f::UnitX())
+          * AngleAxisf(0, Vector3f::UnitY())
+          * AngleAxisf(initEuler[2], Vector3f::UnitZ());
+      }
 
       quat_init_inverse = initYawQuat.inverse();
 
@@ -796,6 +738,8 @@ void loop() {
     DR = dR;
     quat_t q_measured(-Q3, -Q0, -Q1, -Q2); // Quaternions are a double cover of SO(3).
     quat_a = quat_init_inverse * q_pitch.inverse()*q_measured;
+
+    Serial.print(initEuler[2]);     Serial.print(",");
 
     Serial.print(quat_a.w());     Serial.print(",");
     Serial.print(quat_a.x());     Serial.print(",");
