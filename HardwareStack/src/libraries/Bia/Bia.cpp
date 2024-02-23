@@ -2,6 +2,7 @@
 
 namespace Archer
 {
+
   Bia::Bia(DualENC &dENC, ELMO_CANt4 &elmo, ControlBia &cBia):
   dENC_(dENC),
   elmo_(elmo),
@@ -21,6 +22,12 @@ namespace Archer
     digitalWrite(_G,LOW);
     delay(10);
     _rb0 = 0.0;
+  }
+
+  void Bia::exitProgram() {
+    rt = elmo_.motorOff(IDX_BIA);
+    setLEDs("1000");
+    while(1) {};
   }
 
   int32_t Bia::initComm(int MC){
@@ -256,49 +263,78 @@ namespace Archer
     }
   }
 
+  int32_t Bia::sendSafeTorque(float xb, float u) {
+    if (xb > theta_max || xb < theta_min) {
+      Serial.print("xb was too large: ");
+      Serial.print(xb);
+      Serial.println(". Exiting");
+      exitProgram();
+    } 
+    return elmo_.sendTC(u,IDX_BIA);
+  }
+
   void Bia::findZero(){
+    Serial.println("Finding Zero");
     float xb,vb,xf,vf;
     float th1 = 0.02;
     float th2 = 0.01;
     float u   = 0.0;
     int i = 0;
+    Serial.println("Pulling in");
     while(i<1){
       u = u - 0.001;
+      Serial.print("U: ");
+      Serial.println(u);
+      if (abs(u) > 2) {
+        Serial.println("Error. Required too much torque in initialization. Exiting.");
+        exitProgram();
+      }
       updateState(1,xb,vb);
       updateState(2,xf,vf);
-      elmo_.sendTC(u,IDX_BIA);
+      sendSafeTorque(xb, u);
       if(xf>th1){
         i = 1;
         cBia_.logZero(xb,1);
       }
     }
+    Serial.println("Deflection Registered.");
+    Serial.println("Releasing");
     while(i<2){
       u = u + 0.001;
+      if (u > 1) {
+        Serial.println("Error. Torque went above 1. Exiting.");
+        exitProgram();
+      }
       updateState(1,xb,vb);
       updateState(2,xf,vf);
-      elmo_.sendTC(u,IDX_BIA);
+      sendSafeTorque(xb, u);
       if(xf<th2){
         i = 2;
         cBia_.logZero(xb,2);
       }
     }
+    Serial.println("Done.");
   }
 
   void Bia::trackPID0(float d0,float &x,float &u0){
     float rb,wb,u;
     updateState(1,rb,wb);
     cBia_.inputPID0(u,d0,rb,wb,0.0);
-    rt = elmo_.sendTC(u,4);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
     x  = rb-_rb0;
     u0 = u;
   }
 
   void Bia::trackU0(float d0,float u0,float &xf,float &vf,float &u){
     float up,ud;
+    float rb,wb;
     updateState(2,xf,vf);
     cBia_.testU0(up,ud,d0,xf,vf);
     u  = u0 + up + ud;
-    rt = elmo_.sendTC(u,4);
+    updateState(1,rb,wb);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
   }
 
   void Bia::testPID0(float d0,float &x,float &u0,float &up,float &ud,float &ui){
@@ -306,7 +342,8 @@ namespace Archer
     updateState(1,rb,wb);
     cBia_.testPID0(u0,up,ud,ui,d0,rb,wb);
     u  = u0 + up + ud + ui;
-    rt = elmo_.sendTC(u,4);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
     x  = rb;
   }
 
@@ -316,7 +353,8 @@ namespace Archer
     updateState(2,xf,vf);
     cBia_.testPDb(up,ud,rb,wb);
     u  = up + ud;
-    rt = elmo_.sendTC(u,4);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
   }
 
   void Bia::testPDf(float d0,float &rb,float &xf,float &u0,float &up,float &ud){
@@ -325,15 +363,18 @@ namespace Archer
     updateState(2,xf,vf);
     cBia_.testPDf(u0,up,ud,d0,xf,vf);
     u  = u0 + up + ud;
-    rt = elmo_.sendTC(u,4);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
   }
 
   void Bia::testU0(float d0,float &xf,float u0){
-    float up,ud,vf,u;
+    float up,ud,vf,u,wb,rb;
+    updateState(1,rb,wb);
     updateState(2,xf,vf);
     cBia_.testU0(up,ud,d0,xf,vf);
     u  = u0 + up + ud;
-    rt = elmo_.sendTC(u,4);
+    rt = sendSafeTorque(rb, u);
+    // rt = elmo_.sendTC(u,4);
   }
 
   void Bia::updateRB0(){
@@ -344,5 +385,30 @@ namespace Archer
     uint32_t T1 = micros();
     if ((T1 - T0) < dTdes)
       delayMicroseconds(dTdes - T1 + T0);
+  }
+
+  void Bia::runSin() {
+    float theta;
+    float omega;
+    float u = 0.0;
+    int direction = 1;
+    Serial.println("Running Sawtooth pattern.");
+    while(1) {
+      updateState(1,theta, omega);
+      if (abs(theta) > 0.1) {
+        exitProgram();
+      }
+      if (direction == 1) {
+        u -= 0.01;
+      } else {
+        u += 0.01;
+      }
+      if (abs(u) >= 1.0) {
+        direction = -direction;
+      }
+      Serial.println(u);
+      sendSafeTorque(theta, u);
+      // elmo_.sendTC(u,IDX_BIA);
+    }
   }
 }

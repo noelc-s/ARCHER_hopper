@@ -50,10 +50,10 @@ MPC:
   max_vel: 1
 
 RaibertHeuristic:
-  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.0                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.0                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
   yaw_damping: 0.0035
 
