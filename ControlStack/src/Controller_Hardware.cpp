@@ -39,7 +39,6 @@
 
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
-// #include "../inc/MPC.h"
 #include "../inc/Policy.h"
 #include "../inc/ZeroDynamicsPolicy.h"
 
@@ -203,6 +202,10 @@ void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, s
         if (event.number == 5 && event.value == 1) {
           std::cout << "reset" << std::endl;
           send_reset = 1;
+        }
+        if (event.number == 4 && event.value == 1) {
+          std::cout << "Exiting due to kill command triggered." << std::endl;
+          exit(0);
         }
         // can do something cool with buttons
         if (event.number == 0 && event.value == 1)
@@ -432,7 +435,8 @@ int main(int argc, char **argv){
 
     // Read yaml
     // MPC::MPC_Params mpc_p;
-    setupGains("../config/gains_hardware.yaml");
+    std:: string yamlPath = "../config/gains_hardware.yaml";
+    setupGains(yamlPath);
 
     vector_t state(20);
 
@@ -514,8 +518,8 @@ int main(int argc, char **argv){
     tstart = std::chrono::high_resolution_clock::now();
     t2 = tstart;
 
-    RaibertPolicy policy = RaibertPolicy();
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    RaibertPolicy policy = RaibertPolicy(yamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     while(ros::ok()){
       ros::spinOnce();

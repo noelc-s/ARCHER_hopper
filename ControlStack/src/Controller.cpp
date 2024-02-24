@@ -214,14 +214,14 @@ void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, s
 // what are TX_torques and RX_state? The name suggests that it is transmitting torque commands and recieving the system state. 
 // The number of states is consistent, what is the number of torques?
 
-    int *server_fd = new int;
-    int *new_socket = new int;
-    int valread;
-    struct sockaddr_in *address = new sockaddr_in;
-    int opt_socket = 1;
-    int addrlen = sizeof(*address);
-    scalar_t TX_torques[13+2*5] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
-    scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int *server_fd = new int;
+int *new_socket = new int;
+int valread;
+struct sockaddr_in *address = new sockaddr_in;
+int opt_socket = 1;
+int addrlen = sizeof(*address);
+scalar_t TX_torques[13+2*5] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // MH
 // sets up a socket between something and something. It is reading from the port 8080, so something needs to publish on that port.
@@ -282,8 +282,9 @@ void setupGains(const std::string filepath) {
 int main() {
 // MH
 // initialize the socket, create an object to read the mpc parameters and read the gains
-    setupSocket();    
-    setupGains("../config/gains.yaml");
+    setupSocket();
+    const std::string yamlPath = "../config/gains.yaml";
+    setupGains(yamlPath);
 
     // Read yaml
 
@@ -331,69 +332,69 @@ int main() {
     vector_4t u_des;
 
     // Instantiate a new policy.
-    RaibertPolicy policy = RaibertPolicy();
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx");
+    RaibertPolicy policy = RaibertPolicy(yamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     // MH
     // for infinity, do
     for (;;) {
-        read(*new_socket, &RX_state, sizeof(RX_state));
-   
-        Map<vector_t> state(RX_state, 20);
-        dt_elapsed = state(0) - t_last;
-        
-        hopper.updateState(state);
+      read(*new_socket, &RX_state, sizeof(RX_state));
+  
+      Map<vector_t> state(RX_state, 20);
+      dt_elapsed = state(0) - t_last;
+      
+      hopper.updateState(state);
 
-            scalar_t x_d = 0;
-            scalar_t y_d = 0;
+      scalar_t x_d = 0;
+      scalar_t y_d = 0;
 
-        quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-        vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
-	    
-        policy.updateOffsets(offsets);
-        quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
-            state(8), state(9), dist(0));
-        omega_des = policy.DesiredOmega();
-        u_des = policy.DesiredInputs();
+      quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
+      vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
+    
+      policy.updateOffsets(offsets);
+      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
+          state(8), state(9), dist(0));
+      omega_des = policy.DesiredOmega();
+      u_des = policy.DesiredInputs();
 
-        hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
-        t_last = state(0);
+      hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
+      t_last = state(0);
 
-        vector_3t error;
+      vector_3t error;
 
-        quat_t e = quat_des.inverse() * hopper.quat;
-        manif::SO3Tangent<scalar_t> xi;
-        auto e_ = manif::SO3<scalar_t>(e);
-        xi = e_.log();
-        error << xi.coeffs();
+      quat_t e = quat_des.inverse() * hopper.quat;
+      manif::SO3Tangent<scalar_t> xi;
+      auto e_ = manif::SO3<scalar_t>(e);
+      xi = e_.log();
+      error << xi.coeffs();
 
-        // Log data
-        if (fileWrite)
-	        fileHandle <<state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
-            << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
-            << "," << quat_des.coeffs().transpose().format(CSVFormat)
-            << "," << hopper.omega.transpose().format(CSVFormat)
-            << "," << hopper.torque.transpose().format(CSVFormat)
-            << "," << error.transpose().format(CSVFormat) 
-            << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
+      // Log data
+      if (fileWrite)
+        fileHandle <<state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+          << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
+          << "," << quat_des.coeffs().transpose().format(CSVFormat)
+          << "," << hopper.omega.transpose().format(CSVFormat)
+          << "," << hopper.torque.transpose().format(CSVFormat)
+          << "," << error.transpose().format(CSVFormat) 
+          << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
 
-        for (int i = 0; i < 4; i++) {
-            TX_torques[i] = hopper.torque[i];
-        }
+      for (int i = 0; i < 4; i++) {
+          TX_torques[i] = hopper.torque[i];
+      }
 
-        // red dot
-	    TX_torques[11] = command(0)+state(1);
-	    TX_torques[12] = command(1)+state(2);
+      // red dot
+      TX_torques[11] = command(0)+state(1);
+      TX_torques[12] = command(1)+state(2);
 
-        // floating ghost body
-        TX_torques[4] = state(1);
-	    TX_torques[5] = state(2);
-        TX_torques[6] = 1;
-        TX_torques[7] = quat_des.w();
-	    TX_torques[8] = quat_des.x();
-        TX_torques[9] = quat_des.y();
-        TX_torques[10] = quat_des.z();
+      // floating ghost body
+      TX_torques[4] = state(1);
+      TX_torques[5] = state(2);
+      TX_torques[6] = 1;
+      TX_torques[7] = quat_des.w();
+      TX_torques[8] = quat_des.x();
+      TX_torques[9] = quat_des.y();
+      TX_torques[10] = quat_des.z();
 
-        send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+      send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     }
 }
