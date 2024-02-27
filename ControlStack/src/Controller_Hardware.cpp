@@ -26,8 +26,6 @@
 #include <unistd.h>
 #include <linux/joystick.h>
 
-#include "pinocchio/algorithm/jacobian.hpp"
-
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/TwistStamped.h"
@@ -52,7 +50,6 @@
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
 
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
@@ -310,7 +307,24 @@ int main(int argc, char **argv){
     // ROS stuff
     ros::init(argc, argv, "listener");
     ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+    // if (argc<1) {
+      ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+    // } else {
+    //   OptiState.q_w = 1;
+    //   OptiState.q_x = 0;
+    //   OptiState.q_y = 0;
+    //   OptiState.q_z = 0;
+    //   OptiState.w_x = 0;
+    //   OptiState.w_y = 0;
+    //   OptiState.w_z = 0;
+    //   OptiState.x = 0;
+    //   OptiState.y = 0;
+    //   OptiState.z = 0;
+    //   OptiState.x_dot = 0;
+    //   OptiState.y_dot = 0;
+    //   OptiState.z_dot = 0;
+    // }
+    
 
     while(!ESP_initialized) {};
 
@@ -363,10 +377,10 @@ int main(int argc, char **argv){
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
     vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
     policy.updateOffsets(offsets);
-    quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), command(2));
+    // here joystick is absolute position and yaw
+    quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
     omega_des = policy.DesiredOmega();
     u_des = policy.DesiredInputs();
-
 
           {std::lock_guard<std::mutex> lck(des_state_mtx);
       desstate[0] = quat_des.w();

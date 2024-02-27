@@ -55,7 +55,7 @@ RaibertHeuristic:
   kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
-  yaw_damping: 0.0035
+  yaw_damping: 0.00002
 
-roll_offset: -0.0011
-pitch_offset: -0.0154
+roll_offset: -0.004
+pitch_offset: 0.026

@@ -25,6 +25,7 @@ namespace Archer
       void testPDb(float &up,float &ud,float rb, float wb);
       void testPDf(float &u0,float &up,float &ud,float d0,float xf, float vf);
       void testU0(float &up,float &ud,float d0,float xf, float vf);
+      void releaseFoot(float &up,float &ud,float rb, float wb);
       void logZero(float val,int i);
       void saturate(float &u);
       void setTx(int val);
@@ -33,7 +34,7 @@ namespace Archer
       float kI  = 0.00;      // 
       float kD  = 2.00;      // 
       float kPb = 2.50;      // 
-      float kDb = 0.025;     // 
+      float kDb = 0.25;     // 
       float _Tmax;           // Max current allowed
       float _Imax = 2.0;     // Max current allowed from controller's I term
       float _rad  = 0.0375;  // Pulley radius

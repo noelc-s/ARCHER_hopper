@@ -31,15 +31,12 @@
 #include "../inc/Types.h"
 #include "../inc/UserInput.h"
 
-#include "pinocchio/algorithm/jacobian.hpp"
-//#include "pinocchio/algorithm/kinematics.hpp"
 
 #define PORT 8080
 #define MAXLINE 1000
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
 
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
@@ -54,6 +51,7 @@ int opt_socket = 1;
 int addrlen = sizeof(*address);
 scalar_t TX_torques[13+2*5] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
 scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 
 // setting up a virtual socket to stream data to and fro
 void setupSocket() {
@@ -93,18 +91,22 @@ void setupSocket() {
 // initializing the parameters for MPC and creating an instance p for the parameters.
 struct Parameters {
     scalar_t dt;
+    scalar_t roll_offset;
+    scalar_t pitch_offset;
 } p;
 
 void setupGains(const std::string filepath) {
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
+    p.roll_offset = config["roll_offset"].as<scalar_t>();
+    p.pitch_offset = config["pitch_offset"].as<scalar_t>();
 }
 
 // Driver code
 int main() {
     // initialize the socket, create an object to read the mpc parameters and read the gains
-    setupSocket();    
+    setupSocket();
 
     // Read yaml
     const std::string yamlPath = "../config/gains.yaml";
@@ -136,79 +138,87 @@ int main() {
     vector_2t command_interp;
     vector_2t dist;
     vector_2t offsets;
-    offsets.setZero();
-
+    offsets << p.roll_offset, p.pitch_offset;
+    // old -- remove if comms work
+    // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    // std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
+    
     UserInput readUserInput;
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
-    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));    
+    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
     vector_4t u_des;
 
     // Instantiate a new policy.
-    RaibertPolicy policy = RaibertPolicy(yamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
+    // RaibertPolicy policy = RaibertPolicy(yamlPath);
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     // for infinity, do
     for (;;) {
-        read(*new_socket, &RX_state, sizeof(RX_state));
-   
-        Map<vector_t> state(RX_state, 20);
-        dt_elapsed = state(0) - t_last;
-        
-        hopper.updateState(state);
+      read(*new_socket, &RX_state, sizeof(RX_state));    
+  
+      Map<vector_t> state(RX_state, 20);
+      dt_elapsed = state(0) - t_last;
+      
+      hopper.updateState(state);
 
-        scalar_t x_d = 0;
-        scalar_t y_d = 0;
+      scalar_t x_d = 0;
+      scalar_t y_d = 0;
 
-        quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-        vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
-	    
-        policy.updateOffsets(offsets);
-        quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
-                                            state(8), state(9), dist(0));
-        omega_des = policy.DesiredOmega();
-        u_des = policy.DesiredInputs();
+      quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
 
-        hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
-        t_last = state(0);
+      static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
+      quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
+      quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
 
-        vector_3t error;
+      policy.updateOffsets(offsets);
+      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
+          state(8), state(9), dist(0));
 
-        quat_t e = quat_des.inverse() * hopper.quat;
-        manif::SO3Tangent<scalar_t> xi;
-        auto e_ = manif::SO3<scalar_t>(e);
-        xi = e_.log();
-        error << xi.coeffs();
+      quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
+      omega_des = policy.DesiredOmega();
+      u_des = policy.DesiredInputs();
 
-        // Log data
-        if (fileWrite)
-	        fileHandle <<state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
-            << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
-            << "," << quat_des.coeffs().transpose().format(CSVFormat)
-            << "," << hopper.omega.transpose().format(CSVFormat)
-            << "," << hopper.torque.transpose().format(CSVFormat)
-            << "," << error.transpose().format(CSVFormat) 
-            << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
+      hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
+      t_last = state(0);
 
-        for (int i = 0; i < 4; i++) {
-            TX_torques[i] = hopper.torque[i];
-        }
+      vector_3t error;
+
+      quat_t e = quat_des.inverse() * hopper.quat;
+      manif::SO3Tangent<scalar_t> xi;
+      auto e_ = manif::SO3<scalar_t>(e);
+      xi = e_.log();
+      error << xi.coeffs();
+
+      // Log data
+      if (fileWrite)
+        fileHandle <<state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+          << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
+          << "," << quat_des.coeffs().transpose().format(CSVFormat)
+          << "," << hopper.omega.transpose().format(CSVFormat)
+          << "," << hopper.torque.transpose().format(CSVFormat)
+          << "," << error.transpose().format(CSVFormat) 
+          << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
+
+      for (int i = 0; i < 4; i++) {
+          TX_torques[i] = hopper.torque[i];
+      }
 
       // red dot
-	    TX_torques[11] = command(0)+state(1);
-	    TX_torques[12] = command(1)+state(2);
+      TX_torques[11] = command(0)+state(1);
+      TX_torques[12] = command(1)+state(2);
 
       // floating ghost body
       TX_torques[4] = state(1);
-	    TX_torques[5] = state(2);
+      TX_torques[5] = state(2);
       TX_torques[6] = 1;
       TX_torques[7] = quat_des.w();
-	    TX_torques[8] = quat_des.x();
+      TX_torques[8] = quat_des.x();
       TX_torques[9] = quat_des.y();
       TX_torques[10] = quat_des.z();
 
-        send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
+      send(*new_socket, &TX_torques, sizeof(TX_torques), 0);
     }
 }
