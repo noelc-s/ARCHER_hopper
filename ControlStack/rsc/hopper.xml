@@ -8,6 +8,7 @@
 
 
     <option timestep="0.001" integrator="RK4" gravity="0 0 0"
+            solver="Newton" iterations="1" ls_iterations="4"
             o_solimp="0.99 0.999 0.001 0.5 2" o_solref="0.002 1"/>
     <!--    Disable Gravity-->
     <!--    <option timestep="0.001" integrator="RK4" gravity="0 0 -9.81" o_solimp = "0.99 0.999 0.001 0.5 2" o_solref = "0.002 1"/>-->
