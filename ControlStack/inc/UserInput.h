@@ -24,8 +24,7 @@ public:
     // simple list for button map
     char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
 
-    scalar_t roll_increment = 0.0001;
-    scalar_t pitch_increment = 0.0001;
+    scalar_t increment = 0.001;
     bool send_reset = false;
 
     // Reads a joystick event from the joystick device.

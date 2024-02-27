@@ -59,8 +59,8 @@ RaibertHeuristic:
   yaw_damping: 0.0035
   # yaw_damping: 1.0
 
-pitch_offset: -0.02
-roll_offset: -0.005
+pitch_offset: -0.00
+roll_offset: -0.00
 
 UnitTest:
   response: 'n'

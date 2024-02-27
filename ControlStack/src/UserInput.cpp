@@ -94,15 +94,27 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, vector_
           std::cout << "reset" << std::endl;
           send_reset = 1;
         }
+        if (event.number == 4 && event.value == 1) {
+          std::cout << "Killed due to user input" << std::endl;
+          exit(1);
+        }
+        if (event.number == 8 && event.value == 1) {
+          increment *= 10;
+          std::cout << "Increasing resolution to: " << increment << std::endl;
+        }
+        if (event.number == 9 && event.value == 1) {
+          increment /= 10;
+          std::cout << "Decreasing resolution to: " << increment << std::endl;
+        }
         // can do something cool with buttons
         if (event.number == 0 && event.value == 1)
-          offsets[1] -= pitch_increment;
+          offsets[1] -= increment;
         if (event.number == 1 && event.value == 1)
-          offsets[0] += roll_increment;
+          offsets[0] += increment;
         if (event.number == 2 && event.value == 1)
-          offsets[1] += pitch_increment;
+          offsets[1] += increment;
         if (event.number == 3 && event.value == 1)
-          offsets[0] -= roll_increment;
+          offsets[0] -= increment;
         std::cout << "Offsets: " << offsets.transpose() << std::endl;
         break;
       
