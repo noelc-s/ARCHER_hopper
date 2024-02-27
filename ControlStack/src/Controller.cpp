@@ -30,15 +30,12 @@
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
 
-#include "pinocchio/algorithm/jacobian.hpp"
-//#include "pinocchio/algorithm/kinematics.hpp"
 
 #define PORT 8080
 #define MAXLINE 1000
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
 
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
@@ -187,6 +184,8 @@ void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, s
       case JS_EVENT_BUTTON:
         if (event.number == 5 && event.value == 1)
           std::cout << "reset" << std::endl;
+        if (event.number == 4 && event.value == 1)
+          exit(0);
         // can do something cool with buttons
         if (event.number == 0 && event.value == 1)
           offsets[1] -= pitch_increment;
@@ -267,6 +266,8 @@ void setupSocket() {
 // p.dt = 1212;
 struct Parameters {
     scalar_t dt;
+    scalar_t roll_offset;
+    scalar_t pitch_offset;
 } p;
 
 // MH
@@ -276,6 +277,8 @@ void setupGains(const std::string filepath) {
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
+    p.roll_offset = config["roll_offset"].as<scalar_t>();
+    p.pitch_offset = config["pitch_offset"].as<scalar_t>();
 }
 
 // Driver code
@@ -323,7 +326,7 @@ int main() {
     vector_2t command_interp;
     vector_2t dist;
     vector_2t offsets;
-    offsets.setZero();
+    offsets << p.roll_offset, p.pitch_offset;
     // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
     std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
 
@@ -338,7 +341,7 @@ int main() {
     // MH
     // for infinity, do
     for (;;) {
-      read(*new_socket, &RX_state, sizeof(RX_state));
+      read(*new_socket, &RX_state, sizeof(RX_state));    
   
       Map<vector_t> state(RX_state, 20);
       dt_elapsed = state(0) - t_last;
@@ -349,11 +352,16 @@ int main() {
       scalar_t y_d = 0;
 
       quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-      vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
-    
+
+      static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
+      quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
+      quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
+
       policy.updateOffsets(offsets);
       quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
           state(8), state(9), dist(0));
+
+      quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
       omega_des = policy.DesiredOmega();
       u_des = policy.DesiredInputs();
 

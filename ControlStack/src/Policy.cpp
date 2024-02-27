@@ -133,7 +133,7 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_
     yaw_des_rolling += params.yaw_damping*(yaw_des);
     scalar_t yaw_d = yaw_des_rolling;
 
-    quat_t desQuat = Euler2Quaternion(-rp_des(1) - params.roll_d_offset, rp_des(0) - params.pitch_d_offset, yaw_des_rolling);
+    quat_t desQuat = Euler2Quaternion(-rp_des(1), rp_des(0), yaw_des_rolling);
 	return desQuat;
 }
 

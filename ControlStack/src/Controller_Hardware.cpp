@@ -26,8 +26,6 @@
 #include <unistd.h>
 #include <linux/joystick.h>
 
-#include "pinocchio/algorithm/jacobian.hpp"
-
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/TwistStamped.h"
@@ -51,7 +49,6 @@
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
 
 
 const static IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");

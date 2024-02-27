@@ -13,12 +13,7 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
 
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/multibody/data.hpp"
-#include "pinocchio/algorithm/contact-info.hpp"
-
 using namespace Hopper_t;
-using namespace pinocchio;
 
 enum domain {flight, ground, flight_ground, ground_flight};
 
