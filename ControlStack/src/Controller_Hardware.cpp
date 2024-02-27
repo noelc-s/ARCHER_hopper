@@ -38,7 +38,7 @@
 #include "../inc/UserInput.h"
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
-#include "../inc/Policy.h"
+// #include "../inc/Policy.h" 
 #include "../inc/ZeroDynamicsPolicy.h"
 
 #define MAXLINE 1000
@@ -68,8 +68,6 @@ sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
 
-bool ethernet_send_reset = false;
-
 struct Parameters {
     std::vector<scalar_t> orientation_kp;
     std::vector<scalar_t> orientation_kd;
@@ -84,6 +82,7 @@ struct Parameters {
     std::vector<scalar_t> p0;
     scalar_t roll_offset;
     scalar_t pitch_offset;
+    int optiTrackSetting;
 } p;
 
 void signal_callback_handler(int signum) {
@@ -136,11 +135,12 @@ void setupGains(const std::string filepath) {
             p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
             p.leg_kp, p.leg_kd;
     std::cout<<"setupGains OK"<<std::endl;
+    p.optiTrackSetting = config["HardwareOptions"]["useOptiTrack"].as<int>();
 }
 
 volatile bool ESP_initialized = false;
 
-void getStateFromEthernet() {
+void getStateFromEthernet(vector_3t &dist, std::condition_variable & cv, std::mutex & m) {
 
   ssize_t recvBytes = 0;
   ssize_t n_bytes = 0;
@@ -153,10 +153,10 @@ void getStateFromEthernet() {
   }
   
   // std::cout<<"Writing..."<<std::endl;
-  if (ethernet_send_reset == true) {
+  if (dist[2] > 0.5) {
     send_buff[0] = 1; send_buff[1] = 2; send_buff[2] = 3; send_buff[3] = 4;
     send_buff[4] = 5; send_buff[5] = 6; send_buff[6] = 7; send_buff[7] = 8;
-    ethernet_send_reset = false;
+    dist[2] = 0;
   }
   
   n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr*>(&destination), destinationAddrLen);
@@ -250,9 +250,13 @@ int main(int argc, char **argv){
     desstate[8] = 0;
     desstate[9] = 0;
 
+    vector_3t dist;
+    std::condition_variable cv;
+    std::mutex m;
+
     signal(SIGINT, signal_callback_handler);
     setupSocket();
-    std::thread thread_object(getStateFromEthernet);
+    std::thread thread_object(getStateFromEthernet, std::ref(dist), std::ref(cv), std::ref(m));
 
     std::chrono::high_resolution_clock::time_point t1;
     std::chrono::high_resolution_clock::time_point t2;
@@ -289,11 +293,8 @@ int main(int argc, char **argv){
     vector_t u_des(4);
     u_des.setZero();
 
-    std::condition_variable cv;
-    std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    vector_2t dist;
     vector_2t offsets;
     offsets << p.roll_offset, p.pitch_offset;
 
@@ -303,12 +304,14 @@ int main(int argc, char **argv){
 
     vector_3t last_state;
 
+    std::function<bool()> running;
 
     // ROS stuff
-    ros::init(argc, argv, "listener");
-    ros::NodeHandle n;
-    // if (argc<1) {
+    // if (p.optiTrackSetting > 0) {
+      ros::init(argc, argv, "listener");
+      ros::NodeHandle n;
       ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+      // running = []() {return ros::ok();};
     // } else {
     //   OptiState.q_w = 1;
     //   OptiState.q_x = 0;
@@ -323,8 +326,8 @@ int main(int argc, char **argv){
     //   OptiState.x_dot = 0;
     //   OptiState.y_dot = 0;
     //   OptiState.z_dot = 0;
+    //   running = []() {return true;};
     // }
-    
 
     while(!ESP_initialized) {};
 
@@ -339,7 +342,9 @@ int main(int argc, char **argv){
     // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     while(ros::ok()){
-      ros::spinOnce();
+      // if (p.optiTrackSetting > 0) {
+        ros::spinOnce();
+      // }
       t1 = std::chrono::high_resolution_clock::now();
 
       if (!init) {
@@ -375,10 +380,18 @@ int main(int argc, char **argv){
     t2 = std::chrono::high_resolution_clock::now();
     
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-    vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
+    vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);\
+
+    static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
+    quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
+    quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
+
     policy.updateOffsets(offsets);
     // here joystick is absolute position and yaw
     quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
+    quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
+
+
     omega_des = policy.DesiredOmega();
     u_des = policy.DesiredInputs();
 

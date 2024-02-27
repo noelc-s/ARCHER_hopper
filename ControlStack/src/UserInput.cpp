@@ -45,7 +45,8 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
   return axis;
 }
 
-void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m)
+void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, 
+                                 vector_3t &dist, std::condition_variable & cv, std::mutex & m)
 {
   vector_3t input; input.setZero();
   std::chrono::seconds timeout(50000);
@@ -83,7 +84,8 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, vector_
         //   std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
         }
         if (axis == 1) {
-          dist << axes[axis].x / dist_scale, -axes[axis].y / dist_scale; // Right Joy Stick
+          dist[0] = axes[axis].x / dist_scale;
+          dist[1] = -axes[axis].y / dist_scale; // Right Joy Stick
         //   std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
         }
         break;
@@ -92,7 +94,7 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, vector_
       case JS_EVENT_BUTTON:
         if (event.number == 5 && event.value == 1) {
           std::cout << "reset" << std::endl;
-          send_reset = 1;
+          dist[2] = 1;
         }
         if (event.number == 4 && event.value == 1) {
           std::cout << "Killed due to user input" << std::endl;

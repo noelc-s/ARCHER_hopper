@@ -127,7 +127,7 @@ double debug_on;      // 1 if consant upright position, 0 if MPC trajs
 double send_torque;
 double pitch_offset;
 
-vector_3t initEuler;
+// vector_3t initEuler;
 
 // for parsing SD card txt files, line-by-line
 void parseRecord(byte index){
@@ -277,11 +277,6 @@ void readParams() {
   foot_on  = atof(parameterArray[7]);
   send_torque  = atof(parameterArray[8]);
   pitch_offset  = atof(parameterArray[9]);
-
-  if (pitch_offset > 0)
-    q_pitch = quat_t(0,0,-1,0);
-  else
-    q_pitch = quat_t(1,0,0,0);
 
   Serial.println("Loaded Parameters: ");
   Serial.print("kp_y = ");     Serial.println(kp_y,2);
@@ -688,29 +683,29 @@ void loop() {
       q_tmp = quat_a;
     }
       // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
-      VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
+      // VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
       
-      float initRoll = - r_offset;
-      float initPitch = - p_offset;
-      float initYaw = initEuler[2];
+      // float initRoll = - r_offset;
+      // float initPitch = - p_offset;
+      // float initYaw = initEuler[2];
 
-      quat_t initYawQuat;
+      // quat_t initYawQuat;
       
-      if (quat_a.z() > 0) {
-        initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-          * AngleAxisf(0, Vector3f::UnitY())
-          * AngleAxisf(initYaw-M_PI, Vector3f::UnitZ());
-      } else {
-        initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-          * AngleAxisf(0, Vector3f::UnitY())
-          * AngleAxisf(initYaw, Vector3f::UnitZ());
-      }
+      // if (quat_a.z() > 0) {
+      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
+      //     * AngleAxisf(0, Vector3f::UnitY())
+      //     * AngleAxisf(initYaw-M_PI, Vector3f::UnitZ());
+      // } else {
+      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
+      //     * AngleAxisf(0, Vector3f::UnitY())
+      //     * AngleAxisf(initYaw, Vector3f::UnitZ());
+      // }
 
-      quat_init_inverse = initYawQuat.inverse();
+      // quat_init_inverse = initYawQuat.inverse();
       initialized = true;
       koios->setLogo('G');
     { Threads::Scope scope(state_mtx);
-      quat_a = quat_init_inverse * quat_a;
+      // quat_a = quat_init_inverse * quat_a;
   
       state[6] = quat_a.w();
       state[7] = quat_a.x();
@@ -740,9 +735,8 @@ void loop() {
     quat_t q_measured(-Q3, -Q0, -Q1, -Q2); // Quaternions are a double cover of SO(3).
     // quat_init_inverse = Eigen::Quaternionf(1, 0, 0, 0);
 
-    quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
-
-    Serial.print(initEuler[2]);     Serial.print(",");
+    // quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
+    quat_a = q_installation.inverse() * q_measured;
 
     Serial.print(quat_a.w());     Serial.print(",");
     Serial.print(quat_a.x());     Serial.print(",");

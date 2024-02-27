@@ -47,6 +47,8 @@ public:
                     * AngleAxisd(yaw, Vector3d::UnitZ());
     }
 
+    static vector_3t Quaternion2Euler(const quat_t& q);
+    
     /*! @brief  evaluate the forward dynamics
     *  @param [in] x_a  current position (x-direction) of the body frame wrt the world frame
     *  @param [in] y_a  current position (y-direction) of the body frame wrt the world frame

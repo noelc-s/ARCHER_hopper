@@ -12,6 +12,8 @@
 #include <Eigen/Core>
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
+#include "Policy.h"
+#include <onnxruntime_cxx_api.h>
 
 using namespace Hopper_t;
 
@@ -61,6 +63,29 @@ public:
      * @param [in] u_des feed forward torque
      */
     void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
+
+};
+
+class NNHopper : public Hopper {
+public:    
+    NNHopper(std::string model_name, const std::string yamlPath);
+    void EvaluateNetwork(const vector_3t rpy_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau);
+    void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
+
+    // TODO: consoloidate this with policy class
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize; 
 
 };
 

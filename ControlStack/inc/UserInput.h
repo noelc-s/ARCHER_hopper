@@ -25,7 +25,6 @@ public:
     char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
 
     scalar_t increment = 0.001;
-    bool send_reset = false;
 
     // Reads a joystick event from the joystick device.
     // Returns 0 on success. Otherwise -1 is returned.
@@ -34,7 +33,8 @@ public:
     // get PS4 LS and RS joystick axis information
     size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 
-    void getJoystickInput(vector_2t &offsets, vector_3t &command, vector_2t &dist, std::condition_variable & cv, std::mutex & m);
+    void getJoystickInput(vector_2t &offsets, vector_3t &command,
+                          vector_3t &dist, std::condition_variable & cv, std::mutex & m);
 
     static vector_3t keyboardInput();
 

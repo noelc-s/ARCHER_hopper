@@ -110,3 +110,82 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     torque << spring_f, tau;
     torque += u_des;
 };
+
+NNHopper::NNHopper(std::string model_name, const std::string yamlPath) {
+    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
+    Ort::SessionOptions session_options;
+    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
+
+    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
+    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
+
+    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    inputType = inputTensorInfo.GetElementType();
+    inputDims = inputTensorInfo.GetShape();
+    // inputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    outputType = outputTensorInfo.GetElementType();
+    outputDims = outputTensorInfo.GetShape();
+    // outputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    inputTensorSize = vectorProduct(inputDims);
+    outputTensorSize = vectorProduct(outputDims);
+}
+
+void NNHopper::EvaluateNetwork(const vector_3t rpy_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau) {
+    
+    std::vector<double> input(9);
+    input[0] = rpy_err(0);
+    input[1] = rpy_err(1);
+    input[2] = rpy_err(2);
+    input[3] = omega(0);
+    input[4] = omega(1);
+    input[5] = omega(2);
+    input[6] = flywheel_speed(0);
+    input[7] = flywheel_speed(1);
+    input[8] = flywheel_speed(2);
+
+    std::vector<double> outpt(3);
+
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+    Ort::Value inputTensor = Ort::Value::CreateTensor<double>(
+        memoryInfo, const_cast<double*>(input.data()), inputTensorSize,
+        inputDims.data(), inputDims.size());
+
+    Ort::Value outputTensor = Ort::Value::CreateTensor<double>(
+        memoryInfo, outpt.data(), outputTensorSize,
+        outputDims.data(), outputDims.size());
+
+    std::vector<const char*> inputNames{inputNodeName.c_str()};
+    std::vector<const char*> outputNames{outputNodeName.c_str()};
+
+    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
+
+    tau << outpt[0], outpt[1], outpt[2];
+}
+
+void NNHopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des) {
+
+    vector_3t tau, body_axis_aligned_torque, NN_output;
+
+    quat_t q_diff = quat_d_.inverse() * quat;
+    vector_3t omega_diff = omega - omega_d;
+
+    EvaluateNetwork(Policy::Quaternion2Euler(q_diff), omega, wheel_vel, NN_output); 
+
+    body_axis_aligned_torque = NN_output;
+    
+    tau = quat_actuator.inverse()._transformVector(body_axis_aligned_torque);
+
+    scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
+    torque << spring_f, tau;
+    torque += u_des;
+};

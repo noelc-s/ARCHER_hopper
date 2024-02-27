@@ -25,7 +25,7 @@
 
 #include <manif/manif.h>
 
-#include "../inc/Policy.h"
+// #include "../inc/Policy.h"
 #include "../inc/ZeroDynamicsPolicy.h"
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
@@ -109,14 +109,11 @@ int main() {
     setupSocket();
 
     // Read yaml
-    const std::string yamlPath = "../config/gains.yaml";
-    setupGains(yamlPath);
+    const std::string gainYamlPath = "../config/gains.yaml";
+    setupGains(gainYamlPath);
 
     // initializing the total states for the Hopper
     vector_t state(20);
-
-    // initializing the Pinnochio Model
-    Hopper hopper = Hopper();
 
     // Set up Data logging
     bool fileWrite = true;
@@ -136,13 +133,22 @@ int main() {
     std::mutex m;
     vector_3t command;
     vector_2t command_interp;
-    vector_2t dist;
+    vector_3t dist;
     vector_2t offsets;
     offsets << p.roll_offset, p.pitch_offset;
     // old -- remove if comms work
     // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
     // std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
     
+    // initializing the Pinnochio Model
+    const std::string NNYamlPath = "../config/NN_gains.yaml";
+    // NNHopper hopper = NNHopper("../../models/low_level_trained_model.onnx", gainYamlPath);
+    Hopper hopper = Hopper();
+
+    // Instantiate a new policy.
+    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+
     UserInput readUserInput;
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
     std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
@@ -150,10 +156,6 @@ int main() {
     quat_t quat_des = Quaternion<scalar_t>(1,0,0,0);
     vector_3t omega_des;
     vector_4t u_des;
-
-    // Instantiate a new policy.
-    // RaibertPolicy policy = RaibertPolicy(yamlPath);
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     // for infinity, do
     for (;;) {

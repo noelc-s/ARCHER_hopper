@@ -4,6 +4,14 @@
 using namespace Eigen;
 using namespace Hopper_t;
 
+vector_3t Policy::Quaternion2Euler(const quat_t& q) {
+    vector_3t euler;
+    euler[0] = atan2(2*(q.w()*q.x() + q.y()*q.z()), 1 - 2*(q.x()*q.x() + q.y()*q.y())); // Roll
+    euler[1] = asin(2*(q.w()*q.y() - q.z()*q.x())); // Pitch
+    euler[2] = atan2(2*(q.w()*q.z() + q.x()*q.y()), 1 - 2*(q.y()*q.y() + q.z()*q.z())); // Yaw
+    return euler;
+}
+
 void Policy::loadParams(const std::string filepath, Params& params) {
     YAML::Node config = YAML::LoadFile(filepath);
 
