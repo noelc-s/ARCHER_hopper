@@ -125,6 +125,10 @@ double foot_on;       // 1 foot is on, 0 foot is off.
 double flywheel_on;   // 1 flywheels on, 0 flywheels off. 
 double debug_on;      // 1 if consant upright position, 0 if MPC trajs
 double send_torque;
+double pitch_offset;
+
+vector_3t initEuler;
+
 // for parsing SD card txt files, line-by-line
 void parseRecord(byte index){
   char * ptr;
@@ -272,7 +276,12 @@ void readParams() {
   comms_on  = atof(parameterArray[6]);
   foot_on  = atof(parameterArray[7]);
   send_torque  = atof(parameterArray[8]);
-  // debug  = atof(parameterArray[9]);
+  pitch_offset  = atof(parameterArray[9]);
+
+  if (pitch_offset > 0)
+    q_pitch = quat_t(0,0,-1,0);
+  else
+    q_pitch = quat_t(1,0,0,0);
 
   Serial.println("Loaded Parameters: ");
   Serial.print("kp_y = ");     Serial.println(kp_y,2);
@@ -284,7 +293,7 @@ void readParams() {
   Serial.print("comms_on = ");  Serial.println(comms_on,0);
   Serial.print("foot_on = ");  Serial.println(foot_on,0);
   Serial.print("send_torque = "); Serial.println(send_torque,0);
-  // Serial.print("flywheel_on = "); Serial.println(flywheel_on,0);
+  Serial.print("pitch_offset = "); Serial.println(pitch_offset,0);
 
   //=================================================
 }
@@ -678,8 +687,6 @@ void loop() {
       }
       q_tmp = quat_a;
     }
-
-
       // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
       VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
       
@@ -700,7 +707,6 @@ void loop() {
       }
 
       quat_init_inverse = initYawQuat.inverse();
-
       initialized = true;
       koios->setLogo('G');
     { Threads::Scope scope(state_mtx);
@@ -735,6 +741,8 @@ void loop() {
     // quat_init_inverse = Eigen::Quaternionf(1, 0, 0, 0);
 
     quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
+
+    Serial.print(initEuler[2]);     Serial.print(",");
 
     Serial.print(quat_a.w());     Serial.print(",");
     Serial.print(quat_a.x());     Serial.print(",");

@@ -16,7 +16,6 @@ void Policy::loadParams(const std::string filepath, Params& params) {
     params.pitch_d_offset = config["pitch_offset"].as<scalar_t>();
     params.roll_d_offset = config["roll_offset"].as<scalar_t>();
     params.yaw_damping = config["RaibertHeuristic"]["yaw_damping"].as<scalar_t>();
-    std::cout<<"loadParams OK"<<std::endl;
 
 }
 
