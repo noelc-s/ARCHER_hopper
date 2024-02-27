@@ -57,7 +57,7 @@ volatile float q0  = 1;
 volatile float q1 = 0;
 volatile float q2 = 0;
 volatile float q3 = 0;
-quat_t q_pitch(0,0,-1,0); // negative 180 pitch to flip IMU right way around
+quat_t q_installation(0,0,-1,0); // negative 180 pitch to flip IMU right way around
 // FYI, IMU is installed upside down
 
 int reset_cmd = 0;
@@ -616,7 +616,8 @@ void exitProgram() {
   elmo.cmdTC(0.0, IDX_K2);
   elmo.cmdTC(0.0, IDX_K3);
   koios->motorsOff(0);
-  koios->setSigB(1);
+  if(foot_on)
+    koios->setSigB(1);
   data.close();
   threads.delay(100);
   koios->setLEDs("1000");
@@ -655,7 +656,7 @@ void loop() {
         DP = dP;
         DR = dR;
         quat_t q_measured(Q3, Q0, Q1, Q2); // Quaternions are a double cover of SO(3).
-        quat_a = q_pitch.inverse()*q_measured;
+        quat_a = q_installation.inverse()*q_measured;
       }
       koios->updateStates(x1, v1, x2, v2, x3, v3);
       // Add step to get leg length from Bia here over serial
@@ -681,15 +682,21 @@ void loop() {
 
       // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
       VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
+      
+      float initRoll = - r_offset;
+      float initPitch = - p_offset;
+      float initYaw = initEuler[2];
+
       quat_t initYawQuat;
+      
       if (quat_a.z() > 0) {
         initYawQuat = AngleAxisf(0, Vector3f::UnitX())
           * AngleAxisf(0, Vector3f::UnitY())
-          * AngleAxisf(initEuler[2]-M_PI, Vector3f::UnitZ());
+          * AngleAxisf(initYaw-M_PI, Vector3f::UnitZ());
       } else {
         initYawQuat = AngleAxisf(0, Vector3f::UnitX())
           * AngleAxisf(0, Vector3f::UnitY())
-          * AngleAxisf(initEuler[2], Vector3f::UnitZ());
+          * AngleAxisf(initYaw, Vector3f::UnitZ());
       }
 
       quat_init_inverse = initYawQuat.inverse();
@@ -725,7 +732,9 @@ void loop() {
     DP = dP;
     DR = dR;
     quat_t q_measured(-Q3, -Q0, -Q1, -Q2); // Quaternions are a double cover of SO(3).
-    quat_a = quat_init_inverse * q_pitch.inverse()*q_measured;
+    // quat_init_inverse = Eigen::Quaternionf(1, 0, 0, 0);
+
+    quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
 
     Serial.print(quat_a.w());     Serial.print(",");
     Serial.print(quat_a.x());     Serial.print(",");

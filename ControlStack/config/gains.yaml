@@ -11,7 +11,7 @@ LowLevel:
   dt: 0.001
 
 Simulator:
-  p0: [1,0,.5]         # initial position [x,y,z]
+  p0: [0,0,.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
@@ -51,10 +51,6 @@ MPC:
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
 RaibertHeuristic:
-  kx_p: -0.0                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.0                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
   ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
   kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
@@ -62,11 +58,11 @@ RaibertHeuristic:
   angle_max: 1.0
   pitch_d_offset: -0.02
   roll_d_offset: -0.005
-  yaw_damping: 0.0035
+  yaw_damping: 0.00035
   # yaw_damping: 1.0
 
-pitch_offset: -0.02
-roll_offset: -0.005
+pitch_offset: 0.001
+roll_offset: -0.0231
 
 UnitTest:
   response: 'n'

@@ -24,8 +24,8 @@ volatile uint32_t T0,nF,pF,rt;
 volatile float rb,wb,xf,vf,u;
 float d0 = 0.015; // spring deflection // 0.15
 float b0 = 0.75; // deflection to consider impact
-float u0 = 0.0; // offset torque
-// float u0 = -15.5; // offset torque
+// float u0 = 0.0; // offset torque
+float u0 = -15.5; // offset torque
 int h = 0;
 float rb0,v0;
 volatile bool initialized;
@@ -41,6 +41,7 @@ float omega = 0;
 
 void setup() {
   Serial.begin(115200); //this is for the monitor
+  // Serial.println("Starting");
   delay(500);
 
   //initBia1
@@ -58,7 +59,7 @@ void setup() {
   v0  = 100;
   Th = 2000000*numHops + 1000000;
 
-  Serial.println("Starting Bia2");
+  // Serial.println("Starting Bia2");
   //initBia2
   delay(250);
   bia.STO(1);
@@ -69,8 +70,8 @@ void setup() {
   delay(3000);
   bia.resetState(1);
   bia.resetState(2);
-  Serial.println("Finding Zero");
-  // bia.findZero();
+  // Serial.println("Finding Zero");
+  bia.findZero();
   bia.setLEDs("0100");
   bia.waitSigK(0);
   bia.reverseSig(1);
@@ -129,25 +130,21 @@ void KoiosCommThread() {
 
 void loop() {
 
-  threads.delay(100);
-    // Update states:
-  bia.updateState(1,theta, omega); // theta and omega are motor angle and vel
-  {std::lock_guard<std::mutex> lck(state_mtx);
-  bia.updateState(2,x, v); // x and v are spring deflection in mm     
-  }
+  // threads.delay(100);
+  //   // Update states:
+  // bia.updateState(1,theta, omega); // theta and omega are motor angle and vel
+  // {std::lock_guard<std::mutex> lck(state_mtx);
+  // bia.updateState(2,x, v); // x and v are spring deflection in mm     
+  // }
 
-  // compPhase();    //
-  // {std::lock_guard<std::mutex> lck(state_mtx);
-  // contact = 1;
-  // }
-  // releasePhase(); // control to rb = 0, end at xf = 0
-  // {std::lock_guard<std::mutex> lck(state_mtx);
-  // contact = 0;
-  // }
-  // h++;
-  // if(h>=numHops){
-  //   exitProgram();
-  // }
+  compPhase();    //
+  {std::lock_guard<std::mutex> lck(state_mtx);
+  contact = 1;
+  }
+  releasePhase(); // control to rb = 0, end at xf = 0
+  {std::lock_guard<std::mutex> lck(state_mtx);
+  contact = 0;
+  }
 }
 
 void compPhase() {
@@ -278,11 +275,6 @@ void releasePhase(){
     // WIFI ESTOP: 
     if (bia.checkSigK() == 1) {
       bia.exitProgram();
-    }
-    if((micros()-Tr0)>MAX_HOP_TIMEOUT){ // if in release phase for too long, exit release phase and end experiment
-      h = numHops+1;
-      i = 1;
-      break;
     }
     {std::lock_guard<std::mutex> lck(state_mtx);
     bia.testPDb(r,w,x,v,up,ud);

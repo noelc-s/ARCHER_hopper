@@ -381,18 +381,31 @@ int main(int argc, const char **argv) {
             send(*new_socket, &TX_state, sizeof(TX_state), 0);
             read(*new_socket, &RX_torques, sizeof(RX_torques));
 
+            // Turn flywheel speed constraints off
+            d->qvel[6] = 0;
+            d->qvel[7] = 0;
+            d->qvel[8] = 0;
+            vector_3t g_x(1,1,1);
+            if (d->qvel[6] > 500) {
+                g_x[0] = std::max(-100*(d->qvel[6]-600),0.);
+            }
+            if (d->qvel[7] > 500) {
+                g_x[1] = std::max(-100*(d->qvel[7]-600),0.);
+            }
+            if (d->qvel[8] > 500) {
+                g_x[2] = std::max(-100*(d->qvel[8]-600),0.);
+            }
+
             //override the communication based on the received toruqe comands from ctrl
-            for (int i = 0; i < 4; i++) {
-                d->ctrl[i] = RX_torques[i];
+            d->ctrl[0] = RX_torques[0];
+            for (int i = 0; i < 3; i++) {
+                d->ctrl[i+1] = g_x[i]*RX_torques[i+1];
             }
             // d->ctrl = RX_torques;
 
             // Take integrator step
             mj_step(m, d);
             iter++;
-            d->qvel[6] = 0;
-            d->qvel[7] = 0;
-            d->qvel[8] = 0;
         } 
 
 	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////

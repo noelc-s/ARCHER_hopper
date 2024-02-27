@@ -28,6 +28,7 @@ namespace Archer
       void exitProgram();
       void runSin();
       int32_t sendSafeTorque(float xb, float u);
+      void releaseMotor();
 
       int32_t initComm(int MC);
       void initSD();

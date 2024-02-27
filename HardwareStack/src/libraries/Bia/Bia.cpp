@@ -25,10 +25,29 @@ namespace Archer
   }
 
   void Bia::exitProgram() {
+    releaseMotor();
     rt = elmo_.motorOff(IDX_BIA);
     setLEDs("1000");
     while(1) {};
   }
+
+  void Bia::releaseMotor(){
+  float r,w,up,ud,x,v;
+  int i = 0;
+  float u;
+  // Serial.println("------------Releasing Motor---------------");
+  while(i<1){
+    updateState(1,r,w);
+    updateState(2,x,v);
+    cBia_.releaseFoot(up,ud,r,w);
+    u  = up + ud;
+    rt = sendSafeTorque(r, u);
+    if(x<0.5){
+      i = 1;
+    }
+    delay(1);
+  }
+}
 
   int32_t Bia::initComm(int MC){
     setLEDs("1000");
@@ -63,11 +82,11 @@ namespace Archer
   }
 
   void Bia::initSD(){
-    Serial.print("Initializing SD card...");
+    // Serial.print("Initializing SD card...");
     if(!SD.begin(BUILTIN_SDCARD)){
-      Serial.println("SD initialization failed!");
+      // Serial.println("SD initialization failed!");
       return; }
-    Serial.println("initialization done.");
+    // Serial.println("initialization done.");
     delay(100);
   }
 
@@ -265,28 +284,28 @@ namespace Archer
 
   int32_t Bia::sendSafeTorque(float xb, float u) {
     if (xb > theta_max || xb < theta_min) {
-      Serial.print("xb was too large: ");
-      Serial.print(xb);
-      Serial.println(". Exiting");
+      // Serial.print("xb was too large: ");
+      // Serial.print(xb);
+      // Serial.println(". Exiting");
       exitProgram();
     } 
     return elmo_.sendTC(u,IDX_BIA);
   }
 
   void Bia::findZero(){
-    Serial.println("Finding Zero");
+    // Serial.println("Finding Zero");
     float xb,vb,xf,vf;
     float th1 = 0.02;
     float th2 = 0.01;
     float u   = 0.0;
     int i = 0;
-    Serial.println("Pulling in");
+    // Serial.println("Pulling in");
     while(i<1){
       u = u - 0.001;
-      Serial.print("U: ");
-      Serial.println(u);
-      if (abs(u) > 2) {
-        Serial.println("Error. Required too much torque in initialization. Exiting.");
+      // Serial.print("U: ");
+      // Serial.println(u);
+      if (abs(u) > 10) {
+        // Serial.println("Error. Required too much torque in initialization. Exiting.");
         exitProgram();
       }
       updateState(1,xb,vb);
@@ -297,12 +316,12 @@ namespace Archer
         cBia_.logZero(xb,1);
       }
     }
-    Serial.println("Deflection Registered.");
-    Serial.println("Releasing");
+    // Serial.println("Deflection Registered.");
+    // Serial.println("Releasing");
     while(i<2){
       u = u + 0.001;
-      if (u > 1) {
-        Serial.println("Error. Torque went above 1. Exiting.");
+      if (u > 6) {
+        // Serial.println("Error. Torque went above 1. Exiting.");
         exitProgram();
       }
       updateState(1,xb,vb);
@@ -313,7 +332,7 @@ namespace Archer
         cBia_.logZero(xb,2);
       }
     }
-    Serial.println("Done.");
+    // Serial.println("Done.");
   }
 
   void Bia::trackPID0(float d0,float &x,float &u0){
@@ -392,7 +411,7 @@ namespace Archer
     float omega;
     float u = 0.0;
     int direction = 1;
-    Serial.println("Running Sawtooth pattern.");
+    // Serial.println("Running Sawtooth pattern.");
     while(1) {
       updateState(1,theta, omega);
       if (abs(theta) > 0.1) {
@@ -406,7 +425,7 @@ namespace Archer
       if (abs(u) >= 1.0) {
         direction = -direction;
       }
-      Serial.println(u);
+      // Serial.println(u);
       sendSafeTorque(theta, u);
       // elmo_.sendTC(u,IDX_BIA);
     }

@@ -332,8 +332,8 @@ int main() {
     vector_4t u_des;
 
     // Instantiate a new policy.
-    RaibertPolicy policy = RaibertPolicy(yamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
+    // RaibertPolicy policy = RaibertPolicy(yamlPath);
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
     // MH
     // for infinity, do
