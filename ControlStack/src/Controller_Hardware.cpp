@@ -386,7 +386,6 @@ int main(int argc, char **argv){
     quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
     quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
 
-    policy.updateOffsets(offsets);
     // here joystick is absolute position and yaw
     quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
     quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting

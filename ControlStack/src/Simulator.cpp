@@ -382,18 +382,24 @@ int main(int argc, const char **argv) {
             read(*new_socket, &RX_torques, sizeof(RX_torques));
 
             // Turn flywheel speed constraints off
-            // d->qvel[6] = 0;
-            // d->qvel[7] = 0;
-            // d->qvel[8] = 0;
+            d->qvel[6] = 0;
+            d->qvel[7] = 0;
+            d->qvel[8] = 0;
             vector_3t g_x(1,1,1);
             if (d->qvel[6] > 500) {
                 g_x[0] = std::max(-100*(d->qvel[6]-600),0.);
+            } else if (d->qvel[6] < -500) {
+                g_x[0] = std::max(100*(d->qvel[6]+600),0.);
             }
             if (d->qvel[7] > 500) {
                 g_x[1] = std::max(-100*(d->qvel[7]-600),0.);
+            } else if (d->qvel[7] < -500) {
+                g_x[1] = std::max(100*(d->qvel[7]+600),0.);
             }
             if (d->qvel[8] > 500) {
                 g_x[2] = std::max(-100*(d->qvel[8]-600),0.);
+            } else if (d->qvel[8] < -500) {
+                g_x[2] = std::max(100*(d->qvel[8]+600),0.);
             }
 
             //override the communication based on the received toruqe comands from ctrl

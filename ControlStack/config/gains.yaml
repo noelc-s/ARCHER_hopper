@@ -13,7 +13,7 @@ LowLevel:
 Simulator:
   p0: [0,0,.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
-  rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
+  rpy0: [0,0,1]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
   speed: 1              # speed of simulation [multiplier]
@@ -59,8 +59,9 @@ RaibertHeuristic:
   yaw_damping: 0.0035
   # yaw_damping: 1.0
 
-pitch_offset: -0.00
-roll_offset: -0.00
+pitch_offset: -0.0
+roll_offset: -0.0
+
 
 UnitTest:
   response: 'n'

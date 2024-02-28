@@ -51,7 +51,7 @@ quat_t RaibertPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, scalar_t x_d
     yaw_des_rolling += params.yaw_damping*(yaw_des);
     scalar_t yaw_d = yaw_des_rolling;
 
-    quat_t desiredLocalInput = Euler2Quaternion(roll_d - params.roll_d_offset, pitch_d - params.pitch_d_offset, yaw_d);
+    quat_t desiredLocalInput = Euler2Quaternion(roll_d, pitch_d, yaw_d);
     
     return desiredLocalInput;
 
