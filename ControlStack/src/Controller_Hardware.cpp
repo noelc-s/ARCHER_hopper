@@ -140,7 +140,7 @@ void setupGains(const std::string filepath) {
 
 volatile bool ESP_initialized = false;
 
-void getStateFromEthernet(vector_3t &dist, std::condition_variable & cv, std::mutex & m) {
+void getStateFromEthernet(vector_3t dist, std::condition_variable & cv, std::mutex & m) {
 
   ssize_t recvBytes = 0;
   ssize_t n_bytes = 0;
@@ -380,7 +380,7 @@ int main(int argc, char **argv){
     t2 = std::chrono::high_resolution_clock::now();
     
     quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-    vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);\
+    vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
 
     static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
     quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
@@ -390,7 +390,6 @@ int main(int argc, char **argv){
     // here joystick is absolute position and yaw
     quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
     quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
-
 
     omega_des = policy.DesiredOmega();
     u_des = policy.DesiredInputs();

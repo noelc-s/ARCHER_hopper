@@ -142,12 +142,12 @@ int main() {
     
     // initializing the Pinnochio Model
     const std::string NNYamlPath = "../config/NN_gains.yaml";
-    // NNHopper hopper = NNHopper("../../models/low_level_trained_model.onnx", gainYamlPath);
-    Hopper hopper = Hopper();
+    NNHopper hopper = NNHopper("../../models/low_level_trained_model.onnx", gainYamlPath);
+    // Hopper hopper = Hopper();
 
     // Instantiate a new policy.
-    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
 
     UserInput readUserInput;
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
@@ -171,6 +171,7 @@ int main() {
 
       quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
 
+
       static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
       quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
@@ -178,6 +179,10 @@ int main() {
       policy.updateOffsets(offsets);
       quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
           state(8), state(9), dist(0));
+
+        // here joystick is absolute position and yaw
+      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
+      quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
 
       quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
       omega_des = policy.DesiredOmega();

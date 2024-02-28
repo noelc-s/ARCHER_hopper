@@ -69,7 +69,7 @@ public:
 class NNHopper : public Hopper {
 public:    
     NNHopper(std::string model_name, const std::string yamlPath);
-    void EvaluateNetwork(const vector_3t rpy_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau);
+    void EvaluateNetwork(const quat_t quat_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau);
     void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
 
     // TODO: consoloidate this with policy class

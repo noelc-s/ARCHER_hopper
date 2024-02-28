@@ -660,7 +660,7 @@ void loop() {
         DP = dP;
         DR = dR;
         quat_t q_measured(Q3, Q0, Q1, Q2); // Quaternions are a double cover of SO(3).
-        quat_a = q_installation.inverse()*q_measured;
+        quat_a = q_installation.inverse() * q_measured;
       }
       koios->updateStates(x1, v1, x2, v2, x3, v3);
       // Add step to get leg length from Bia here over serial

@@ -32,6 +32,13 @@ omega = A(:,ind:ind+2);         ind=ind+3;
 torque = A(:,ind:ind+3);        ind=ind+4;
 error = A(:,ind:ind+2);         ind=ind+3;
 wheel_vel = A(:,ind:ind+2);         ind=ind+3;
+%%
+for i = 1:length(t)
+    q_a = quat(i,:);
+    q_d = quat_d(i,:);
+    err(i,:) = quat2eul(quat_prod(quat_inv(q_d),q_a));
+end
+
 
 %%
 clf

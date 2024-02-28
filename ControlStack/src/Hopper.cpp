@@ -135,18 +135,19 @@ NNHopper::NNHopper(std::string model_name, const std::string yamlPath) {
     outputTensorSize = vectorProduct(outputDims);
 }
 
-void NNHopper::EvaluateNetwork(const vector_3t rpy_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau) {
+void NNHopper::EvaluateNetwork(const quat_t quat_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau) {
     
-    std::vector<double> input(9);
-    input[0] = rpy_err(0);
-    input[1] = rpy_err(1);
-    input[2] = rpy_err(2);
-    input[3] = omega(0);
-    input[4] = omega(1);
-    input[5] = omega(2);
-    input[6] = flywheel_speed(0);
-    input[7] = flywheel_speed(1);
-    input[8] = flywheel_speed(2);
+    std::vector<float> input(10);
+    input[0] = quat_err.w();
+    input[1] = quat_err.x();
+    input[2] = quat_err.y();
+    input[3] = quat_err.z();
+    input[4] = omega(0);
+    input[5] = omega(1);
+    input[6] = omega(2);
+    input[7] = flywheel_speed(0);
+    input[8] = flywheel_speed(1);
+    input[9] = flywheel_speed(2);
 
     std::vector<double> outpt(3);
 
@@ -156,8 +157,8 @@ void NNHopper::EvaluateNetwork(const vector_3t rpy_err, const vector_3t omega, c
     Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
         OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
-    Ort::Value inputTensor = Ort::Value::CreateTensor<double>(
-        memoryInfo, const_cast<double*>(input.data()), inputTensorSize,
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float*>(input.data()), inputTensorSize,
         inputDims.data(), inputDims.size());
 
     Ort::Value outputTensor = Ort::Value::CreateTensor<double>(
@@ -179,7 +180,7 @@ void NNHopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_
     quat_t q_diff = quat_d_.inverse() * quat;
     vector_3t omega_diff = omega - omega_d;
 
-    EvaluateNetwork(Policy::Quaternion2Euler(q_diff), omega, wheel_vel, NN_output); 
+    EvaluateNetwork(q_diff, omega, wheel_vel, NN_output); 
 
     body_axis_aligned_torque = NN_output;
     
