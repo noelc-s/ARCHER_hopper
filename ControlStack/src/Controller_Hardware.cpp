@@ -140,7 +140,7 @@ void setupGains(const std::string filepath) {
 
 volatile bool ESP_initialized = false;
 
-void getStateFromEthernet(vector_3t dist, std::condition_variable & cv, std::mutex & m) {
+void getStateFromEthernet(vector_3t &dist, std::condition_variable & cv, std::mutex & m) {
 
   ssize_t recvBytes = 0;
   ssize_t n_bytes = 0;
