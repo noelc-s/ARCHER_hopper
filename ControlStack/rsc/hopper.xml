@@ -49,7 +49,7 @@
                 <inertial pos=" 0 0 0" mass="0.32"
                           diaginertia="0.00056 0.00056 0.00111"/>
                 <joint name="joint_wheel1" type="hinge" pos="0 0 0"
-                       axis="0 0 1"/>
+                       axis="0 0 1" damping=".05"/>
             </body>
 
             <body name="wheel2" pos="-0.0388 0.0672 0.0548"
@@ -61,7 +61,7 @@
                 <inertial pos=" 0 0 0" mass="0.32"
                           diaginertia="0.00056 0.00056 0.00111"/>
                 <joint name="joint_wheel2" type="hinge" pos="0 0 0"
-                       axis="0 0 1"/>
+                       axis="0 0 1" damping=".05"/>
             </body>
 
             <body name="wheel3" pos="-0.0388 -0.0672 0.0548"
@@ -73,7 +73,7 @@
                 <inertial pos=" 0 0 0" mass="0.32"
                           diaginertia="0.00056 0.00056 0.00111"/>
                 <joint name="joint_wheel3" type="hinge" pos="0 0 0"
-                       axis="0 0 1"/>
+                       axis="0 0 1" damping=".05"/>
             </body>
 
             <body name="foot" pos="0 0 -0.36">
