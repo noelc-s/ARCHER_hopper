@@ -24,9 +24,9 @@ matrix_3t Hopper::quat2Rot(quat_t q) {
     return Rq;
 }
 
-Hopper::Hopper() {
+Hopper::Hopper(const std::string yamlFile) {
         // Read gain yaml
-    YAML::Node config = YAML::LoadFile("../config/gains.yaml");
+    YAML::Node config = YAML::LoadFile(yamlFile);
     std::vector<scalar_t> orientation_kp = config["LowLevel"]["Orientation"]["Kp"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> orientation_kd = config["LowLevel"]["Orientation"]["Kd"].as<std::vector<scalar_t>>();
     gains.leg_kp = config["LowLevel"]["Leg"]["Kp"].as<scalar_t>();
@@ -50,6 +50,7 @@ void Hopper::updateState(vector_t state) {
     pos << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
     quat = Eigen::Quaternion<scalar_t>(state[ind], state[ind + 1], state[ind + 2], state[ind + 3]); // Loaded as w,x,y,z
+    quat.normalize();
     ind += 4;
     vel << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
@@ -78,7 +79,6 @@ void Hopper::updateState(vector_t state) {
 };
 
 void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des) {
-
     vector_3t omega_a;
 
     quat_t quat_a_ = quat;
@@ -111,7 +111,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     torque += u_des;
 };
 
-NNHopper::NNHopper(std::string model_name, const std::string yamlPath) {
+NNHopper::NNHopper(std::string model_name, const std::string yamlPath) : Hopper(yamlPath) {
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
     Ort::SessionOptions session_options;
     session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));

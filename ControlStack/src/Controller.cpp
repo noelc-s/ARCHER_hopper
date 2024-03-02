@@ -52,6 +52,9 @@ int addrlen = sizeof(*address);
 scalar_t TX_torques[13+2*5] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
 scalar_t RX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+quat_t minus(quat_t q_1, quat_t q_2) {return q_2.inverse() * q_1;}
+quat_t plus(quat_t q_1, quat_t q_2) {return q_1 * q_2;}
+scalar_t extract_yaw(quat_t q) {return atan2(2*(q.w()*q.z() + q.x()*q.y()), 1 - 2*(pow(q.y(),2) + pow(q.z(),2)));}
 
 // setting up a virtual socket to stream data to and fro
 void setupSocket() {
@@ -93,6 +96,7 @@ struct Parameters {
     scalar_t dt;
     scalar_t roll_offset;
     scalar_t pitch_offset;
+    scalar_t yaw_drift;
 } p;
 
 void setupGains(const std::string filepath) {
@@ -101,6 +105,7 @@ void setupGains(const std::string filepath) {
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
     p.roll_offset = config["roll_offset"].as<scalar_t>();
     p.pitch_offset = config["pitch_offset"].as<scalar_t>();
+    p.yaw_drift = config["Simulator"]["yaw_drift"].as<scalar_t>();
 }
 
 // Driver code
@@ -136,18 +141,15 @@ int main() {
     vector_3t dist;
     vector_2t offsets;
     offsets << p.roll_offset, p.pitch_offset;
-    // old -- remove if comms work
-    // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
-    // std::thread userInput(getJoystickInput, std::ref(offsets), std::ref(command), std::ref(dist), std::ref(cv), std::ref(m));
     
     // initializing the Pinnochio Model
     const std::string NNYamlPath = "../config/NN_gains.yaml";
     // NNHopper hopper = NNHopper("../../models/low_level_trained_model.onnx", gainYamlPath);
-    Hopper hopper = Hopper();
+    Hopper hopper = Hopper(gainYamlPath);
 
     // Instantiate a new policy.
-    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
 
     UserInput readUserInput;
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
@@ -171,15 +173,30 @@ int main() {
 
       quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
 
+    ///////   SIMULATING DRIFT /////////////////
+    scalar_t yaw_drift = state(0) * p.yaw_drift;
+    quat_t q_yaw_measured = Policy::Euler2Quaternion(0, 0, yaw_drift);
+    quat_t q_meas = plus(q_yaw_measured, hopper.quat);
+    scalar_t absolute_yaw = extract_yaw(hopper.quat);
+    hopper.quat = q_meas;
+    ///////////////////////////////////////////
 
-      static scalar_t yaw_0 = 2*asin(state(7)); // z part approximates initial yaw
-      quat_t initial_yaw(cos(yaw_0/2),0,0,sin(yaw_0/2));
+    // Measure the initial absolute yaw (from optitrack)
+      static scalar_t initial_yaw = absolute_yaw;
+      static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
+
+        // Remove the measured yaw to put us back in the global frame 
+      quat_t yaw_corrected = minus(hopper.quat, q_yaw_measured);
+      hopper.quat = yaw_corrected;
+
+      // Add roll pitch offset to body frame
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0],-offsets[1], 0);
+      hopper.quat = plus(hopper.quat, rollPitch);
 
-      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0)+state(1), command(1)+state(2), 
+      quat_des = policy.DesiredQuaternion(state(1), state(2), state(1)+command(0),state(2)+command(1), 
           state(8), state(9), dist(0));
-
-      quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
+        // Add initial yaw to desired signal
+        quat_des = plus(quat_des, initial_yaw_quat);
       omega_des = policy.DesiredOmega();
       u_des = policy.DesiredInputs();
 

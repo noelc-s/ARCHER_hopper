@@ -49,7 +49,7 @@ public:
         scalar_t leg_kd;
     } gains;
 
-    Hopper();
+    Hopper(const std::string yamlFile);
 
     static matrix_3t cross(vector_3t q);
     static matrix_3t quat2Rot(quat_t q);

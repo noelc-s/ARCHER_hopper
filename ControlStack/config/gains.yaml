@@ -26,6 +26,7 @@ Simulator:
   pert_start: [2000, 5100, 11000,14000] # start time for force [milliseconds]
   pert_end: [2500, 5500, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
+  yaw_drift: 1     # drift in rad / s
   
 MPC:
   N: 20                                                 # nodes of MPC horizon
@@ -59,9 +60,9 @@ RaibertHeuristic:
   yaw_damping: 0.0035
   # yaw_damping: 1.0
 
-pitch_offset: -0.0
+pitch_offset: -0.00
 roll_offset: -0.0
-
+# -0.007  -0.02
 
 UnitTest:
   response: 'n'

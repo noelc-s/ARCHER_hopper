@@ -120,10 +120,10 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void setupGains(const std::string filepath) {
     YAML::Node config = YAML::LoadFile(filepath);
-    p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-    p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-    p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
-    p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
+    p.orientation_kp = config["LowLevel"]["Orientation"]["Kp"].as<std::vector<scalar_t>>();
+    p.orientation_kd = config["LowLevel"]["Orientation"]["Kd"].as<std::vector<scalar_t>>();
+    p.leg_kp = config["LowLevel"]["Leg"]["Kp"].as<scalar_t>();
+    p.leg_kd = config["LowLevel"]["Leg"]["Kd"].as<scalar_t>();
     p.dt = config["Debug"]["dt"].as<scalar_t>();
     p.predHorizon = config["Debug"]["predHorizon"].as<int>();
     p.stop_index = config["Debug"]["stopIndex"].as<int>();
@@ -254,10 +254,6 @@ int main(int argc, char **argv){
     std::condition_variable cv;
     std::mutex m;
 
-    signal(SIGINT, signal_callback_handler);
-    setupSocket();
-    std::thread thread_object(getStateFromEthernet, std::ref(dist), std::ref(cv), std::ref(m));
-
     std::chrono::high_resolution_clock::time_point t1;
     std::chrono::high_resolution_clock::time_point t2;
     std::chrono::high_resolution_clock::time_point tstart;
@@ -271,7 +267,10 @@ int main(int argc, char **argv){
 
     vector_t state(20);
 
-    Hopper hopper = Hopper();
+    // Hopper hopper = Hopper(yamlPath);
+    const std::string NNYamlPath = "../config/NN_gains.yaml";
+    //NNHopper hopper = NNHopper("../../models/low_level_trained_model.onnx", yamlPath);
+    Hopper hopper = Hopper(yamlPath);
 
     vector_t q(11);
     vector_t v(10);
@@ -329,7 +328,18 @@ int main(int argc, char **argv){
     //   running = []() {return true;};
     // }
 
-    while(!ESP_initialized) {};
+    quat_t quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
+    while(quat_opti.norm() < 0.99) {
+      ros::spinOnce();
+      quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
+      std::cout << "Waiting for optitrack quat" << std::endl;
+      std::cout << quat_opti.coeffs().transpose() << std::endl;
+    };
+
+    signal(SIGINT, signal_callback_handler);
+    setupSocket();
+    std::thread thread_object(getStateFromEthernet, std::ref(dist), std::ref(cv), std::ref(m));
+    // while(!ESP_initialized) {std::cout << "Waiting for ethernet connection" << std::endl;};
 
     vector_3t current_vel, previous_vel;
     scalar_t dt = 1;
@@ -349,29 +359,34 @@ int main(int argc, char **argv){
 
       if (!init) {
         state_init << OptiState.x,OptiState.y,OptiState.z;
-	      last_state  << OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z;
-	      current_vel << 0,0,0;
-	      previous_vel << 0,0,0;
+        last_state  << OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z;
+        current_vel << 0,0,0;
+        previous_vel << 0,0,0;
           // dt = p.MPC_dt_replan;
           init = true;
       } else {
         dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-last_t_state_log).count()*1e-9;
       }
 
-      {std::lock_guard<std::mutex> lck(state_mtx);
-      current_vel << ((OptiState.x-state_init(0))-last_state(0))/dt, ((OptiState.y-state_init(1))-last_state(1))/dt, ((OptiState.z)-last_state(2))/dt;
-      state << std::chrono::duration_cast<std::chrono::milliseconds>(t1-tstart).count()*1e-3,
-            OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z,
-            ESPstate(6),ESPstate(7),ESPstate(8),ESPstate(9),
-            (current_vel(0)+previous_vel(0))/2, (current_vel(1)+previous_vel(1))/2, (current_vel(2)+previous_vel(2))/2,
-            //current_vel(0), current_vel(1), current_vel(2), 
-            ESPstate(3),ESPstate(4),ESPstate(5),
-            ESPstate(10),ESPstate(11),ESPstate(12),ESPstate(0),ESPstate(1),ESPstate(2);
-      }
+  {std::lock_guard<std::mutex> lck(state_mtx);
+  current_vel << ((OptiState.x-state_init(0))-last_state(0))/dt, ((OptiState.y-state_init(1))-last_state(1))/dt, ((OptiState.z)-last_state(2))/dt;
+
+  quat_t quat_a = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
+
+  quat_a.normalize();
+  state << std::chrono::duration_cast<std::chrono::milliseconds>(t1-tstart).count()*1e-3,
+        OptiState.x-state_init(0),OptiState.y-state_init(1),OptiState.z,
+        // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(),
+        ESPstate(6),ESPstate(7),ESPstate(8),ESPstate(9),
+        (current_vel(0)+previous_vel(0))/2, (current_vel(1)+previous_vel(1))/2, (current_vel(2)+previous_vel(2))/2,
+        //current_vel(0), current_vel(1), current_vel(2), 
+        ESPstate(3),ESPstate(4),ESPstate(5),
+        ESPstate(10),ESPstate(11),ESPstate(12),ESPstate(0),ESPstate(1),ESPstate(2);
+  }
 
   hopper.updateState(state);
-	quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
-	hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
+  quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
+  hopper.v.segment(3,3) = quat._transformVector(hopper.v.segment(3,3));
 
   scalar_t replan = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t2).count()*1e-3;
 
@@ -393,6 +408,19 @@ int main(int argc, char **argv){
     omega_des = policy.DesiredOmega();
     u_des = policy.DesiredInputs();
 
+      hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
+      for (int i = 1; i < 4; i++) {
+        u_des(i-1) = hopper.torque[i];
+      }
+
+      vector_3t error;
+
+      quat_t e = quat_des.inverse() * hopper.quat;
+      manif::SO3Tangent<scalar_t> xi;
+      auto e_ = manif::SO3<scalar_t>(e);
+      xi = e_.log();
+      error << xi.coeffs();
+
           {std::lock_guard<std::mutex> lck(des_state_mtx);
       desstate[0] = quat_des.w();
       desstate[1] = quat_des.x();
@@ -401,9 +429,9 @@ int main(int argc, char **argv){
       desstate[4] = omega_des(0);
       desstate[5] = omega_des(1);
       desstate[6] = omega_des(2);
-      desstate[7] = u_des(1);
-      desstate[8] = u_des(2);
-      desstate[9] = u_des(3);
+      desstate[7] = u_des(0);
+      desstate[8] = u_des(1);
+      desstate[9] = u_des(2);
       //desstate[0] = 1;
       //desstate[1] = 0;
       //desstate[2] = 0;
@@ -416,11 +444,15 @@ int main(int argc, char **argv){
       //desstate[9] = 0;
     }
 
+    // Log data
     if (fileWrite) {
-      fileHandle << std::chrono::duration_cast<std::chrono::milliseconds>(t2-tstart).count()*1e-3 << "," 
-      << hopper.contact << "," << hopper.q.transpose().format(CSVFormat) << "," << hopper.v.transpose().format(CSVFormat) << "," 
-      << hopper.torque.transpose().format(CSVFormat) <<"," << command.transpose().format(CSVFormat)<< "," 
-      << quat_des.coeffs().transpose().format(CSVFormat) << std::endl;//<< "," << t_last_MPC << "," << sol_g.transpose().format(CSVFormat)<< "," << replan << "," << opt.elapsed_time.transpose().format(CSVFormat) << "," << opt.d_bar.cast<int>().transpose().format(CSVFormat) << "," << desstate[0] <<"," << desstate[1]<< "," << desstate[2]<< ","<< desstate[3] << "," << desstate[4] << "," << desstate[5] << "," << desstate[6] << std::endl;
+      fileHandle << state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+        << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
+        << "," << quat_des.coeffs().transpose().format(CSVFormat)
+        << "," << hopper.omega.transpose().format(CSVFormat)
+        << "," << hopper.torque.transpose().format(CSVFormat)
+        << "," << error.transpose().format(CSVFormat) 
+        << "," << hopper.wheel_vel.transpose().format(CSVFormat)<< std::endl;
     }
   }
 }
