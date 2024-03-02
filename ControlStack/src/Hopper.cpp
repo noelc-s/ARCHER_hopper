@@ -3,29 +3,32 @@
 
 #include <manif/manif.h>
 
-matrix_3t Hopper::cross(vector_3t q) {
+matrix_3t Hopper::cross(vector_3t q)
+{
     matrix_3t c;
     c << 0, -q(2), q(1),
-            q(2), 0, -q(0),
-            -q(1), q(0), 0;
+        q(2), 0, -q(0),
+        -q(1), q(0), 0;
     return c;
 }
 
-matrix_3t Hopper::quat2Rot(quat_t q) {
-    scalar_t qw,qx,qy,qz;
+matrix_3t Hopper::quat2Rot(quat_t q)
+{
+    scalar_t qw, qx, qy, qz;
     matrix_3t Rq;
     qw = q.w();
     qx = q.x();
     qy = q.y();
     qz = q.z();
-    Rq << pow(qw,2)+pow(qx,2)-pow(qy,2)-pow(qz,2), 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy),
-       2*(qx*qy+qw*qz), pow(qw,2)-pow(qx,2)+pow(qy,2)-pow(qz,2),2*(qy*qz-qw*qx),
-       2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), pow(qw,2)-pow(qx,2)-pow(qy,2)+pow(qz,2);
+    Rq << pow(qw, 2) + pow(qx, 2) - pow(qy, 2) - pow(qz, 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy),
+        2 * (qx * qy + qw * qz), pow(qw, 2) - pow(qx, 2) + pow(qy, 2) - pow(qz, 2), 2 * (qy * qz - qw * qx),
+        2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), pow(qw, 2) - pow(qx, 2) - pow(qy, 2) + pow(qz, 2);
     return Rq;
 }
 
-Hopper::Hopper(const std::string yamlFile) {
-        // Read gain yaml
+Hopper::Hopper(const std::string yamlFile)
+{
+    // Read gain yaml
     YAML::Node config = YAML::LoadFile(yamlFile);
     std::vector<scalar_t> orientation_kp = config["LowLevel"]["Orientation"]["Kp"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> orientation_kd = config["LowLevel"]["Orientation"]["Kd"].as<std::vector<scalar_t>>();
@@ -42,7 +45,8 @@ Hopper::Hopper(const std::string yamlFile) {
     v.resize(10);
 }
 
-void Hopper::updateState(vector_t state) {
+void Hopper::updateState(vector_t state)
+{
     int ind = 0;
 
     t = state[ind];
@@ -56,16 +60,21 @@ void Hopper::updateState(vector_t state) {
     ind += 3;
     omega << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
-    if (contact == 0 && state[ind] >= .1) {
-	    last_impact_time = t;
+    if (contact == 0 && state[ind] >= .1)
+    {
+        last_impact_time = t;
     }
-    if (contact == 1 && state[ind] <= .1) {
-	    last_flight_time = t;
+    if (contact == 1 && state[ind] <= .1)
+    {
+        last_flight_time = t;
     }
-    if (state[ind] <= .1) {
-            contact = 0;
-    } else {
-            contact = 1;
+    if (state[ind] <= .1)
+    {
+        contact = 0;
+    }
+    else
+    {
+        contact = 1;
     }
     ind++;
     leg_pos = state[ind];
@@ -74,11 +83,12 @@ void Hopper::updateState(vector_t state) {
     ind++;
     wheel_vel << state[ind], state[ind + 1], state[ind + 2];
     ind++;
-    q << pos, quat.coeffs(), leg_pos, 0,0,0;
+    q << pos, quat.coeffs(), leg_pos, 0, 0, 0;
     v << vel, omega, leg_vel, wheel_vel;
 };
 
-void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des) {
+void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des)
+{
     vector_3t omega_a;
 
     quat_t quat_a_ = quat;
@@ -95,7 +105,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     auto e_ = manif::SO3<scalar_t>(e);
     xi = e_.log();
     delta_quat << xi.coeffs();
-     
+
     matrix_3t Kp, Kd;
     Kp.setZero();
     Kd.setZero();
@@ -103,7 +113,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     Kd.diagonal() << gains.orientation_kd;
 
     vector_3t tau;
-    
+
     tau = quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (omega - omega_d));
 
     scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
@@ -111,7 +121,8 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     torque += u_des;
 };
 
-NNHopper::NNHopper(std::string model_name, const std::string yamlPath) : Hopper(yamlPath) {
+NNHopper::NNHopper(std::string model_name, const std::string yamlPath) : Hopper(yamlPath)
+{
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
     Ort::SessionOptions session_options;
     session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
@@ -135,8 +146,9 @@ NNHopper::NNHopper(std::string model_name, const std::string yamlPath) : Hopper(
     outputTensorSize = vectorProduct(outputDims);
 }
 
-void NNHopper::EvaluateNetwork(const quat_t quat_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau) {
-    
+void NNHopper::EvaluateNetwork(const quat_t quat_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t &tau)
+{
+
     std::vector<float> input(10);
     input[0] = quat_err.w();
     input[1] = quat_err.x();
@@ -158,32 +170,33 @@ void NNHopper::EvaluateNetwork(const quat_t quat_err, const vector_3t omega, con
         OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float*>(input.data()), inputTensorSize,
+        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
         inputDims.data(), inputDims.size());
 
     Ort::Value outputTensor = Ort::Value::CreateTensor<double>(
         memoryInfo, outpt.data(), outputTensorSize,
         outputDims.data(), outputDims.size());
 
-    std::vector<const char*> inputNames{inputNodeName.c_str()};
-    std::vector<const char*> outputNames{outputNodeName.c_str()};
+    std::vector<const char *> inputNames{inputNodeName.c_str()};
+    std::vector<const char *> outputNames{outputNodeName.c_str()};
 
     session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
 
     tau << outpt[0], outpt[1], outpt[2];
 }
 
-void NNHopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des) {
+void NNHopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des)
+{
 
     vector_3t tau, body_axis_aligned_torque, NN_output;
 
     quat_t q_diff = quat_d_.inverse() * quat;
     vector_3t omega_diff = omega - omega_d;
 
-    EvaluateNetwork(q_diff, omega, wheel_vel, NN_output); 
+    EvaluateNetwork(q_diff, omega, wheel_vel, NN_output);
 
     body_axis_aligned_torque = NN_output;
-    
+
     tau = quat_actuator.inverse()._transformVector(body_axis_aligned_torque);
 
     scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
