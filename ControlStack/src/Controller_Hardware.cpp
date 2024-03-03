@@ -67,6 +67,10 @@ sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
 
+quat_t minus(quat_t q_1, quat_t q_2) { return q_2.inverse() * q_1; }
+quat_t plus(quat_t q_1, quat_t q_2) { return q_1 * q_2; }
+scalar_t extract_yaw(quat_t q) { return atan2(2 * (q.w() * q.z() + q.x() * q.y()), 1 - 2 * (pow(q.y(), 2) + pow(q.z(), 2))); }
+
 struct Parameters
 {
   std::vector<scalar_t> orientation_kp;
@@ -356,6 +360,7 @@ int main(int argc, char **argv)
 
   signal(SIGINT, signal_callback_handler);
   setupSocket();
+  sleep(1);
   std::thread thread_object(getStateFromEthernet, std::ref(dist), std::ref(cv), std::ref(m));
   // while(!ESP_initialized) {std::cout << "Waiting for ethernet connection" << std::endl;};
 
@@ -368,6 +373,8 @@ int main(int argc, char **argv)
 
   RaibertPolicy policy = RaibertPolicy(yamlPath);
   // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
+
+  quat_t quat_optitrack;
 
   while (ros::ok())
   {
@@ -394,9 +401,9 @@ int main(int argc, char **argv)
       std::lock_guard<std::mutex> lck(state_mtx);
       current_vel << ((OptiState.x - state_init(0)) - last_state(0)) / dt, ((OptiState.y - state_init(1)) - last_state(1)) / dt, ((OptiState.z) - last_state(2)) / dt;
 
-      quat_t quat_a = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
+      quat_optitrack = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
 
-      quat_a.normalize();
+      quat_optitrack.normalize();
       state << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - tstart).count() * 1e-3,
           OptiState.x - state_init(0), OptiState.y - state_init(1), OptiState.z,
           // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(),
@@ -408,6 +415,7 @@ int main(int argc, char **argv)
     }
 
     hopper.updateState(state);
+    quat_t IMU_quat = hopper.quat;
     quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
     hopper.v.segment(3, 3) = quat._transformVector(hopper.v.segment(3, 3));
 
@@ -418,16 +426,27 @@ int main(int argc, char **argv)
 
       t2 = std::chrono::high_resolution_clock::now();
 
-      quat_t currentQuaterion = Quaternion<scalar_t>(state(4), state(5), state(6), state(7));
-      vector_3t currentEulerAngles = currentQuaterion.toRotationMatrix().eulerAngles(0, 1, 2);
+      // Measure the initial absolute yaw (from optitrack)
+      static scalar_t initial_yaw = extract_yaw(quat_optitrack); 
+      // quat_optitrack did not drift but did ''whip''
+      //  hopper.quat did not ''whip'' as the kids say, but did drift.
+      static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
 
-      static scalar_t yaw_0 = 2 * asin(state(7)); // z part approximates initial yaw
-      quat_t initial_yaw(cos(yaw_0 / 2), 0, 0, sin(yaw_0 / 2));
+      // Remove the measured yaw to put us back in the global frame
+      scalar_t measured_yaw = extract_yaw(hopper.quat);
+      scalar_t optitrack_yaw = extract_yaw(quat_optitrack);
+      quat_t measured_yaw_quat = Policy::Euler2Quaternion(0, 0, measured_yaw);
+      quat_t optitrack_yaw_quat = Policy::Euler2Quaternion(0, 0, optitrack_yaw);
+      quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper.quat, measured_yaw_quat));
+      hopper.quat = yaw_corrected;
+
+       // Add roll pitch offset to body frame
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
+      hopper.quat = plus(hopper.quat, rollPitch);
 
       // here joystick is absolute position and yaw
       quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
-      quat_des = quat_des * initial_yaw * rollPitch; // applies rollPitch in local frame before yaw inverting
+      quat_des = plus(quat_des, initial_yaw_quat); // Add initial yaw to desired signal
 
       omega_des = policy.DesiredOmega();
       u_des = policy.DesiredInputs();
@@ -474,6 +493,7 @@ int main(int argc, char **argv)
       if (fileWrite)
       {
         fileHandle << state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+                   << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                    << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
                    << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper.omega.transpose().format(CSVFormat)

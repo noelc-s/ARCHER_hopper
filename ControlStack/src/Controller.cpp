@@ -183,18 +183,23 @@ int main()
 
         ///////   SIMULATING DRIFT /////////////////
         scalar_t yaw_drift = state(0) * p.yaw_drift;
-        quat_t q_yaw_measured = Policy::Euler2Quaternion(0, 0, yaw_drift);
-        quat_t q_meas = plus(q_yaw_measured, hopper.quat);
-        scalar_t absolute_yaw = extract_yaw(hopper.quat);
+        quat_t yaw_drift_quat = Policy::Euler2Quaternion(0, 0, yaw_drift);
+        quat_t q_meas = plus(yaw_drift_quat, hopper.quat);
+        scalar_t optitrack_yaw = extract_yaw(hopper.quat);
         hopper.quat = q_meas;
         ///////////////////////////////////////////
 
+        quat_t IMU_quat = hopper.quat;
+
         // Measure the initial absolute yaw (from optitrack)
-        static scalar_t initial_yaw = absolute_yaw;
+        static scalar_t initial_yaw = optitrack_yaw;
         static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
 
         // Remove the measured yaw to put us back in the global frame
-        quat_t yaw_corrected = minus(hopper.quat, q_yaw_measured);
+        scalar_t measured_yaw = extract_yaw(hopper.quat);
+        quat_t measured_yaw_quat = Policy::Euler2Quaternion(0, 0, measured_yaw);
+        quat_t optitrack_yaw_quat = Policy::Euler2Quaternion(0, 0, optitrack_yaw);
+        quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper.quat, measured_yaw_quat));
         hopper.quat = yaw_corrected;
 
         // Add roll pitch offset to body frame
@@ -222,6 +227,7 @@ int main()
         // Log data
         if (fileWrite)
             fileHandle << state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+                       << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                        << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
                        << "," << quat_des.coeffs().transpose().format(CSVFormat)
                        << "," << hopper.omega.transpose().format(CSVFormat)

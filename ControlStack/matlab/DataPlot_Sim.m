@@ -1,6 +1,6 @@
 %% Read Data
 clear;clc;%clf;
-A = readmatrix('../data/data.csv');
+A = readmatrix('../data/data_hardware.csv');
 
 a = [1,0,0]';
 b = [0,1,0]';
@@ -16,6 +16,12 @@ ind = 1;
 t = (A(:,ind)-A(1,ind));        ind=ind+1; % Sample time
 contact = A(:,ind);             ind=ind+1;
 pos = A(:,ind:ind+2);           ind=ind+3;
+IMU_quat = A(:,ind:ind+3);          ind=ind+4;
+tmp = IMU_quat; % .coeffs gives x, y, z, w
+IMU_quat(:,1) = tmp(:,4); % w
+IMU_quat(:,2) = tmp(:,1); % x
+IMU_quat(:,3) = tmp(:,2); % y
+IMU_quat(:,4) = tmp(:,3); % z
 quat = A(:,ind:ind+3);          ind=ind+4;
 tmp = quat; % .coeffs gives x, y, z, w
 quat(:,1) = tmp(:,4); % w
@@ -35,7 +41,7 @@ wheel_vel = A(:,ind:ind+2);         ind=ind+3;
 %%
 for i = 1:length(t)
     q_a = quat(i,:);
-    q_d = quat_d(i,:);
+    q_d = IMU_quat(i,:);
     err(i,:) = quat2eul(quat_prod(quat_inv(q_d),q_a));
 end
 

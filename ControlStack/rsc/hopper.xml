@@ -26,7 +26,7 @@
             <site name="torso_IMU" type = "sphere" size = ".03" pos= "0 0 0" rgba = ".9 0 0 1"/>
             <geom type="cylinder" size=".05 .05" rgba=".9 .9 .9 1" />
             <geom name ="torso_stl" type='mesh' mesh='torso' contype="0" conaffinity="0" rgba = "0.18 0.18 0.18 0.8" pos="-0.055     0.183     -0.26" xyaxes="1 -0.55 0 0 0 1" />
-            <inertial pos =" 0.0 0.0 0.0" mass = "4.55" diaginertia ="0.04131 0.04093 0.02210"/>
+            <inertial pos =" 0.01 0.001 0.0" mass = "4.55" diaginertia ="0.04131 0.04093 0.02210"/>
             <freejoint name="root"/>
 
             <body name="wheel1" pos ="0.0776 0 0.0547" zaxis="0.0776 0 0.0547">
