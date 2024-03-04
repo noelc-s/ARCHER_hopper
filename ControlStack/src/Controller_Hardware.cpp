@@ -66,10 +66,13 @@ sockaddr_in source, destination;
 sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
+bool optitrack_updated = false;
 
 quat_t minus(quat_t q_1, quat_t q_2) { return q_2.inverse() * q_1; }
 quat_t plus(quat_t q_1, quat_t q_2) { return q_1 * q_2; }
 scalar_t extract_yaw(quat_t q) { return atan2(2 * (q.w() * q.z() + q.x() * q.y()), 1 - 2 * (pow(q.y(), 2) + pow(q.z(), 2))); }
+
+scalar_t alpha;
 
 struct Parameters
 {
@@ -113,15 +116,91 @@ struct State
   scalar_t w_z;
 } OptiState;
 
+matrix_t A_kf(6,6);
+matrix_t B_kf(6,4);
+bool contact;
+
 void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
-  OptiState.x = msg->pose.position.x;
-  OptiState.y = msg->pose.position.y;
+  static std::chrono::high_resolution_clock::time_point t1;
+  t1 = std::chrono::high_resolution_clock::now();
+  static std::chrono::seconds oneSecond(1);
+  static std::chrono::high_resolution_clock::time_point last_t_state_log = t1 - oneSecond;
+  static bool init = false;
+  static scalar_t dt;
+  static vector_3t state_init(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z + p.frameOffset + p.markerOffset);
+  static vector_3t last_state(0, 0, msg->pose.position.z + p.frameOffset + p.markerOffset);
+  static vector_3t current_vel(0,0,0);
+  static vector_3t filtered_current_vel(0,0,0);
+  static bool first_contact = false;
+
+  static vector_3t previous_vel(0,0,0);
+  static vector_t est_state(2);
+
+  if (est_state.size() == 2) {
+    est_state.resize(6);
+    est_state << 0,0,msg->pose.position.z + p.frameOffset + p.markerOffset,0,0,0;
+  }
+
+  static const scalar_t g = 9.81;
+
+  // else
+  OptiState.x = msg->pose.position.x - state_init(0);
+  OptiState.y = msg->pose.position.y - state_init(1);
   OptiState.z = msg->pose.position.z + p.frameOffset + p.markerOffset;
   OptiState.q_w = msg->pose.orientation.w;
   OptiState.q_x = msg->pose.orientation.x;
   OptiState.q_y = msg->pose.orientation.y;
   OptiState.q_z = msg->pose.orientation.z;
+
+  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - last_t_state_log).count() * 1e-9;
+  if (dt < 1e-3)
+    return;
+
+  current_vel << (OptiState.x - last_state(0)) / dt, (OptiState.y - last_state(1)) / dt, (OptiState.z - last_state(2)) / dt;
+  filtered_current_vel << alpha * current_vel + (1-alpha) * previous_vel;
+  last_state << OptiState.x, OptiState.y, OptiState.z;
+
+  if (contact)
+    first_contact = true;
+
+  // Kalman Filter
+  vector_4t input(-g, OptiState.x, OptiState.y, OptiState.z);
+  est_state << A_kf * est_state + B_kf * input;
+  if (!first_contact || contact) {
+    est_state(2) = OptiState.z;
+    est_state(5) = filtered_current_vel(2);
+  }
+
+  OptiState.x = est_state(0);
+  OptiState.y = est_state(1);
+  OptiState.z = est_state(2);
+  OptiState.x_dot = est_state(3);
+  OptiState.y_dot = est_state(4);
+  OptiState.z_dot = est_state(5);
+
+// for ii = 2:size(xyz, 1)
+
+//         % predict
+//         xyz_hat = A * estim(ii-1, :)' + B * -u;
+//         % update
+//         estim(ii, :) = xyz_hat + K * (xyz(ii, :)' - C * xyz_hat);
+//         estim2(ii, :) = kf.A * estim2(ii-1, :)' + kf.B * [-u; xyz(ii, :)'];
+//     if contact_sampled(ii)
+//         estim(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
+//         estim2(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
+//     end
+// end
+
+  // OptiState.x_dot = alpha * current_vel(0) + (1-alpha) * previous_vel(0);
+  // OptiState.y_dot = alpha * current_vel(1) + (1-alpha) * previous_vel(1);
+  // OptiState.z_dot = alpha * current_vel(2) + (1-alpha) * previous_vel(2);
+  // OptiState.x_dot = (alpha * (current_vel(0) + previous_vel(0)) + (1. - alpha) * OptiState.x_dot) / (alpha + 1.);
+  // OptiState.y_dot = (alpha * (current_vel(1) + previous_vel(1)) + (1. - alpha) * OptiState.y_dot) / (alpha + 1.);
+  // OptiState.z_dot = (alpha * (current_vel(2) + previous_vel(2)) + (1. - alpha) * OptiState.z_dot) / (alpha + 1.);
+  previous_vel << current_vel;
+  last_t_state_log = t1;
+  optitrack_updated = true;
 }
 
 void setupGains(const std::string filepath)
@@ -143,6 +222,7 @@ void setupGains(const std::string filepath)
       p.leg_kp, p.leg_kd;
   std::cout << "setupGains OK" << std::endl;
   p.optiTrackSetting = config["HardwareOptions"]["useOptiTrack"].as<int>();
+  alpha = config["filter_alpha"].as<scalar_t>();
 }
 
 volatile bool ESP_initialized = false;
@@ -250,7 +330,6 @@ int main(int argc, char **argv)
   scalar_t w_x, w_y, w_z;
   // torques to currents, assumes torques is an array of floats
   scalar_t const_wheels = 0.083;
-  bool init = false;
   vector_t state_init(3);
   ESPstate.setZero();
 
@@ -326,6 +405,21 @@ int main(int argc, char **argv)
 
   std::function<bool()> running;
 
+  // Kalman Filter gains
+  contact = false;
+  A_kf <<     0.4234,0.0000,-0.0000,0.0042,0,0,
+    0.0000,0.4234,0.0000,0,0.0042,0,
+   -0.0000,-0.0000,0.4234,0,0,0.0042,
+  -30.9689,0.0000,-0.0000,1.0000 ,0,0,
+    0.0000,-30.9689,0.0000,0,1.0000,0,
+   -0.0000,-0.0000,-30.9689,0,0,1.0000;
+  B_kf <<0,0.5766,-0.0000,0.0000,
+         0,-0.0000,0.5766,-0.0000,
+         0,0.0000,0.0000,0.5766,
+         0,30.9689,-0.0000,0.0000,
+         0,-0.0000,30.9689,-0.0000,
+    0.0042,0.0000,0.0000,30.9689;
+
   // ROS stuff
   // if (p.optiTrackSetting > 0) {
   ros::init(argc, argv, "listener");
@@ -365,7 +459,6 @@ int main(int argc, char **argv)
   // while(!ESP_initialized) {std::cout << "Waiting for ethernet connection" << std::endl;};
 
   vector_3t current_vel, previous_vel;
-  scalar_t dt = 1;
   std::chrono::high_resolution_clock::time_point last_t_state_log;
 
   tstart = std::chrono::high_resolution_clock::now();
@@ -383,42 +476,6 @@ int main(int argc, char **argv)
     // }
     t1 = std::chrono::high_resolution_clock::now();
 
-    if (!init)
-    {
-      state_init << OptiState.x, OptiState.y, OptiState.z;
-      last_state << OptiState.x - state_init(0), OptiState.y - state_init(1), OptiState.z;
-      current_vel << 0, 0, 0;
-      previous_vel << 0, 0, 0;
-      // dt = p.MPC_dt_replan;
-      init = true;
-    }
-    else
-    {
-      dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - last_t_state_log).count() * 1e-9;
-    }
-
-    {
-      std::lock_guard<std::mutex> lck(state_mtx);
-      current_vel << ((OptiState.x - state_init(0)) - last_state(0)) / dt, ((OptiState.y - state_init(1)) - last_state(1)) / dt, ((OptiState.z) - last_state(2)) / dt;
-
-      quat_optitrack = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-
-      quat_optitrack.normalize();
-      state << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - tstart).count() * 1e-3,
-          OptiState.x - state_init(0), OptiState.y - state_init(1), OptiState.z,
-          // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(),
-          ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),
-          (current_vel(0) + previous_vel(0)) / 2, (current_vel(1) + previous_vel(1)) / 2, (current_vel(2) + previous_vel(2)) / 2,
-          // current_vel(0), current_vel(1), current_vel(2),
-          ESPstate(3), ESPstate(4), ESPstate(5),
-          ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2);
-    }
-
-    hopper.updateState(state);
-    quat_t IMU_quat = hopper.quat;
-    quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
-    hopper.v.segment(3, 3) = quat._transformVector(hopper.v.segment(3, 3));
-
     scalar_t replan = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t2).count() * 1e-3;
 
     if (replan > p.dt)
@@ -426,10 +483,27 @@ int main(int argc, char **argv)
 
       t2 = std::chrono::high_resolution_clock::now();
 
+      {
+        std::lock_guard<std::mutex> lck(state_mtx);
+        quat_optitrack = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
+        quat_optitrack.normalize();
+        state << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - tstart).count() * 1e-3,
+            OptiState.x, OptiState.y, OptiState.z,
+            // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), // uncomment if you want optitrack as orientation
+            ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
+            OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
+            ESPstate(3), ESPstate(4), ESPstate(5),
+            ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2);
+      }
+
+      hopper.updateState(state);
+      contact = hopper.contact;
+      quat_t IMU_quat = hopper.quat;
+      // quat_t quat(hopper.q(6), hopper.q(3), hopper.q(4), hopper.q(5));
+      // hopper.v.segment(3, 3) = quat._transformVector(hopper.v.segment(3, 3));
+
       // Measure the initial absolute yaw (from optitrack)
-      static scalar_t initial_yaw = extract_yaw(quat_optitrack); 
-      // quat_optitrack did not drift but did ''whip''
-      //  hopper.quat did not ''whip'' as the kids say, but did drift.
+      static scalar_t initial_yaw = extract_yaw(quat_optitrack);
       static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
 
       // Remove the measured yaw to put us back in the global frame
@@ -440,12 +514,16 @@ int main(int argc, char **argv)
       quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper.quat, measured_yaw_quat));
       hopper.quat = yaw_corrected;
 
-       // Add roll pitch offset to body frame
+      // Add roll pitch offset to body frame
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
       hopper.quat = plus(hopper.quat, rollPitch);
 
       // here joystick is absolute position and yaw
-      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));
+      quat_des = policy.DesiredQuaternion(state(1), state(2), command(0), command(1), state(8), state(9), dist(0));\
+       // set to identity in the ground phase
+      if (hopper.contact) {
+        quat_des = policy.DesiredQuaternion(0,0, state(8), state(9), state(8), state(9), dist(0));
+      }
       quat_des = plus(quat_des, initial_yaw_quat); // Add initial yaw to desired signal
 
       omega_des = policy.DesiredOmega();
@@ -492,7 +570,12 @@ int main(int argc, char **argv)
       // Log data
       if (fileWrite)
       {
-        fileHandle << state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+        fileHandle << state[0] << "," << hopper.contact
+                   << "," << optitrack_updated
+                   << "," << hopper.pos.transpose().format(CSVFormat)
+                   << "," << hopper.leg_pos
+                   << "," << hopper.vel.transpose().format(CSVFormat)
+                   << "," << hopper.leg_vel
                    << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                    << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
                    << "," << quat_des.coeffs().transpose().format(CSVFormat)
@@ -501,6 +584,7 @@ int main(int argc, char **argv)
                    << "," << error.transpose().format(CSVFormat)
                    << "," << hopper.wheel_vel.transpose().format(CSVFormat) << std::endl;
       }
+      optitrack_updated = false;
     }
   }
 }

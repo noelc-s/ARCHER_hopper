@@ -284,9 +284,9 @@ namespace Archer
 
   int32_t Bia::sendSafeTorque(float xb, float u) {
     if (xb > theta_max || xb < theta_min) {
-      // Serial.print("xb was too large: ");
-      // Serial.print(xb);
-      // Serial.println(". Exiting");
+      Serial.print("xb was too large: ");
+      Serial.print(xb);
+      Serial.println(". Exiting");
       exitProgram();
     } 
     return elmo_.sendTC(u,IDX_BIA);

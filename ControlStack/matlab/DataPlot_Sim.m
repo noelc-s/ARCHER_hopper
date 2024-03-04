@@ -15,7 +15,11 @@ dt = 0.01;
 ind = 1;
 t = (A(:,ind)-A(1,ind));        ind=ind+1; % Sample time
 contact = A(:,ind);             ind=ind+1;
+optitrack_logged = A(:,ind);    ind=ind+1;
 pos = A(:,ind:ind+2);           ind=ind+3;
+leg_pos = A(:,ind);           ind=ind+1;
+vel = A(:,ind:ind+2);           ind=ind+3;
+leg_vel = A(:,ind);           ind=ind+1;
 IMU_quat = A(:,ind:ind+3);          ind=ind+4;
 tmp = IMU_quat; % .coeffs gives x, y, z, w
 IMU_quat(:,1) = tmp(:,4); % w
@@ -80,7 +84,8 @@ while(1)
     if isempty(ind)
         break
     end
-    axis([pos(ind,1)-2 pos(ind,1)+2 pos(ind,2)-2 pos(ind,2)+2 -2 2])
+    axis equal
+    axis([pos(ind,1)-2 pos(ind,1)+2 pos(ind,2)-2 pos(ind,2)+2 0 2])
     delete(q1); delete(l1);
     delete(q2); delete(l2);
     [q1,l1] = plot_quat(pos(ind,:), quat(ind,:),'ro',[a b c]);

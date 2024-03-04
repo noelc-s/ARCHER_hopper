@@ -226,7 +226,11 @@ int main()
 
         // Log data
         if (fileWrite)
-            fileHandle << state[0] << "," << hopper.contact << "," << hopper.pos.transpose().format(CSVFormat)
+            fileHandle << state[0] << "," << hopper.contact 
+                        << "," << hopper.pos.transpose().format(CSVFormat)
+                        << "," << hopper.leg_pos
+                        << "," << hopper.vel.transpose().format(CSVFormat)
+                        << "," << hopper.leg_vel
                        << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                        << "," << hopper.quat.coeffs().transpose().format(CSVFormat)
                        << "," << quat_des.coeffs().transpose().format(CSVFormat)

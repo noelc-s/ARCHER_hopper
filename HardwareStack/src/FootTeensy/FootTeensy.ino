@@ -70,7 +70,7 @@ void setup() {
   delay(3000);
   bia.resetState(1);
   bia.resetState(2);
-  // Serial.println("Finding Zero");
+  Serial.println("Finding Zero");
   bia.findZero();
   bia.setLEDs("0100");
   bia.waitSigK(0);
@@ -174,7 +174,8 @@ void compPhase() {
     float x_star = 30;
     u = -kp*(x - x_star) - kd*v;
 //    Serial.println(x);
-    if (theta-theta_0 >= 0.04) {
+    if (theta-theta_0 >= 1.0) {
+      Serial.println("Exiting because t-t_0 deflection was too large");
       bia.exitProgram();
     }
     rt = elmo.sendTC(-u+u0,4);

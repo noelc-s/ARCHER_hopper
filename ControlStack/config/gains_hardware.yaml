@@ -42,7 +42,7 @@ MPC:
   groundDuration: 0.07
   heightOffset: 0.35
   frameOffset: 0.0 # why in the world would there be a frame offset??
-  markerOffset: -0.1016 # frame is 4 inches lower than markers
+  markerOffset: -0.0 # frame is 4 inches lower than markers, accounted for in optitrack.
   time_between_contacts: 0.3
   multiplier_on_deltaf: 0 # not SO unreasonable, as constraints are soft in Mujoco
   hop_height: 0.5
@@ -51,15 +51,18 @@ MPC:
   max_vel: 1
 
 RaibertHeuristic:
-  kx_p: -0.0                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.0                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
   yaw_damping: 0.004
 
-roll_offset: 0.0
-pitch_offset: -0.0
+roll_offset: -0.003
+pitch_offset: 0.022
+
+filter_alpha: 0.4
+# filter_alpha: 0.0131
 
 HardwareOptions:
   useOptiTrack: 1

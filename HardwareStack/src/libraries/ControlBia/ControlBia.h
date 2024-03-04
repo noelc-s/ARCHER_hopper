@@ -34,7 +34,7 @@ namespace Archer
       float kI  = 0.00;      // 
       float kD  = 2.00;      // 
       float kPb = 2.50;      // 
-      float kDb = 0.25;     // 
+      float kDb = 0.1;     // 
       float _Tmax;           // Max current allowed
       float _Imax = 2.0;     // Max current allowed from controller's I term
       float _rad  = 0.0375;  // Pulley radius
