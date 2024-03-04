@@ -208,11 +208,17 @@ int main()
 
         quat_des = policy.DesiredQuaternion(state(1), state(2), state(1) + command(0), state(2) + command(1),
                                             state(8), state(9), dist(0));
+        if (hopper.contact) {
+            quat_des = policy.DesiredQuaternion(0,0, state(8), state(9), state(8), state(9), dist(0));
+        }
         // Add initial yaw to desired signal
         quat_des = plus(quat_des, initial_yaw_quat);
         omega_des = policy.DesiredOmega();
         u_des = policy.DesiredInputs();
 
+        if (hopper.contact) {
+            u_des.segment(1,3) = -0.1 * hopper.wheel_vel;
+        }
         hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
         t_last = state(0);
 
@@ -227,6 +233,7 @@ int main()
         // Log data
         if (fileWrite)
             fileHandle << state[0] << "," << hopper.contact 
+                        << "," << 1
                         << "," << hopper.pos.transpose().format(CSVFormat)
                         << "," << hopper.leg_pos
                         << "," << hopper.vel.transpose().format(CSVFormat)

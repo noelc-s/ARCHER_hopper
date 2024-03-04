@@ -464,8 +464,8 @@ int main(int argc, char **argv)
   tstart = std::chrono::high_resolution_clock::now();
   t2 = tstart;
 
-  RaibertPolicy policy = RaibertPolicy(yamlPath);
-  // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
+  // RaibertPolicy policy = RaibertPolicy(yamlPath);
+  ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", yamlPath);
 
   quat_t quat_optitrack;
 
@@ -528,6 +528,10 @@ int main(int argc, char **argv)
 
       omega_des = policy.DesiredOmega();
       u_des = policy.DesiredInputs();
+
+      if (hopper.contact) {
+        u_des.segment(1,3) = -0.1 * hopper.wheel_vel;
+      }
 
       hopper.computeTorque(quat_des, omega_des, 0.1, u_des);
       for (int i = 1; i < 4; i++)
