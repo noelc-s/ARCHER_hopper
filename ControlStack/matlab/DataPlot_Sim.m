@@ -1,6 +1,6 @@
 %% Read Data
 clear;clc;%clf;
-A = readmatrix('../data/data.csv');
+A = readmatrix('../data/data_hardware.csv');
 
 a = [1,0,0]';
 b = [0,1,0]';

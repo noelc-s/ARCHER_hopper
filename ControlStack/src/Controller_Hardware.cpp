@@ -586,7 +586,8 @@ int main(int argc, char **argv)
                    << "," << hopper.omega.transpose().format(CSVFormat)
                    << "," << hopper.torque.transpose().format(CSVFormat)
                    << "," << error.transpose().format(CSVFormat)
-                   << "," << hopper.wheel_vel.transpose().format(CSVFormat) << std::endl;
+                   << "," << hopper.wheel_vel.transpose().format(CSVFormat) 
+                   << "," << command.transpose().format(CSVFormat) << std::endl;
       }
       optitrack_updated = false;
     }
