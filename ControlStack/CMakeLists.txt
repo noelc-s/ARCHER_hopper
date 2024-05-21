@@ -51,7 +51,7 @@ target_link_libraries(MPC ${PINOCCHIO_LIBRARIES})
 target_link_directories(MPC PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp)
 target_link_libraries(hopper_ctrl MPC)
 target_link_libraries(hopper_ctrl yaml-cpp)
 
