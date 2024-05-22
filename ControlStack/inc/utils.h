@@ -24,27 +24,18 @@ const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
 static vector_3t getInput();
 
-void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex & m);
-
-int *server_fd;
-int *new_socket;
-int valread;
-struct sockaddr_in *address;
-int opt_socket;
-int addrlen;
-scalar_t TX_torques[13+2*5];
-scalar_t RX_state[20];
-
-void setupSocket();
-
 struct Parameters {
     scalar_t dt;
     scalar_t MPC_dt_flight;
     scalar_t MPC_dt_ground;
     scalar_t MPC_dt_replan;
     int stop_index; 
-} p;
+};
 
-void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p);
+void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex & m);
+
+void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
+
+void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p);
 
 #endif

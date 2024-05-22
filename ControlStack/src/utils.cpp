@@ -27,51 +27,47 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
   }
 }
 
-void setupSocket() {
-    server_fd = new int;
-    new_socket = new int;
-    address = new sockaddr_in;
-    opt_socket = 1;
-    addrlen = sizeof(*address);
-    for (int i = 0; i < sizeof(TX_torques)/sizeof(TX_torques[0]); i++)
-        TX_torques[i] = 0;
-    for (int i = 0; i < sizeof(RX_state)/sizeof(RX_state[0]); i++)
-        RX_state[i] = 0;
+void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen) {
+    // server_fd = new int;
+    // new_socket = new int;
+    // address = new sockaddr_in;
+
+    addrlen = sizeof(address);
 
 // Socket stuff
-    if ((*server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
 
     // Forcefully attaching socket to the port 8080
-    if (setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
                    &opt_socket, sizeof(opt_socket))) {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
-    address->sin_family = AF_INET;
-    address->sin_addr.s_addr = INADDR_ANY;
-    address->sin_port = htons(PORT);
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
     // Forcefully attaching socket to the port 8080
-    if (bind(*server_fd, (struct sockaddr *) address,
-             sizeof(*address)) < 0) {
+    if (bind(server_fd, (struct sockaddr*) &address,
+             sizeof(address)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-    if (listen(*server_fd, 3) < 0) {
+    if (listen(server_fd, 3) < 0) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
-    if ((*new_socket = accept(*server_fd, (struct sockaddr *) address,
+    if ((new_socket = accept(server_fd, (struct sockaddr*) &address,
                               (socklen_t *) &addrlen)) < 0) {
         perror("accept");
         exit(EXIT_FAILURE);
     }
 }
 
-void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p) {
+void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p) {
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
