@@ -1,3 +1,6 @@
+#ifndef MPC_H
+#define MPC_H
+
 #include <Eigen/Dense>
 #include "OsqpEigen/OsqpEigen.h"
 #include <iostream>
@@ -206,3 +209,5 @@ public:
     /*! @brief build the cost function matrices*/
     void buildCost();
 };
+
+#endif
