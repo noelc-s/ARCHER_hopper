@@ -38,6 +38,7 @@ public:
         scalar_t discountFactor;
 	scalar_t dt_flight;
 	scalar_t dt_ground;
+        scalar_t MPC_dt_replan;
 	scalar_t tau_max;
 	scalar_t f_max;
 	scalar_t terminalScaling;

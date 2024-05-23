@@ -29,6 +29,9 @@ struct Parameters {
     scalar_t MPC_dt_flight;
     scalar_t MPC_dt_ground;
     scalar_t MPC_dt_replan;
+    scalar_t roll_offset;
+    scalar_t pitch_offset;
+    scalar_t yaw_drift;
     int stop_index; 
 };
 
@@ -37,5 +40,23 @@ void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex &
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
 void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p);
+
+vector_3t Quaternion2Euler(const quat_t &q);
+
+quat_t minus(quat_t q_1, quat_t q_2);
+quat_t plus(quat_t q_1, quat_t q_2);
+scalar_t extract_yaw(quat_t q);
+
+/*! @brief  evaluate the forward dynamics
+*  @param [in] roll  roll angle of the body frame wrt the world frame
+*  @param [in] pitch  pitch angle of the body frame wrt the world frame
+*  @param [in] yaw  yaw angle of the body frame wrt the world frame
+*  @param [out] quaternion  quaternion representation of the orientation
+*/
+static quat_t Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw) {
+    return AngleAxisd(roll, Vector3d::UnitX())
+                * AngleAxisd(pitch, Vector3d::UnitY())
+                * AngleAxisd(yaw, Vector3d::UnitZ());
+}
 
 #endif
