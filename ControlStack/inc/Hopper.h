@@ -17,8 +17,14 @@
 #include "pinocchio/multibody/data.hpp"
 #include "pinocchio/algorithm/contact-info.hpp"
 
+#include <onnxruntime_cxx_api.h>
+
 using namespace Hopper_t;
 using namespace pinocchio;
+
+template <typename T>
+T vectorProduct(const std::vector<T>& v)
+    { return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>()); }
 
 enum domain {flight, ground, flight_ground, ground_flight};
 
@@ -61,7 +67,7 @@ public:
 
     scalar_t springStiffness;
 
-    Hopper();
+    Hopper(const std::string yamlFile);
 
     static matrix_3t cross(vector_3t q);
     static matrix_3t quat2Rot(quat_t q);
@@ -124,6 +130,28 @@ public:
     void Ddelta_f(const vector_t q, const vector_t v, const domain d,
                   matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
+};
+
+class NNHopper : public Hopper {
+public:    
+    NNHopper(std::string model_name, const std::string yamlPath);
+    void EvaluateNetwork(const quat_t quat_err, const vector_3t omega, const vector_3t flywheel_speed, vector_3t& tau);
+    void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
+
+    // TODO: consoloidate this with policy class
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize; 
 };
 
 #endif //HOPPER_HOPPER_H
