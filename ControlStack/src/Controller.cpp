@@ -11,9 +11,9 @@ int main()
     
     // Data Logging
     fileHandle.open(dataLog);
-    fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+    fileHandle << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc" << std::endl;
     fileHandleDebug.open(predictionLog);
-    fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+    fileHandleDebug << "t,x,y,z,q_w,q_x,q_y,q_z,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc" << std::endl;
 
    // Initialize 
     offsets << p.roll_offset, p.pitch_offset;
@@ -23,7 +23,7 @@ int main()
     ind = 1;
 
     // Instantiate a new policy.
-    std::shared_ptr<Integrator> integrator(new Integrator(0.0025, matrix_t::Identity(21,21), matrix_t::Identity(4,4)));
+    std::shared_ptr<Integrator> integrator(new Integrator(0.01, matrix_t::Identity(21,21), matrix_t::Identity(4,4)));
     PMPPolicy policy = PMPPolicy(gainYamlPath, hopper, integrator);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
     // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
@@ -92,19 +92,23 @@ int main()
         // Log data
         if (fileWrite)
         {
-            fileHandle << state[0] << "," << hopper->contact 
-                        << "," << 1
-                        << "," << hopper->pos.transpose().format(CSVFormat)
-                        << "," << hopper->leg_pos
-                        << "," << hopper->vel.transpose().format(CSVFormat)
-                        << "," << hopper->leg_vel
-                        << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
-                        << "," << hopper->quat.coeffs().transpose().format(CSVFormat)
-                        << "," << quat_des.coeffs().transpose().format(CSVFormat)
-                        << "," << hopper->omega.transpose().format(CSVFormat)
-                        << "," << hopper->torque.transpose().format(CSVFormat)
-                        << "," << error.transpose().format(CSVFormat)
-                        << "," << hopper->wheel_vel.transpose().format(CSVFormat) << std::endl;
+            // fileHandle << state[0] << "," << hopper->contact 
+            //             << "," << 1
+            //             << "," << hopper->pos.transpose().format(CSVFormat)
+            //             << "," << hopper->leg_pos
+            //             << "," << hopper->vel.transpose().format(CSVFormat)
+            //             << "," << hopper->leg_vel
+            //             << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
+            //             << "," << hopper->quat.coeffs().transpose().format(CSVFormat)
+            //             << "," << quat_des.coeffs().transpose().format(CSVFormat)
+            //             << "," << hopper->omega.transpose().format(CSVFormat)
+            //             << "," << hopper->torque.transpose().format(CSVFormat)
+            //             << "," << error.transpose().format(CSVFormat)
+            //             << "," << hopper->wheel_vel.transpose().format(CSVFormat) << std::endl;
+            for (int i = 0; i < 100; i++) {
+                fileHandle << policy.x_sol.block(0,i,21,1).transpose().format(CSVFormat) << ",";
+            }
+            fileHandle << std::endl;
         }
 
         for (int i = 0; i < 4; i++)

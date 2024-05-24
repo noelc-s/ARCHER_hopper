@@ -53,7 +53,6 @@ public:
     vector_t q;
     vector_t v;
     domain dom;
-    scalar_t multiplier_on_deltaf;
 
     vector_4t torque;
 

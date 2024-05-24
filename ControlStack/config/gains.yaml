@@ -6,17 +6,17 @@ LowLevel:
     Kd: [ -3,-3,-3]
   # For the leg multiplying deflection error and velocity
   Leg:
-    Kp: 0
-    Kd: .00
+    Kp: 0.5
+    Kd: .05
   dt: 0.001
 
 Simulator:
-  p0: [0,0,1]         # initial position [x,y,z]
+  p0: [0,0,0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
-  speed: .01              # speed of simulation [multiplier]
+  speed: .001              # speed of simulation [multiplier]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
@@ -42,7 +42,6 @@ MPC:
   groundDuration: 0.07                                  # duration of ground phase
   heightOffset: 0.35                                    # offset from torso frame (center of flywheels) to uncompressed foot
   time_between_contacts: 0.3                            # approximate time between contact events
-  multiplier_on_deltaf: 0 # not so unreasonable, as constraints are soft in Mujoco
   hop_height: 0.5
   circle_amp: -1
   circle_freq: 20
@@ -56,7 +55,7 @@ RaibertHeuristic:
   angle_max: 1.0
   yaw_damping: 0.0035 
 
-SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
+SpringStiffness: 3000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
 roll_offset: 0.00
 pitch_offset: -0.00

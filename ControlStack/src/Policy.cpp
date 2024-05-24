@@ -273,12 +273,14 @@ quat_t PMPPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t comman
 
 //   u_k(3) = hopper_->torque[3];
     u_k.setZero();
-
-    std::cout << std::endl << "-----" << std::endl;
+//    std::cout << x_k.transpose() << std::endl;
+    // std::cout << std::endl << "-----" << std::endl;
   for (int j = 0; j < num_iter; j++) {
     switch (d) {
         case flight:
-            if (x_k(13) < 0 && x_k(2) <= 0.37) {
+            x_k(7) = 0.03;
+            x_k(17) = 0;
+            if (x_k(13) < 0 && x_k(2) - x_k(7) <= 0.33) {
                 d = flight_ground;
             }
             break;
@@ -294,7 +296,8 @@ quat_t PMPPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t comman
             d = flight;
             break;
     }
-          std::cout << d << ":" << x_k(7) << " ";
+    // u_k(0) = (1 - d==ground) * (-0.5 * (x_k(7) - 0.1) - 0.05 * x_k(17));
+        //   std::cout << d << ":" << x_k(7) << " ";
     integrator_->xpj_integrator(hopper_, x_k, p_k, J_k, u_k, d, x_kp1, p_kp1, J_kp1);
     x_sol.block(0, j, 21, 1) << x_k;
     u_sol.block(0, j, 4, 1) << u_k;

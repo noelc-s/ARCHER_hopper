@@ -42,7 +42,7 @@ Hopper::Hopper(const std::string yamlFile)
     initConstraintDynamics(model, data, contact_model_ground);
 
     // Contact for when foot hits hard stops going to flight phase
-    contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, 2,LOCAL));
+    contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, 1, 2, LOCAL));
     contact_data_flight.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_flight.at(0)));
     initConstraintDynamics(model, data, contact_model_flight);
 
@@ -59,10 +59,10 @@ Hopper::Hopper(const std::string yamlFile)
     springStiffness = config["SpringStiffness"].as<scalar_t>();
 
     quat_actuator = quat_t(0.8806, 0.3646, -0.2795, 0.1160);
-    multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
 
     q.resize(model.nq);
     v.resize(model.nv);
+    contact = 0;
 }
 
 void Hopper::updateState(vector_t state)
@@ -141,27 +141,38 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
 };
 
 vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {
-    vector_t x_dot(2*model.nv);
-    switch(d)
+    vector_t x_dot(2 * model.nv);
+    switch (d)
     {
-        case flight: {
-		//Not constrained dynamics for flight, because that would fix the foot position
-		aba(model, data, q, v, a);
-    		x_dot << v.segment(0,6),0,v.segment(7,3), data.ddq;
-		break;
-	}
-        case ground: {
-                initConstraintDynamics(model, data, contact_model_ground);
-		constraintDynamics(model, data, q, v, a, contact_model_ground, contact_data_ground);
-		vector_t springForce(10);
-		springForce << 0,0,springStiffness*q(7),0,0,0,-springStiffness*q(7),0,0,0;
-    		x_dot << v, data.ddq + springForce;
-		break;
-	}
-	otherwise: {
-	     throw std::invalid_argument("Invalid domain in f");
-	     break;
-	}
+    case flight:
+    {
+        vector_t a_augmented = a;
+        // std::cout << a << std::endl;
+        // a_augmented(6) += -springStiffness * q(7);
+        aba(model, data, q, v, a_augmented);
+        // initConstraintDynamics(model, data, contact_model_flight);
+        // constraintDynamics(model, data, q, v, a, contact_model_flight, contact_data_flight);
+        x_dot << v, data.ddq;
+        break;
+    }
+    case ground:
+    {
+        initConstraintDynamics(model, data, contact_model_ground);
+        vector_t a_augmented = a;
+        // a_augmented(2) += springStiffness * q(7);
+        a_augmented(6) += -springStiffness * q(7);
+        constraintDynamics(model, data, q, v, a_augmented, contact_model_ground, contact_data_ground);
+        vector_t springForce(10);
+        springForce.setZero();
+        // springForce << 0, 0, springStiffness * q(7), 0, 0, 0, -springStiffness * q(7), 0, 0, 0;
+        x_dot << v, data.ddq + springForce;
+        break;
+    }
+    otherwise:
+    {
+        throw std::invalid_argument("Invalid domain in f");
+        break;
+    }
     }
     quat_t quat(q(6), q(3), q(4), q(5));
     x_dot.segment(0,3) += Hopper::cross(q.segment(0,3))*quat.inverse()._transformVector(v.segment(3,3));
@@ -169,34 +180,40 @@ vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, cons
 };
 
 void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
-                matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0) {
-	matrix_t springJacobian(10,10);
-	// Call dynamics first to populate q, v, a, for ComputeConstraintDynamicsDerivatives
-	vector_t f = Hopper::f(q, v, a, d);
-    switch(d)
+                matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0)
+{
+    matrix_t springJacobian(10, 10);
+    // Call dynamics first to populate q, v, a, for ComputeConstraintDynamicsDerivatives
+    vector_t f = Hopper::f(q, v, a, d);
+    switch (d)
     {
-        case flight: {
-		//Not constrained dynamics for flight, because that would fix the foot position
-		computeABADerivatives(model, data, q,v,a);
-		springJacobian.setZero();
-		break;
-	}
-        case ground: {
-                initConstraintDynamics(model, data, contact_model_ground);
-		computeConstraintDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
-		springJacobian << matrix_t::Zero(2,10),
-		       0,0,0,0,0,0,springStiffness,0,0,0,
-		       matrix_t::Zero(3,10),
-		       0,0,0,0,0,0,-springStiffness,0,0,0,
-		       matrix_t::Zero(3,10);
-		break;
-        }
-	otherwise: {
-	     throw std::invalid_argument("Invalid domain in Df");
-	     break;
-	}
+    case flight:
+    {
+        // Not constrained dynamics for flight, because that would fix the foot position
+        computeABADerivatives(model, data, q, v, a);
+        // initConstraintDynamics(model, data, contact_model_flight);
+        // computeConstraintDynamicsDerivatives(model, data, contact_model_flight, contact_data_flight);
+        springJacobian.setZero();
+        break;
     }
-    A << matrix_t::Zero(10,10),matrix_t::Identity(10,10), data.ddq_dq+springJacobian, data.ddq_dv;
+    case ground:
+    {
+        initConstraintDynamics(model, data, contact_model_ground);
+        computeConstraintDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
+        springJacobian << matrix_t::Zero(2, 10),
+            0, 0, 0, 0, 0, 0, springStiffness, 0, 0, 0,
+            matrix_t::Zero(3, 10),
+            0, 0, 0, 0, 0, 0, -springStiffness, 0, 0, 0,
+            matrix_t::Zero(3, 10);
+        break;
+    }
+    otherwise:
+    {
+        throw std::invalid_argument("Invalid domain in Df");
+        break;
+    }
+    }
+    A << matrix_t::Zero(10, 10), matrix_t::Identity(10, 10), data.ddq_dq + springJacobian, data.ddq_dv;
 
     matrix_t B_mat(10,4);
     B_mat << 0,0,0,0,
@@ -241,21 +258,23 @@ void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc,
 vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
     const double mu0 = 0.;
     const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
-    switch(d)
+    switch (d)
     {
-        case flight_ground: {
+    case flight_ground:
+    {
           initConstraintDynamics(model, data, contact_model_ground);
-          impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, mu0);
-	  break;
-        }
-	case ground_flight: {
+        impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, mu0);
+        break;
+    }
+    case ground_flight:
+    {
           initConstraintDynamics(model, data, contact_model_flight);
-          impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, mu0);
-	  break;
-	}
+        impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, mu0);
+        break;
+    }
     }
     vector_t x_plus(21); 
-    x_plus << q, (1-multiplier_on_deltaf)*v + multiplier_on_deltaf*data.dq_after;
+    x_plus << q, data.dq_after;
     return x_plus;
 };
 
@@ -266,13 +285,13 @@ void Hopper::Ddelta_f(const vector_t q, const vector_t v, const domain d,
     {
         case flight_ground: {
           df = Hopper::delta_f(q, v, d);
-          initConstraintDynamics(model, data, contact_model_ground);
+        //   initConstraintDynamics(model, data, contact_model_ground);
           computeImpulseDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
 	  break;
 	}
 	case ground_flight: {
           df = Hopper::delta_f(q, v, d);
-          initConstraintDynamics(model, data, contact_model_flight);
+        //   initConstraintDynamics(model, data, contact_model_flight);
           computeImpulseDynamicsDerivatives(model, data, contact_model_flight, contact_data_flight);
 	  break;
 	}
