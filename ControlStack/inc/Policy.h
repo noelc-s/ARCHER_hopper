@@ -7,6 +7,7 @@
 #include "yaml-cpp/yaml.h"
 #include <math.h>
 
+#include "../inc/Integrator.h"
 #include "../inc/Hopper.h"
 #include "../inc/MPC.h"
 #include <onnxruntime_cxx_api.h>
@@ -118,6 +119,21 @@ public:
 
     quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
                             scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact);
+    vector_3t DesiredOmega();
+    vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+};
+
+class PMPPolicy : public Policy {
+public:
+    PMPPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<Integrator> integrator);
+
+    const int num_iter = 100;
+    std::shared_ptr<Hopper> hopper_;
+    std::shared_ptr<Integrator> integrator_;
+    matrix_t x_sol, u_sol;
+    
+    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
+                scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 };

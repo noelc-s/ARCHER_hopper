@@ -31,7 +31,7 @@ using namespace pinocchio;
 const std::string gainYamlPath = "../config/gains.yaml";
 
 // 4 torques, 7 terminal s SE(3) state, 2 command, 2*5 solution horizon COM xy pos
-scalar_t TX_torques[4 + 7 + 2 + 2 * 5] = {};
+scalar_t TX_torques[4 + 7 + 2 + 3 * 100] = {};
  // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
 scalar_t RX_state[20] = {};
 

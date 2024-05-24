@@ -4,15 +4,6 @@
 
 #include <manif/manif.h>
 
-#include "pinocchio/algorithm/cholesky.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/aba.hpp"
-#include "pinocchio/algorithm/aba-derivatives.hpp"
-#include "pinocchio/algorithm/constrained-dynamics-derivatives.hpp"
-#include "pinocchio/algorithm/impulse-dynamics.hpp"
-#include "pinocchio/algorithm/impulse-dynamics-derivatives.hpp"
-#include "pinocchio/algorithm/constrained-dynamics.hpp"
-
 using namespace pinocchio;
 
 matrix_3t Hopper::cross(vector_3t q)

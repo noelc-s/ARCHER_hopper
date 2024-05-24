@@ -192,7 +192,8 @@ scalar_t MPC::time2impact(vector_t x, scalar_t heightOffset) {
 	scalar_t v0 = x(11+2);
 	scalar_t g = 9.81;
 
-	scalar_t t = (-v0-sqrt(pow(v0,2)+4*g*x0))/(-2*g);
+	scalar_t t = (-v0-sqrt(pow(v0,2)+2*g*x0))/(-g);
+  std::cout << t << std::endl;
 	return t;
 }
 

@@ -16,6 +16,14 @@
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/multibody/data.hpp"
 #include "pinocchio/algorithm/contact-info.hpp"
+#include "pinocchio/algorithm/cholesky.hpp"
+#include "pinocchio/algorithm/joint-configuration.hpp"
+#include "pinocchio/algorithm/aba.hpp"
+#include "pinocchio/algorithm/aba-derivatives.hpp"
+#include "pinocchio/algorithm/constrained-dynamics-derivatives.hpp"
+#include "pinocchio/algorithm/impulse-dynamics.hpp"
+#include "pinocchio/algorithm/impulse-dynamics-derivatives.hpp"
+#include "pinocchio/algorithm/constrained-dynamics.hpp"
 
 #include <onnxruntime_cxx_api.h>
 
@@ -129,6 +137,10 @@ public:
     */
     void Ddelta_f(const vector_t q, const vector_t v, const domain d,
                   matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
+
+    void discrete_step(const pinocchio::Model &model, const vector_t &q, const vector_t &v, vector_t &q_kp1, const scalar_t &dt) {
+        pinocchio::integrate(model, q, v*dt, q_kp1);
+    }
 
 };
 

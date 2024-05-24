@@ -236,9 +236,9 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t RX_torques[4 + 7 + 2 + 3 * 100] = {};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
-    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    scalar_t TX_state[20] = {};
 
     if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
@@ -403,29 +403,29 @@ int main(int argc, const char **argv) {
 	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
 	static int body_offset = 11;
 	static int vel_offset = 10;
-	d->qpos[body_offset+0] = RX_torques[4];
- 	d->qpos[body_offset+1] = RX_torques[5];
-	d->qpos[body_offset+2] = RX_torques[6];
-	d->qvel[vel_offset+0] = 0;
-	d->qvel[vel_offset+1] = 0;
-	d->qvel[vel_offset+2] = 0;
-	d->qpos[body_offset+3] = RX_torques[7];
-	d->qpos[body_offset+4] = RX_torques[8];
-	d->qpos[body_offset+5] = RX_torques[9];
-	d->qpos[body_offset+6] = RX_torques[10];
+	// d->qpos[body_offset+0] = RX_torques[4];
+ 	// d->qpos[body_offset+1] = RX_torques[5];
+	// d->qpos[body_offset+2] = RX_torques[6];
+	// d->qvel[vel_offset+0] = 0;
+	// d->qvel[vel_offset+1] = 0;
+	// d->qvel[vel_offset+2] = 0;
+	// d->qpos[body_offset+3] = RX_torques[7];
+	// d->qpos[body_offset+4] = RX_torques[8];
+	// d->qpos[body_offset+5] = RX_torques[9];
+	// d->qpos[body_offset+6] = RX_torques[10];
 
 	d->qpos[22] = RX_torques[11];
 	d->qpos[23] = RX_torques[12];
-	d->qpos[24] = RX_torques[13];
-	d->qpos[25] = RX_torques[14];
-	d->qpos[26] = RX_torques[15];
-	d->qpos[27] = RX_torques[16];
-	d->qpos[28] = RX_torques[17];
-	d->qpos[29] = RX_torques[18];
-	d->qpos[30] = RX_torques[19];
-	d->qpos[31] = RX_torques[20];
-	d->qpos[32] = RX_torques[21];
-	d->qpos[33] = RX_torques[22];
+	// d->qpos[24] = RX_torques[13];
+	// d->qpos[25] = RX_torques[14];
+	// d->qpos[26] = RX_torques[15];
+	// d->qpos[27] = RX_torques[16];
+	// d->qpos[28] = RX_torques[17];
+	// d->qpos[29] = RX_torques[18];
+	// d->qpos[30] = RX_torques[19];
+	// d->qpos[31] = RX_torques[20];
+	// d->qpos[32] = RX_torques[21];
+	// d->qpos[33] = RX_torques[22];
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
@@ -435,7 +435,26 @@ int main(int argc, const char **argv) {
         // update scene and render
         cam.lookat[0] = d->qpos[0];
         cam.lookat[1] = d->qpos[1];
+        
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+
+        static double zero3[3] = {0};
+        static double zero9[9] = {0};
+        float color[4] = {1.0, 0.0, 1.0, 1.0};
+        for (int i = 0; i < 99; i++) {
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
+            mjv_makeConnector(
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .015, 
+                    RX_torques[13+3*i],
+                    RX_torques[13+3*i+1],
+                    RX_torques[13+3*i+2],
+                    RX_torques[16+3*i],
+                    RX_torques[16+3*i+1],
+                    RX_torques[16+3*i+2]);
+                    scn.ngeom += 1;
+        }
+        // mjv_addGeoms(m, d, &opt, NULL, mjCAT_ALL, &scn);
+
         mjr_render(viewport, &scn, &con);
 
         // swap OpenGL buffers (blocking call due to v-sync)

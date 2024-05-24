@@ -23,9 +23,11 @@ int main()
     ind = 1;
 
     // Instantiate a new policy.
+    std::shared_ptr<Integrator> integrator(new Integrator(0.0025, matrix_t::Identity(21,21), matrix_t::Identity(4,4)));
+    PMPPolicy policy = PMPPolicy(gainYamlPath, hopper, integrator);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
     // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
 
     // std::thread userInput(getUserInput, std::ref(command), std::ref(cv), std::ref(m));
     std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
@@ -110,7 +112,7 @@ int main()
             TX_torques[i] = hopper->torque[i];
         }
 
-        for (int i = 4; i < 23; i++) {
+        for (int i = 4; i < 28; i++) {
             TX_torques[i] = 0;
         }
         TX_torques[11] = command(0);
@@ -126,16 +128,26 @@ int main()
         // TX_torques[8] = quat_term.x();
         // TX_torques[9] = quat_term.y();
         // TX_torques[10] = quat_term.z();
-        // TX_torques[13] = sol(floor(4. / 4 * (mpc_p.N - 1)) * 20);
-        // TX_torques[14] = sol(floor(4. / 4 * (mpc_p.N - 1)) * 20 + 1);
-        // TX_torques[15] = sol(floor(3. / 4 * (mpc_p.N - 1)) * 20);
-        // TX_torques[16] = sol(floor(3. / 4 * (mpc_p.N - 1)) * 20 + 1);
-        // TX_torques[17] = sol(floor(2. / 4 * (mpc_p.N - 1)) * 20);
-        // TX_torques[18] = sol(floor(2. / 4 * (mpc_p.N - 1)) * 20 + 1);
-        // TX_torques[19] = sol(floor(1. / 4 * (mpc_p.N - 1)) * 20);
-        // TX_torques[20] = sol(floor(1. / 4 * (mpc_p.N - 1)) * 20 + 1);
-        // TX_torques[21] = opt.full_ref(0);
-        // TX_torques[22] = opt.full_ref(1);
+        for (int i = 0; i < 100; i ++) {
+            TX_torques[13+3*i] = policy.x_sol(0,i)+i/100.;
+            TX_torques[14+3*i] = policy.x_sol(1,i);
+            TX_torques[15+3*i] = policy.x_sol(2,i);
+        }
+        // TX_torques[13] = policy.x_sol(0,floor(4. / 4 * (policy.num_iter-1)));
+        // TX_torques[14] = policy.x_sol(1,floor(4. / 4 * (policy.num_iter-1)));
+        // TX_torques[15] = policy.x_sol(2,floor(4. / 4 * (policy.num_iter-1)));
+        // TX_torques[16] = policy.x_sol(0,floor(3. / 4 * (policy.num_iter-1)));
+        // TX_torques[17] = policy.x_sol(1,floor(3. / 4 * (policy.num_iter-1)));
+        // TX_torques[18] = policy.x_sol(2,floor(3. / 4 * (policy.num_iter-1)));
+        // TX_torques[19] = policy.x_sol(0,floor(2. / 4 * (policy.num_iter-1)));
+        // TX_torques[20] = policy.x_sol(1,floor(2. / 4 * (policy.num_iter-1)));
+        // TX_torques[21] = policy.x_sol(2,floor(2. / 4 * (policy.num_iter-1)));
+        // TX_torques[22] = policy.x_sol(0,floor(1. / 4 * (policy.num_iter-1)));
+        // TX_torques[23] = policy.x_sol(1,floor(1. / 4 * (policy.num_iter-1)));
+        // TX_torques[24] = policy.x_sol(2,floor(1. / 4 * (policy.num_iter-1)));
+        // TX_torques[25] = policy.x_sol(0,0);
+        // TX_torques[26] = policy.x_sol(1,1);
+        // TX_torques[27] = policy.x_sol(2,2);
 
         send(new_socket, &TX_torques, sizeof(TX_torques), 0);
         if (ind == p.stop_index)

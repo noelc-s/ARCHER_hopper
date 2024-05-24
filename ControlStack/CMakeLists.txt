@@ -54,7 +54,7 @@ add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/Integrator.cpp src/UserInput.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
 if(LEARNING)
     target_link_libraries(hopper_ctrl onnxruntime::onnxruntime)

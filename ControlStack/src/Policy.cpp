@@ -240,3 +240,82 @@ vector_4t MPCPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact
     inputs = u_pred;
     return inputs;
 }
+
+PMPPolicy::PMPPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<Integrator> integrator) : 
+                    hopper_(std::move(hopper)), integrator_(std::move(integrator))
+{
+    loadParams(yamlPath, params);
+    x_sol.resize(21,num_iter);
+    u_sol.resize(4,num_iter);
+    x_sol.setZero();
+    u_sol.setZero();
+}
+
+quat_t PMPPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
+                scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact)
+{
+  vector_t x_k(21);
+  vector_t u_k(4);
+  vector_t p_k(20);
+  scalar_t J_k = 0;
+  x_k << hopper_->q, hopper_->v;
+  p_k.setZero();
+  vector_t x_kp1(21);
+  vector_t p_kp1(20);
+  scalar_t J_kp1 = 0;
+
+  domain d;
+  if (hopper_->contact) {
+    d = ground;
+  } else {
+    d = flight;
+  }
+
+//   u_k(3) = hopper_->torque[3];
+    u_k.setZero();
+
+    std::cout << std::endl << "-----" << std::endl;
+  for (int j = 0; j < num_iter; j++) {
+    switch (d) {
+        case flight:
+            if (x_k(13) < 0 && x_k(2) <= 0.37) {
+                d = flight_ground;
+            }
+            break;
+        case flight_ground:
+            d = ground;
+            break;
+        case ground:
+            if (x_k(17) < 0 && x_k(7) <= 0) {
+                d = ground_flight;
+            }
+            break;
+        case ground_flight:
+            d = flight;
+            break;
+    }
+          std::cout << d << ":" << x_k(7) << " ";
+    integrator_->xpj_integrator(hopper_, x_k, p_k, J_k, u_k, d, x_kp1, p_kp1, J_kp1);
+    x_sol.block(0, j, 21, 1) << x_k;
+    u_sol.block(0, j, 4, 1) << u_k;
+    x_k << x_kp1;
+    p_k << p_kp1;
+    J_k = J_kp1;
+  }
+  quat_t quat_des;
+  quat_des = quat_t(1, 0, 0, 0);
+  return quat_des;
+}
+
+vector_3t PMPPolicy::DesiredOmega()
+{
+    vector_3t inputs;
+    inputs.setZero();
+    return inputs;
+}
+vector_4t PMPPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
+{
+    vector_4t inputs;
+    inputs.setZero();
+    return inputs;
+}

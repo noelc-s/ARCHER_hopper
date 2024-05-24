@@ -58,6 +58,7 @@ using vector_2t = Eigen::Matrix<scalar_t, 2, 1>;
 using vector_3t = Eigen::Matrix<scalar_t, 3, 1>;
 using vector_4t = Eigen::Matrix<scalar_t, 4, 1>;
 using vector_6t = Eigen::Matrix<scalar_t, 6, 1>;
+using vector_ht = Eigen::Matrix<scalar_t, 20, 1>;
 /** Dynamic vector's trajectory type. */
 using vector_array_t = std::vector<vector_t>;
 /** Array of dynamic vector's trajectory type. */
