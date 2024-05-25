@@ -254,56 +254,71 @@ PMPPolicy::PMPPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper,
 quat_t PMPPolicy::DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
                 scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact)
 {
-  vector_t x_k(21);
-  vector_t u_k(4);
-  vector_t p_k(20);
-  scalar_t J_k = 0;
-  x_k << hopper_->q, hopper_->v;
-  p_k.setZero();
-  vector_t x_kp1(21);
-  vector_t p_kp1(20);
-  scalar_t J_kp1 = 0;
+  std::vector<vector_t> u_k;
+  std::vector<vector_t> x_k;
+  std::vector<vector_t> p_k;
+  std::vector<scalar_t> J_k;
+  std::vector<vector_t> x_kp1;
+  std::vector<vector_t> p_kp1;
+  std::vector<scalar_t> J_kp1;
+  std::vector<domain> d;
 
-  domain d;
-  if (hopper_->contact) {
-    d = ground;
-  } else {
-    d = flight;
+  vector_t hopper_x(21);
+  hopper_x << hopper_->q, hopper_->v;
+
+  for (int i = 0; i < LS_SIZE; i++) {
+    u_k.push_back(vector_t::Zero(4,1));
+    x_k.push_back(hopper_x);
+    p_k.push_back(vector_t::Zero(20,1));
+    J_k.push_back(0);
+    x_kp1.push_back(vector_t::Zero(21,1));
+    p_kp1.push_back(vector_t::Zero(20,1));
+    J_kp1.push_back(0);
+    if (hopper_->contact) {
+        d.push_back(ground);
+    } else {
+        d.push_back(flight);
+    }
   }
+  
 
-//   u_k(3) = hopper_->torque[3];
-    u_k.setZero();
-//    std::cout << x_k.transpose() << std::endl;
-    // std::cout << std::endl << "-----" << std::endl;
-  for (int j = 0; j < num_iter; j++) {
-    switch (d) {
+  omp_set_num_threads(LS_SIZE);
+  #pragma omp parallel
+  {
+    const int i = omp_get_thread_num();
+    Hopper hopper = *hopper_;
+    for (int j = 0; j < num_iter; j++)
+    {
+        switch (d[i])
+        {
         case flight:
-            x_k(7) = 0.03;
-            x_k(17) = 0;
-            if (x_k(13) < 0 && x_k(2) - x_k(7) <= 0.33) {
-                d = flight_ground;
+            x_k[i](7) = 0.03;
+            x_k[i](17) = 0;
+            if (x_k[i](13) < 0 && x_k[i](2) - x_k[i](7) <= 0.33)
+            {
+                d[i] = flight_ground;
             }
             break;
         case flight_ground:
-            d = ground;
+            d[i] = ground;
             break;
         case ground:
-            if (x_k(17) < 0 && x_k(7) <= 0) {
-                d = ground_flight;
+            if (x_k[i](17) < 0 && x_k[i](7) <= 0)
+            {
+                d[i] = ground_flight;
             }
             break;
         case ground_flight:
-            d = flight;
+            d[i] = flight;
             break;
+        }
+        integrator_->xpj_integrator(hopper, x_k[i], p_k[i], J_k[i], u_k[i], d[i], x_kp1[i], p_kp1[i], J_kp1[i]);
+        x_sol.block(0, j, 21, 1) << x_k[i];
+        u_sol.block(0, j, 4, 1) << u_k[i];
+        x_k[i] << x_kp1[i];
+        p_k[i] << p_kp1[i];
+        J_k[i] = J_kp1[i];
     }
-    // u_k(0) = (1 - d==ground) * (-0.5 * (x_k(7) - 0.1) - 0.05 * x_k(17));
-        //   std::cout << d << ":" << x_k(7) << " ";
-    integrator_->xpj_integrator(hopper_, x_k, p_k, J_k, u_k, d, x_kp1, p_kp1, J_kp1);
-    x_sol.block(0, j, 21, 1) << x_k;
-    u_sol.block(0, j, 4, 1) << u_k;
-    x_k << x_kp1;
-    p_k << p_kp1;
-    J_k = J_kp1;
   }
   quat_t quat_des;
   quat_des = quat_t(1, 0, 0, 0);

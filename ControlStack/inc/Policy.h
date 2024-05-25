@@ -6,6 +6,7 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
 #include <math.h>
+#include <omp.h>
 
 #include "../inc/Integrator.h"
 #include "../inc/Hopper.h"
@@ -15,6 +16,8 @@
 
 using namespace Hopper_t;
 using namespace Eigen;
+
+constexpr int LS_SIZE = 20;
 
 class Policy{
 public:

@@ -56,6 +56,8 @@ set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/l
 # add the executable
 add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/Integrator.cpp src/UserInput.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
+find_package(OpenMP REQUIRED)
+target_link_libraries(hopper_ctrl OpenMP::OpenMP_CXX)
 if(LEARNING)
     target_link_libraries(hopper_ctrl onnxruntime::onnxruntime)
     target_include_directories(hopper_ctrl PUBLIC ${onnxruntime_DIR}/include)

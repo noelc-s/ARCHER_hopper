@@ -16,7 +16,7 @@ Simulator:
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
-  speed: .001              # speed of simulation [multiplier]
+  speed: 1              # speed of simulation [multiplier]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times

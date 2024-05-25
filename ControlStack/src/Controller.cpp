@@ -23,7 +23,7 @@ int main()
     ind = 1;
 
     // Instantiate a new policy.
-    std::shared_ptr<Integrator> integrator(new Integrator(0.01, matrix_t::Identity(21,21), matrix_t::Identity(4,4)));
+    std::shared_ptr<Integrator> integrator(new Integrator(0.0025, matrix_t::Identity(21,21), matrix_t::Identity(4,4)));
     PMPPolicy policy = PMPPolicy(gainYamlPath, hopper, integrator);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
     // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
@@ -133,7 +133,7 @@ int main()
         // TX_torques[9] = quat_term.y();
         // TX_torques[10] = quat_term.z();
         for (int i = 0; i < 100; i ++) {
-            TX_torques[13+3*i] = policy.x_sol(0,i)+i/100.;
+            TX_torques[13+3*i] = policy.x_sol(0,i);
             TX_torques[14+3*i] = policy.x_sol(1,i);
             TX_torques[15+3*i] = policy.x_sol(2,i);
         }
