@@ -55,8 +55,7 @@ public:
     *  @param [in] contact  boolean of whether the robot is in contact with the ground
     *  @param [out] quat_d  desired quaternion for the low level controller
     */
-    virtual quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
-                    scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact) = 0;
+    virtual quat_t DesiredQuaternion(Hopper::State state, vector_3t command) = 0;
     
     /*! @brief  evaluate the forward dynamics
     *  @param [out] omega_d  desired omega (rate of change of quaternion) of the body frame wrt the world fram
@@ -72,8 +71,7 @@ public:
 class RaibertPolicy : public Policy{
 public:
     RaibertPolicy(const std::string yamlPath);
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
-                            scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact);
+    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 };
@@ -84,8 +82,7 @@ class ZeroDynamicsPolicy : public Policy{
 public:
     ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
     void EvaluateNetwork(const vector_4t state, vector_2t& output);
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
-                            scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact);
+    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
@@ -116,8 +113,84 @@ public:
     scalar_t dt_elapsed_MPC, t_last_MPC;
     
 
-    quat_t DesiredQuaternion(scalar_t x_a, scalar_t y_a, vector_3t command,
-                            scalar_t xd_a, scalar_t yd_a, scalar_t yaw_des, bool contact);
+    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+};
+
+class RLPolicy : public Policy {
+public:
+    RLPolicy(std::string model_name, const std::string yamlPath);
+    void EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t& output);
+    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    vector_3t DesiredOmega();
+    vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+
+    vector_4t q_des;
+    scalar_t dt_elapsed_RL;
+    scalar_t t_last_RL;
+
+    vector_4t previous_action;
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;    
+
+    struct RLParams {
+      scalar_t lin_vel_scaling;
+      scalar_t ang_vel_scaling;
+      scalar_t dof_vel_scaling;
+      scalar_t z_pos_scaling;
+      scalar_t dt_replan;
+    } RLparams;
+
+    void loadParams(std::string filepath, RLParams& params);  
+};
+
+
+class RLTrajPolicy : public Policy {
+public:
+    RLTrajPolicy(std::string model_name, const std::string yamlPath);
+    void EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t& output);
+    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    vector_3t DesiredOmega();
+    vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+
+    vector_4t q_des;
+    scalar_t dt_elapsed_RL;
+    scalar_t t_last_RL;
+
+    vector_4t previous_action;
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;    
+
+    struct RLParams {
+      scalar_t lin_vel_scaling;
+      scalar_t ang_vel_scaling;
+      scalar_t dof_vel_scaling;
+      scalar_t z_pos_scaling;
+      scalar_t dt_replan;
+    } RLparams;
+
+    void loadParams(std::string filepath, RLParams& params);  
 };

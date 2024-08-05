@@ -11,13 +11,13 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     vector_t x0(21);
     vector_t x0_local(21);
     vector_t s0(20);
-    x0 << hopper.q, hopper.v;
+    x0 << hopper.state_.q, hopper.state_.v;
     x0_local = global2local(x0);
     s0 = qk_to_xik(x0_local,x0_local);
     vector_t log_x0(20);
     log_x0 = Log(x0_local);
     scalar_t t2i = time2impact(x0,p.heightOffset);
-    if (hopper.contact || t2i != t2i || t2i < 0) {
+    if (hopper.state_.contact || t2i != t2i || t2i < 0) {
 	    t2i = 0;
     }
 
@@ -27,7 +27,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     bool first_impact = false;
     bool first_flight = false;
     int first_flight_index = 0;
-    if (hopper.contact) {
+    if (hopper.state_.contact) {
       first_impact = true;
     }
     scalar_t offset = 0;
@@ -39,7 +39,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     static scalar_t flip_start_time = 100;
     if (flip_started == false && (abs(command(2) -1)<= 0.05 || abs(command(2) +1)<= 0.05) && t2i == 0) {
 	flip_started = true;
-	flip_start_time = hopper.t;
+	flip_start_time = hopper.state_.t;
     }
 
     static bool circle_started = false;
@@ -48,11 +48,11 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     if (abs(command(2)- 2) <= 0.05) {
       if (circle_started == false) {
 	circle_started = true;
-	circle_start_time = hopper.t;
+	circle_start_time = hopper.state_.t;
       } else {
-        //command(0) = p.circle_amp*sin(4*3.14159*(hopper.t-circle_start_time)/p.circle_freq);
-        //command(1) = p.circle_amp*cos(2*3.14159*(hopper.t-circle_start_time)/p.circle_freq)-p.circle_amp; 
-	int corner = floor(4*(fmod(hopper.t-circle_start_time, p.circle_freq))/p.circle_freq);
+        //command(0) = p.circle_amp*sin(4*3.14159*(hopper.state_.t-circle_start_time)/p.circle_freq);
+        //command(1) = p.circle_amp*cos(2*3.14159*(hopper.state_.t-circle_start_time)/p.circle_freq)-p.circle_amp; 
+	int corner = floor(4*(fmod(hopper.state_.t-circle_start_time, p.circle_freq))/p.circle_freq);
 	switch(corner) {
 		case 0: 
 	    command(0) = 1;
@@ -79,7 +79,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     scalar_t alpha;
    if (flip_started) {
           alpha = command(2)*4*3.14;
-	  if ((hopper.t > (flip_start_time + .3)) && hopper.contact == 1) {
+	  if ((hopper.state_.t > (flip_start_time + .3)) && hopper.state_.contact == 1) {
             flip_started = false;
             command(2) = 0;
           }
@@ -102,7 +102,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
 	    first_flight_index = i;
 	  }
 	} else {
-	  if (t2i == 0 && elapsed_time(i)-offset+(hopper.t-hopper.last_impact_time)-t2i > p.groundDuration) {
+	  if (t2i == 0 && elapsed_time(i)-offset+(hopper.state_.t-hopper.state_.last_impact_time)-t2i > p.groundDuration) {
 	    if (!first_flight) {
 		    d_bar(i) = ground_flight;
 		    first_flight = true;
@@ -143,8 +143,8 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
 	full_ref.segment(i*nx+2,1) << p.hop_height;
 	full_ref.segment(i*nx+3,3) << -log_x0.segment(3,3); // Hacky modification to cost to get orientation tracking back TODO
 	if (first_flight) {
-	  scalar_t t = elapsed_time(i) + hopper.t - hopper.last_flight_time;
-	  scalar_t t_max = t2i + hopper.t - hopper.last_flight_time;
+	  scalar_t t = elapsed_time(i) + hopper.state_.t - hopper.state_.last_flight_time;
+	  scalar_t t_max = t2i + hopper.state_.t - hopper.state_.last_flight_time;
 	  // Heuristic to deal with log
 	  if (abs(alpha) > 0.1 && t < 0.285) {
 	    full_ref(i*nx+4) = alpha*std::min(t/t_max,1.);

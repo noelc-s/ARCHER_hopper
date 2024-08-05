@@ -70,50 +70,59 @@ Hopper::Hopper(const std::string yamlFile)
     quat_actuator = quat_t(0.8806, 0.3646, -0.2795, 0.1160);
     multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
 
-    q.resize(model.nq);
-    v.resize(model.nv);
+    state_.q.resize(model.nq);
+    state_.v.resize(model.nv);
 }
 
 void Hopper::updateState(vector_t state)
 {
     int ind = 0;
 
-    t = state[ind];
+    state_.t = state[ind];
     ind++;
-    pos << state[ind], state[ind + 1], state[ind + 2];
+    state_.pos << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
-    quat = Eigen::Quaternion<scalar_t>(state[ind], state[ind + 1], state[ind + 2], state[ind + 3]); // Loaded as w,x,y,z
-    quat.normalize();
+    state_.quat = Eigen::Quaternion<scalar_t>(state[ind], state[ind + 1], state[ind + 2], state[ind + 3]); // Loaded as w,x,y,z
+    state_.quat.normalize();
     ind += 4;
-    vel << state[ind], state[ind + 1], state[ind + 2];
+    state_.vel << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
-    omega << state[ind], state[ind + 1], state[ind + 2];
+    state_.omega << state[ind], state[ind + 1], state[ind + 2];
     ind += 3;
-    if (contact == 0 && state[ind] >= .1)
+    if (state_.contact == 0 && state[ind] >= .1)
     {
-        last_impact_time = t;
+        state_.last_impact_time = state_.t;
     }
-    if (contact == 1 && state[ind] <= .1)
+    if (state_.contact == 1 && state[ind] <= .1)
     {
-        last_flight_time = t;
+        state_.last_flight_time = state_.t;
     }
     if (state[ind] <= .1)
     {
-        contact = 0;
+        state_.contact = 0;
     }
     else
     {
-        contact = 1;
+        state_.contact = 1;
     }
+    // For trampoline, register contact when z velocity is zero
+    // // TODO: make this a bool
+    // if (state_.contact > 0.5) {
+    //   if (state_.vel[2] >= 0) {
+	//     state_.contact = 1;
+    //   } else {
+	//     state_.contact = 0;
+    //   }
+    // }
     ind++;
-    leg_pos = state[ind];
+    state_.leg_pos = state[ind];
     ind++;
-    leg_vel = state[ind];
+    state_.leg_vel = state[ind];
     ind++;
-    wheel_vel << state[ind], state[ind + 1], state[ind + 2];
+    state_.wheel_vel << state[ind], state[ind + 1], state[ind + 2];
     ind++;
-    q << pos, quat.coeffs(), leg_pos, 0, 0, 0;
-    v << vel, omega, leg_vel, wheel_vel;
+    state_.q << state_.pos, state_.quat.coeffs(), state_.leg_pos, 0, 0, 0;
+    state_.v << state_.vel, state_.omega, state_.leg_vel, state_.wheel_vel;
 };
 
 void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des)
@@ -121,7 +130,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
 
     vector_3t omega_a;
 
-    quat_t quat_a_ = quat;
+    quat_t quat_a_ = state_.quat;
 
     vector_4t quat_d;
     vector_4t quat_a;
@@ -129,7 +138,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     quat_a << quat_a_.w(), quat_a_.x(), quat_a_.y(), quat_a_.z();
 
     vector_3t delta_quat;
-    quat_t e = quat_d_.inverse() * quat;
+    quat_t e = quat_d_.inverse() * state_.quat;
     manif::SO3Tangent<scalar_t> xi;
     auto e_ = manif::SO3<scalar_t>(e);
     xi = e_.log();
@@ -142,9 +151,10 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     Kd.diagonal() << gains.orientation_kd;
 
     vector_3t tau;
-    tau = quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (omega - omega_d));
+    // switch orientation control off in the ground phase
+    tau = (1 - state_.contact) * quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (state_.omega - omega_d));
 
-    scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
+    scalar_t spring_f = (1 - state_.contact) * (-gains.leg_kp * (state_.leg_pos - length_des) - gains.leg_kd * state_.leg_vel);
     torque << spring_f, tau;
     torque += u_des;
 };
@@ -396,16 +406,16 @@ void NNHopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_
 
     vector_3t tau, body_axis_aligned_torque, NN_output;
 
-    quat_t q_diff = quat_d_.inverse() * quat;
-    vector_3t omega_diff = omega - omega_d;
+    quat_t q_diff = quat_d_.inverse() * state_.quat;
+    vector_3t omega_diff = state_.omega - omega_d;
 
-    EvaluateNetwork(q_diff, omega, wheel_vel, NN_output);
+    EvaluateNetwork(q_diff, state_.omega, state_.wheel_vel, NN_output);
 
     body_axis_aligned_torque = NN_output;
 
     tau = quat_actuator.inverse()._transformVector(body_axis_aligned_torque);
 
-    scalar_t spring_f = (1 - contact) * (-gains.leg_kp * (leg_pos - length_des) - gains.leg_kd * leg_vel);
+    scalar_t spring_f = (1 - state_.contact) * (-gains.leg_kp * (state_.leg_pos - length_des) - gains.leg_kd * state_.leg_vel);
     torque << spring_f, tau;
     torque += u_des;
 };

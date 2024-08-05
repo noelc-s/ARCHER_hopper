@@ -13,7 +13,7 @@ set(PATH_TO_REPOS /home/noelcs/repos)
 # Option to build hardare support (requires ros to be installed, not needed for sim only results)
 option(HARDWARE "build with hardware support (ros)" OFF)
 option(MPC "build with MPC controller" ON)
-option(LEARNING "build with MPC controller" ON)
+option(LEARNING "build with NN controller" ON)
 
 # Set pat dependencies (can be set manually if they are in different locations)
 SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")

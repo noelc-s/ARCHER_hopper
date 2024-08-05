@@ -31,20 +31,23 @@ enum domain {flight, ground, flight_ground, ground_flight};
 class Hopper {
 
 public:
-    scalar_t t;
-    vector_3t pos;
-    quat_t quat;
-    vector_3t vel;
-    vector_3t omega;
-    scalar_t contact;
-    scalar_t last_impact_time;
-    scalar_t last_flight_time;
-    scalar_t leg_pos;
-    scalar_t leg_vel;
-    vector_3t wheel_vel;
-    vector_t q;
-    vector_t v;
-    domain dom;
+
+    struct State {
+        scalar_t t;
+        vector_3t pos;
+        quat_t quat;
+        vector_3t vel;
+        vector_3t omega;
+        scalar_t contact;
+        scalar_t last_impact_time;
+        scalar_t last_flight_time;
+        scalar_t leg_pos;
+        scalar_t leg_vel;
+        vector_3t wheel_vel;
+        vector_t q;
+        vector_t v;
+        domain dom;
+    } state_;
     scalar_t multiplier_on_deltaf;
 
     vector_4t torque;

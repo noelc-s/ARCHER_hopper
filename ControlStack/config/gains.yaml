@@ -2,12 +2,12 @@
 LowLevel:
   # For the reaction wheeels multiplying orientation error and angular rate
   Orientation:
-    Kp: [ -90,-90,-90 ]
+    Kp: [ -15,-15,-15 ]
     Kd: [ -3,-3,-3]
   # For the leg multiplying deflection error and velocity
   Leg:
-    Kp: 0.5
-    Kd: .005 
+    Kp: .4
+    Kd: 0.02
   dt: 0.001
 
 Simulator:
@@ -21,15 +21,15 @@ Simulator:
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
   pert_force_y: [0, 0, 0, 0]    # perturbation force in Y direction at below times
-  pert_start: [2000, 5100, 11000,14000] # start time for force [milliseconds]
-  pert_end: [2500, 5500, 11150, 14150]  # end time for force [milliseconds
+  pert_start: [2000, 5000, 11000,14000] # start time for force [milliseconds]
+  pert_end: [2700, 5700, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
   yaw_drift: 1     # drift in rad / s
   
 MPC:
   N: 20                                                 # nodes of MPC horizon
-  stateScaling: [20,20,0,8,8,8,0,0,0,0,                 # cost function scaling on state
-                 2.5,2.5,0,.03,.03,.03,0,0,0,0]         # cost function scaling on vel
+  stateScaling: [20,20,0,8,8,0,0,0,0,0,                 # cost function scaling on state
+                 2.5,2.5,0,.03,.03,.00,0,0,0,0]         # cost function scaling on vel
   inputScaling: [.01,.01,.01,.01]                       # cost function scaling on input
   discountFactor: 1                                     # scale each future node by gamma^k
   terminalScaling: 1                                    # scaling of terminal state
@@ -37,7 +37,7 @@ MPC:
   dt_ground: 0.001                                      # dt of ground phase [s]
   dt_replan: 0.01                                       # dt to run MPC at
   SQP_iter: 2                                           # number of SQP iterations
-  tau_max: 1.5                                          # maximum control input
+  tau_max: 15                                          # maximum control input
   f_max: 0                                              # maximum force applied to foot
   groundDuration: 0.07                                  # duration of ground phase
   heightOffset: 0.35                                    # offset from torso frame (center of flywheels) to uncompressed foot
@@ -49,10 +49,10 @@ MPC:
   max_vel: 5
 
 RaibertHeuristic:
-  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.0                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.0                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.0                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.0                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
   yaw_damping: 0.0035 
 
@@ -60,3 +60,11 @@ SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a
 
 roll_offset: 0.00
 pitch_offset: -0.00
+
+RL:
+  obs_scales:
+    lin_vel : 0.5
+    ang_vel : 0.25
+    dof_vel : 0.01
+    z_pos : 1.0
+  dt_replan : 0.02

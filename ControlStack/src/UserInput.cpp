@@ -68,8 +68,9 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
       std::cout << "joystick connected" << std::endl;
 
   //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
-  double comm_scale = 40000.;
-  double dist_scale = 10000.;
+  // ... changed for RL testing ...
+  double comm_scale = 40000. / 0.5;
+  double dist_scale = 40000. / 1;
 
   /* This loop will exit if the controller is unplugged. */
   while (read_event(js, &event) == 0)
