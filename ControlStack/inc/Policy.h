@@ -55,7 +55,7 @@ public:
     *  @param [in] contact  boolean of whether the robot is in contact with the ground
     *  @param [out] quat_d  desired quaternion for the low level controller
     */
-    virtual quat_t DesiredQuaternion(Hopper::State state, vector_3t command) = 0;
+    virtual quat_t DesiredQuaternion(Hopper::State state, matrix_t command) = 0;
     
     /*! @brief  evaluate the forward dynamics
     *  @param [out] omega_d  desired omega (rate of change of quaternion) of the body frame wrt the world fram
@@ -71,7 +71,7 @@ public:
 class RaibertPolicy : public Policy{
 public:
     RaibertPolicy(const std::string yamlPath);
-    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 };
@@ -82,7 +82,7 @@ class ZeroDynamicsPolicy : public Policy{
 public:
     ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
     void EvaluateNetwork(const vector_4t state, vector_2t& output);
-    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
@@ -113,7 +113,7 @@ public:
     scalar_t dt_elapsed_MPC, t_last_MPC;
     
 
-    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 };
@@ -121,8 +121,8 @@ public:
 class RLPolicy : public Policy {
 public:
     RLPolicy(std::string model_name, const std::string yamlPath);
-    void EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t& output);
-    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    void EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t& output);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
@@ -159,15 +159,17 @@ public:
 
 class RLTrajPolicy : public Policy {
 public:
-    RLTrajPolicy(std::string model_name, const std::string yamlPath);
-    void EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t& output);
-    quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
+    RLTrajPolicy(std::string model_name, const std::string yamlPath, int horizon, int state_dim);
+    void EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t& output);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
     vector_4t q_des;
     scalar_t dt_elapsed_RL;
     scalar_t t_last_RL;
+    const int horizon;
+    const int state_dim;
 
     vector_4t previous_action;
     Ort::Env env;

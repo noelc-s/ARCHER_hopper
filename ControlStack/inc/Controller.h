@@ -48,7 +48,6 @@ scalar_t dt_elapsed;
 quat_t quat_des = Quaternion<scalar_t>(1, 0, 0, 0);
 vector_3t omega_des;
 vector_t u_des(4);
-vector_3t command;
 vector_2t command_interp;
 vector_t x_term(21);
 vector_3t error;
@@ -58,7 +57,7 @@ quat_t quat_term;
 quat_t IMU_quat;
 vector_3t pos_term;
 vector_2t offsets;
-vector_3t dist;
+scalar_t reset;
 
 UserInput readUserInput;
 

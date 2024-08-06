@@ -56,8 +56,12 @@ RaibertPolicy::RaibertPolicy(const std::string yamlPath)
     loadParams(yamlPath, params);
 }
 
-quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
+quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
+    if ((command.rows() != 3) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    }
+
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
     scalar_t y_a = state.pos[1];
@@ -168,8 +172,11 @@ void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &outpu
     output << outpt[0], outpt[1];
 }
 
-quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
+quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
+    if ((command.rows() != 3) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    }
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
     scalar_t y_a = state.pos[1];
@@ -233,8 +240,13 @@ MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper,
     dt_elapsed_MPC = 0;
 }
 
-quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
+quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
+    if ((command.rows() != 3) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    }
+    vector_3t mpc_cmd;
+    mpc_cmd << command(0), command(1), command(2);
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
     scalar_t y_a = state.pos[1];
@@ -246,10 +258,10 @@ quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
     dt_elapsed_MPC = state.t - t_last_MPC;
     bool replan = dt_elapsed_MPC >= mpc_->p.MPC_dt_replan;
     vector_2t command_interp;
-    command_interp << command.segment(0,2);
+    command_interp << command(0), command(1);
     if (replan)
     {
-        mpc_->solve(*hopper, sol, command, command_interp);
+        mpc_->solve(*hopper, sol, mpc_cmd, command_interp);
         for (int i = 0; i < mpc_->p.N; i++)
         {
             sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));
@@ -316,9 +328,9 @@ RLPolicy::RLPolicy(std::string model_name, const std::string yamlPath)
     outputTensorSize = vectorProduct(outputDims);
 }
 
-void RLPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t &output)
+void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
-
+    
     std::vector<float> input(21);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
@@ -339,9 +351,9 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t comman
     input[11] = RLparams.dof_vel_scaling*state.wheel_vel[0];
     input[12] = RLparams.dof_vel_scaling*state.wheel_vel[1];
     input[13] = RLparams.dof_vel_scaling*state.wheel_vel[2];
-    input[14] = command[0];
-    input[15] = command[1];
-    input[16] = command[2];
+    input[14] = command(0);
+    input[15] = command(1);
+    input[16] = command(2);
     input[17] = previous_action[0]; // w
     input[18] = previous_action[1]; // x
     input[19] = previous_action[2]; // y
@@ -379,9 +391,11 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t comman
 
 }
 
-quat_t RLPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
+quat_t RLPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
-    
+    if ((command.rows() != 3) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    }
     dt_elapsed_RL = state.t - t_last_RL;
     bool replan = dt_elapsed_RL >= RLparams.dt_replan;
     if (replan) {
@@ -415,7 +429,7 @@ vector_4t RLPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
 
 
 
-RLTrajPolicy::RLTrajPolicy(std::string model_name, const std::string yamlPath)
+RLTrajPolicy::RLTrajPolicy(std::string model_name, const std::string yamlPath, int horizon, int state_dim): horizon(horizon), state_dim(state_dim)
 {
     loadParams(yamlPath, RLparams);
     previous_action.setZero();
@@ -443,10 +457,10 @@ RLTrajPolicy::RLTrajPolicy(std::string model_name, const std::string yamlPath)
     outputTensorSize = vectorProduct(outputDims);
 }
 
-void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t command, vector_4t &output)
+void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
 
-    std::vector<float> input(38);
+    std::vector<float> input(18 + horizon * state_dim);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
     int quat_sign = 1; 
@@ -468,21 +482,23 @@ void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t co
     input[13] = RLparams.dof_vel_scaling*state.wheel_vel[2];
     
     int ind = 14;
-    for (int i = 0; i < 10; i++) {
-        input[ind++] = i*RLparams.dt_replan*command[0];
-        input[ind++] = i*RLparams.dt_replan*command[1];
+    for (int r = 0; r < horizon; r++) {
+        input[ind++] = command(r, 0) - state.pos[0];
+        input[ind++] = command(r, 1) - state.pos[1];
+        for (int c = 2; c < state_dim; c++) {
+            input[ind++] = command(r, c);
+        }
     }
     
+    input[14 + horizon * state_dim] = previous_action[0]; // w
+    input[15 + horizon * state_dim] = previous_action[1]; // x
+    input[16 + horizon * state_dim] = previous_action[2]; // y
+    input[17 + horizon * state_dim] = previous_action[3]; // z
 
-    input[34] = previous_action[0]; // w
-    input[35] = previous_action[1]; // x
-    input[36] = previous_action[2]; // y
-    input[37] = previous_action[3]; // z
-
-    for (auto i : input) {
-        std::cout << i << ",";
-    }
-    std::cout << std::endl;
+    // for (auto i : input) {
+    //     std::cout << i << ",";
+    // }
+    // std::cout << std::endl;
 
     std::vector<float> outpt(4);
 
@@ -506,14 +522,13 @@ void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const vector_3t co
     session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
 
     output << outpt[0], outpt[1], outpt[2], outpt[3];
-
-    std::cout << output.transpose() << std::endl;
-
 }
 
-quat_t RLTrajPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
+quat_t RLTrajPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
-    
+    if ((command.rows() != horizon) || (command.cols() != state_dim)) {
+        throw std::runtime_error("Input to RL Traj Policy is not of proper shape (expected 10x2)");
+    }
     dt_elapsed_RL = state.t - t_last_RL;
     bool replan = dt_elapsed_RL >= RLparams.dt_replan;
     if (replan) {

@@ -13,20 +13,6 @@ static vector_3t getInput() {
   return input;
 }
 
-// https://stackoverflow.com/questions/41505451/c-multi-threading-communication-between-threads
-// https://stackoverflow.com/questions/6171132/non-blocking-console-input-c
-void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex & m)
-{
-  vector_3t input; input.setZero();
-  std::chrono::seconds timeout(50000);
-  while(1) {
-   std::future<vector_3t> future = std::async(getInput);
-   if (future.wait_for(timeout) == std::future_status::ready)
-        input = future.get();
-   command << input;
-  }
-}
-
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen) {
     // server_fd = new int;
     // new_socket = new int;

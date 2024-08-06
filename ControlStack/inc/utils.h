@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include "../inc/Types.h"
+#include "../inc/UserInput.h"
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -34,8 +35,6 @@ struct Parameters {
     scalar_t yaw_drift;
     int stop_index; 
 };
-
-void getUserInput(vector_3t &command, std::condition_variable & cv, std::mutex & m);
 
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 

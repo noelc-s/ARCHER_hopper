@@ -15,6 +15,45 @@ int UserInput::read_event(int dev, struct js_event *event)
     return -1;
 }
 
+V3Command::V3Command() {
+  command.setZero();
+}
+
+void V3Command::update(vector_3t &v) {
+    command = v;
+}
+
+SingleIntCommand::SingleIntCommand(const int horizon) : horizon(horizon) {
+  command.resize(getHorizon(), getStateDim());
+  command.setZero();
+}
+
+void SingleIntCommand::update(vector_3t &v) {
+    // TODO: update dynamics
+    command.block(0, 0, horizon - 1, getStateDim()) = command.block(1, 0, horizon - 1, getStateDim());
+    command.block(horizon-1,0,1,getStateDim()) = command.block(horizon-1,0,1,getStateDim()) + v_max * v.segment(0,2).transpose() * dt;
+    std::this_thread::sleep_for(std::chrono::milliseconds(int(dt * 1000)));
+}
+
+DoubleIntCommand::DoubleIntCommand(const int horizon) : horizon(horizon) {
+  command.resize(getHorizon(), getStateDim());
+  command.setZero();
+}
+
+void DoubleIntCommand::update(vector_3t &v) {
+    // TODO: update dynamics
+    command.block(0, 0, horizon - 1, getStateDim()) = command.block(1, 0, horizon - 1, getStateDim());
+    vector_2t acc = a_max * v.segment(0,2);
+    vector_4t delta;
+    delta << dt * command(horizon - 1, 2),
+             dt * command(horizon - 1, 3), 
+             std::min(std::max(dt * a_max * v(0), -v_max), v_max),
+             std::min(std::max(dt * a_max * v(1), -v_max), v_max);
+    command.block(horizon-1,0,1,getStateDim()) = command.block(horizon-1,0,1,getStateDim()) + delta.transpose();
+    std::this_thread::sleep_for(std::chrono::milliseconds(int(dt * 1000)));
+    std::cout << command(0, 0) << ',' << command(0, 1) << ',' << command(0, 2) << ',' << command(0, 3) << std::endl;
+}
+
 // get PS4 LS and RS joystick axis information
 size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[3])
 {
@@ -45,8 +84,8 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
   return axis;
 }
 
-void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command, 
-                                 vector_3t &dist, std::condition_variable & cv, std::mutex & m)
+void UserInput::getJoystickInput(vector_2t &offsets, std::unique_ptr<Command> &command, 
+                                 scalar_t &reset, std::condition_variable & cv, std::mutex & m)
 {
   vector_3t input; input.setZero();
   std::chrono::seconds timeout(50000);
@@ -55,7 +94,6 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
   struct js_event event;
   struct axis_state axes[3] = {0};
   size_t axis;
-  dist.setZero();
 
   // if only one joystick input, almost always "/dev/input/js0"
   device = "/dev/input/js0";
@@ -68,9 +106,9 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
       std::cout << "joystick connected" << std::endl;
 
   //scaling factor (joysticks vals in [-32767 , +32767], signed 16-bit)
-  // ... changed for RL testing ...
-  double comm_scale = 40000. / 0.5;
-  double dist_scale = 40000. / 1;
+  // ... changed for RL testing ... scale to +- 1
+  double comm_scale = 32767.;
+  double dist_scale = 32767.;
 
   /* This loop will exit if the controller is unplugged. */
   while (read_event(js, &event) == 0)
@@ -81,12 +119,13 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
       case JS_EVENT_AXIS:
         axis = get_axis_state(&event, axes);
         if (axis == 0) { 
-          command << axes[axis].x / comm_scale, -axes[axis].y / comm_scale, 0; // Left Joy Stick
-        //   std::cout << "Command: " << command[0] << ", " << command[1] << std::endl;
+          joystick_command[0] = axes[axis].x / comm_scale;
+          joystick_command[1] = -axes[axis].y / comm_scale;
+        //   std::cout << "Command: " << joystick_command[0] << ", " << joystick_command[1] << std::endl;
         }
         if (axis == 1) {
-          dist[0] = axes[axis].x / dist_scale;
-          dist[1] = -axes[axis].y / dist_scale; // Right Joy Stick
+          joystick_command[2] = axes[axis].x / dist_scale; // yaw.
+          // dist[1] = -axes[axis].y / dist_scale; // Right Joy Stick
         //   std::cout << "Disturbance: " << dist[0] << ", " << dist[1] << std::endl;
         }
         break;
@@ -95,7 +134,7 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
       case JS_EVENT_BUTTON:
         if (event.number == 5 && event.value == 1) {
           std::cout << "reset" << std::endl;
-          dist[2] = 1;
+          reset = 1;
         }
         if (event.number == 4 && event.value == 1) {
           std::cout << "Killed due to user input" << std::endl;
@@ -125,6 +164,8 @@ void UserInput::getJoystickInput(vector_2t &offsets, vector_3t &command,
       default:
         break;
     }
+    // Call method to set command variable
+    command->update(joystick_command);
   }
 
   close(js);
@@ -152,7 +193,7 @@ vector_3t UserInput::keyboardInput() {
 // MH
 // waits for the user input and asyncronously wait for the input, if everything is okay, it reads the input to the command
 // don't read too much into it
-void UserInput::getKeyboardInput(vector_3t &command, std::condition_variable & cv, std::mutex & m)
+void UserInput::getKeyboardInput(std::unique_ptr<Command> &command, std::condition_variable & cv, std::mutex & m)
 {
   vector_3t input; input.setZero();
   
@@ -164,6 +205,6 @@ void UserInput::getKeyboardInput(vector_3t &command, std::condition_variable & c
    if (future.wait_for(timeout) == std::future_status::ready)
         input = future.get();
    
-   command << input;
+   command->update(input);
   }
 }
