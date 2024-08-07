@@ -4,16 +4,16 @@
 
 #include <manif/manif.h>
 
-#include "pinocchio/algorithm/cholesky.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/aba.hpp"
-#include "pinocchio/algorithm/aba-derivatives.hpp"
-#include "pinocchio/algorithm/constrained-dynamics-derivatives.hpp"
-#include "pinocchio/algorithm/impulse-dynamics.hpp"
-#include "pinocchio/algorithm/impulse-dynamics-derivatives.hpp"
-#include "pinocchio/algorithm/constrained-dynamics.hpp"
+// #include "pinocchio/algorithm/cholesky.hpp"
+// #include "pinocchio/algorithm/joint-configuration.hpp"
+// #include "pinocchio/algorithm/aba.hpp"
+// #include "pinocchio/algorithm/aba-derivatives.hpp"
+// #include "pinocchio/algorithm/constrained-dynamics-derivatives.hpp"
+// #include "pinocchio/algorithm/impulse-dynamics.hpp"
+// #include "pinocchio/algorithm/impulse-dynamics-derivatives.hpp"
+// #include "pinocchio/algorithm/constrained-dynamics.hpp"
 
-using namespace pinocchio;
+// using namespace pinocchio;
 
 matrix_3t Hopper::cross(vector_3t q)
 {
@@ -40,20 +40,20 @@ matrix_3t Hopper::quat2Rot(quat_t q)
 
 Hopper::Hopper(const std::string yamlFile)
 {
-    // Construct Pinocchio model
-    const std::string urdf_path_c = "../rsc/hopper.urdf";
-    model = pinocchio::Model();
-    pinocchio::urdf::buildModel(urdf_path_c, pinocchio::JointModelFreeFlyer(), model);
-    data = Data(model);
+    // // Construct Pinocchio model
+    // const std::string urdf_path_c = "../rsc/hopper.urdf";
+    // model = pinocchio::Model();
+    // pinocchio::urdf::buildModel(urdf_path_c, pinocchio::JointModelFreeFlyer(), model);
+    // data = Data(model);
 
-    contact_model_ground.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2, SE3::Identity(), LOCAL_WORLD_ALIGNED));
-    contact_data_ground.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_ground.at(0)));
-    initConstraintDynamics(model, data, contact_model_ground);
+    // contact_model_ground.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2, SE3::Identity(), LOCAL_WORLD_ALIGNED));
+    // contact_data_ground.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_ground.at(0)));
+    // initConstraintDynamics(model, data, contact_model_ground);
 
-    // Contact for when foot hits hard stops going to flight phase
-    contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2,LOCAL));
-    contact_data_flight.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_flight.at(0)));
-    initConstraintDynamics(model, data, contact_model_flight);
+    // // Contact for when foot hits hard stops going to flight phase
+    // contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2,LOCAL));
+    // contact_data_flight.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_flight.at(0)));
+    // initConstraintDynamics(model, data, contact_model_flight);
 
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(yamlFile);
@@ -70,8 +70,8 @@ Hopper::Hopper(const std::string yamlFile)
     quat_actuator = quat_t(0.8806, 0.3646, -0.2795, 0.1160);
     multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
 
-    state_.q.resize(model.nq);
-    state_.v.resize(model.nv);
+    state_.q.resize(11);
+    state_.v.resize(10);
 }
 
 void Hopper::updateState(vector_t state)
@@ -159,33 +159,33 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     torque += u_des;
 };
 
-vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {
-    vector_t x_dot(2*model.nv);
-    switch(d)
-    {
-        case flight: {
-		//Not constrained dynamics for flight, because that would fix the foot position
-		aba(model, data, q, v, a);
-    		x_dot << v.segment(0,6),0,v.segment(7,3), data.ddq;
-		break;
-	}
-        case ground: {
-                initConstraintDynamics(model, data, contact_model_ground);
-		constraintDynamics(model, data, q, v, a, contact_model_ground, contact_data_ground);
-		vector_t springForce(10);
-		springForce << 0,0,springStiffness*q(7),0,0,0,-springStiffness*q(7),0,0,0;
-    		x_dot << v, data.ddq + springForce;
-		break;
-	}
-	otherwise: {
-	     throw std::invalid_argument("Invalid domain in f");
-	     break;
-	}
-    }
-    quat_t quat(q(6), q(3), q(4), q(5));
-    x_dot.segment(0,3) += Hopper::cross(q.segment(0,3))*quat.inverse()._transformVector(v.segment(3,3));
-    return x_dot;
-};
+// vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d) {
+//     vector_t x_dot(2*model.nv);
+//     switch(d)
+//     {
+//         case flight: {
+// 		//Not constrained dynamics for flight, because that would fix the foot position
+// 		aba(model, data, q, v, a);
+//     		x_dot << v.segment(0,6),0,v.segment(7,3), data.ddq;
+// 		break;
+// 	}
+//         case ground: {
+//                 initConstraintDynamics(model, data, contact_model_ground);
+// 		constraintDynamics(model, data, q, v, a, contact_model_ground, contact_data_ground);
+// 		vector_t springForce(10);
+// 		springForce << 0,0,springStiffness*q(7),0,0,0,-springStiffness*q(7),0,0,0;
+//     		x_dot << v, data.ddq + springForce;
+// 		break;
+// 	}
+// 	otherwise: {
+// 	     throw std::invalid_argument("Invalid domain in f");
+// 	     break;
+// 	}
+//     }
+//     quat_t quat(q(6), q(3), q(4), q(5));
+//     x_dot.segment(0,3) += Hopper::cross(q.segment(0,3))*quat.inverse()._transformVector(v.segment(3,3));
+//     return x_dot;
+// };
 
 // void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
 //                 matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0) {
@@ -257,26 +257,26 @@ void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc,
     //Cd = Cc*dt;
 };
 
-vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
-    const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
-    const ProximalSettingsTpl<double> settings; // default has mu = 0
-    switch(d)
-    {
-        case flight_ground: {
-          initConstraintDynamics(model, data, contact_model_ground);
-          impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, settings);
-	  break;
-        }
-	case ground_flight: {
-          initConstraintDynamics(model, data, contact_model_flight);
-          impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, settings);
-	  break;
-	}
-    }
-    vector_t x_plus(21); 
-    x_plus << q, (1-multiplier_on_deltaf)*v + multiplier_on_deltaf*data.dq_after;
-    return x_plus;
-};
+// vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
+//     const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
+//     const ProximalSettingsTpl<double> settings; // default has mu = 0
+//     switch(d)
+//     {
+//         case flight_ground: {
+//           initConstraintDynamics(model, data, contact_model_ground);
+//           impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, settings);
+// 	  break;
+//         }
+// 	case ground_flight: {
+//           initConstraintDynamics(model, data, contact_model_flight);
+//           impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, settings);
+// 	  break;
+// 	}
+//     }
+//     vector_t x_plus(21); 
+//     x_plus << q, (1-multiplier_on_deltaf)*v + multiplier_on_deltaf*data.dq_after;
+//     return x_plus;
+// };
 
 // void Hopper::Ddelta_f(const vector_t q, const vector_t v, const domain d,
 //                       matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0){

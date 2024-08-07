@@ -8,7 +8,13 @@ V3Command::V3Command()
 
 void V3Command::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
 {
-    command = userInput->joystick_command.segment(0, 3);
+    while (running)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m);
+            command = userInput->joystick_command.segment(0, 3);
+        }
+    }
 }
 
 SingleIntCommand::SingleIntCommand(const int horizon, const double dt, const double v_max) : horizon(horizon), dt(dt), v_max(v_max)

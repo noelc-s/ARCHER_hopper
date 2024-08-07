@@ -12,15 +12,16 @@
 #include <Eigen/Core>
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
+#include <numeric>
 
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/multibody/data.hpp"
-#include "pinocchio/algorithm/contact-info.hpp"
+// #include "pinocchio/parsers/urdf.hpp"
+// #include "pinocchio/multibody/data.hpp"
+// #include "pinocchio/algorithm/contact-info.hpp"
 
 #include <onnxruntime_cxx_api.h>
 
 using namespace Hopper_t;
-using namespace pinocchio;
+// using namespace pinocchio;
 
 template <typename T>
 T vectorProduct(const std::vector<T>& v)
@@ -52,12 +53,12 @@ public:
 
     vector_4t torque;
 
-    pinocchio::Model model;
-    pinocchio::Data data;
-    std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_ground;
-    std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_ground;
-    std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_flight;
-    std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_flight;
+    // pinocchio::Model model;
+    // pinocchio::Data data;
+    // std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_ground;
+    // std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_ground;
+    // std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_flight;
+    // std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_flight;
 
     quat_t quat_actuator;
 
@@ -85,18 +86,18 @@ public:
      */
     void computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_des, vector_t u_des);
 
-    /*! @brief  evaluate the forward dynamics
-    *  @param [in] q  pos to evaluate the dynamics at
-    *  @param [in] v  vel to evaluate the dynamics at
-    *  @param [in] a  acc to evaluate the dynamics at
-    *  @param [out] x_dot  the dynamics (dq, ddq)
-    */
-    vector_t f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d);
+    // /*! @brief  evaluate the forward dynamics
+    // *  @param [in] q  pos to evaluate the dynamics at
+    // *  @param [in] v  vel to evaluate the dynamics at
+    // *  @param [in] a  acc to evaluate the dynamics at
+    // *  @param [out] x_dot  the dynamics (dq, ddq)
+    // */
+    // vector_t f(const vector_t& q, const vector_t& v, const vector_t& a, const domain& d);
 
-    /*! @brief  compute the linearizations of f
-    *  @param [in]     q, v, a  - state to compute the jacobians at
-    *  @param [out]    A, B, C  - df/dx, df/du, and the residual
-    */
+    // /*! @brief  compute the linearizations of f
+    // *  @param [in]     q, v, a  - state to compute the jacobians at
+    // *  @param [out]    A, B, C  - df/dx, df/du, and the residual
+    // */
     // void Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
     //         matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
@@ -120,16 +121,16 @@ public:
     //                       matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
 	// 		  const vector_t q0);
 
-    /*! @brief  compute the discrete dynamics at impact. calls impulse-dynamics
-    *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
-    *  @param [out]    x_plus   - the post impact state (q+, dq+)
-    */
-    vector_t delta_f(const vector_t q, const vector_t v, const domain d);
+    // /*! @brief  compute the discrete dynamics at impact. calls impulse-dynamics
+    // *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
+    // *  @param [out]    x_plus   - the post impact state (q+, dq+)
+    // */
+    // vector_t delta_f(const vector_t q, const vector_t v, const domain d);
 
-    /*! @brief  compute the jacobian of the discrete dynamics at impact
-    *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
-    *  @param [out]    A, B, C   -  ddelta_f/dx, ddelta_f/du, and the residual
-    */
+    // /*! @brief  compute the jacobian of the discrete dynamics at impact
+    // *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
+    // *  @param [out]    A, B, C   -  ddelta_f/dx, ddelta_f/du, and the residual
+    // */
     // void Ddelta_f(const vector_t q, const vector_t v, const domain d,
     //               matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 

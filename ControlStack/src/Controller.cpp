@@ -21,11 +21,6 @@ int main()
     x_term.setZero();
     ind = 1;
 
-    // Instantiate a new policy.
-    // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
-    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
-    // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
     std::unique_ptr<Command> command;
     if (p.rom_type == "single_int")
     {
@@ -34,10 +29,20 @@ int main()
     else if (p.rom_type == "double_int")
     {
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
-    } else {
+    }
+    else if (p.rom_type == "position") {
+        command = std::make_unique<V3Command>();
+    }
+    else
+    {
         throw std::runtime_error("RoM type unrecognized");
     }
-    RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
+    // Instantiate a new policy.
+    // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
+    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
+    // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
     std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
@@ -45,6 +50,7 @@ int main()
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+    desired_command = command->getCommand();
 
     for (;;)
     {
@@ -81,75 +87,18 @@ int main()
         hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
         hopper->state_.v.segment(3, 3) = hopper->state_.quat._transformVector(hopper->state_.v.segment(3, 3)); // Turn local omega to global omega
 
-        matrix_t desired_command = command->getCommand();
-        quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
-
-        // Add initial yaw to desired signal
-        quat_des = plus(quat_des, initial_yaw_quat);
-        omega_des = policy.DesiredOmega();
-        u_des = policy.DesiredInputs(hopper->state_.wheel_vel, hopper->state_.contact);
-
         if (dt_elapsed > p.dt)
         {
-            hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
+            desired_command = command->getCommand();
+            quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+            // Add initial yaw to desired signal
+            quat_des = plus(quat_des, initial_yaw_quat);
+            omega_des = policy.DesiredOmega();
+            u_des = policy.DesiredInputs(hopper->state_.wheel_vel, hopper->state_.contact);
             t_last = state(0);
         }
 
-        vector_3t f, g, h;
-        scalar_t a, b, c, d;
-        a = sqrt(2) / sqrt(3);
-        b = 1 / sqrt(6);
-        c = 1 / sqrt(2);
-        d = 1 / sqrt(3);
-        f << -b, c, d;
-        g << -b, -c, d;
-        h << a, 0, d;
-        vector_3t q1, q2, q3, q4, q5, q6, qt;
-        q1 << -f + g + h;
-        q2 << -f + g - h;
-        q3 << f + g - h;
-        q4 << f - g - h;
-        q5 << f - g + h;
-        q6 << -f - g + h;
-        scalar_t d_tau = 1; // how fast to traverse the q1-q6 ring (1 = 1 sec
-
-        if (desired_command(2) == 3)
-        {
-            static scalar_t t_flip = state(0);
-            scalar_t tau = state(0) - t_flip;
-            tau = fmod(tau / d_tau, 1);
-            scalar_t tau_rem = fmod(tau / d_tau, 1. / 6.) * 6.;
-            std::cout << tau << ", " << tau_rem << std::endl;
-            if (tau <= 1. / 6.)
-            {
-                qt = (1 - tau_rem) * q1 + tau_rem * q2;
-            }
-            else if (tau <= 2. / 6)
-            {
-                qt = (1 - tau_rem) * q2 + tau_rem * q3;
-            }
-            else if (tau <= 3. / 6)
-            {
-                qt = (1 - tau_rem) * q3 + tau_rem * q4;
-            }
-            else if (tau <= 4. / 6)
-            {
-                qt = (1 - tau_rem) * q4 + tau_rem * q5;
-            }
-            else if (tau <= 5. / 6)
-            {
-                qt = (1 - tau_rem) * q5 + tau_rem * q6;
-            }
-            else if (tau <= 1.)
-            {
-                qt = (1 - tau_rem) * q6 + tau_rem * q1;
-            }
-
-            hopper->torque[0] = 0;
-            hopper->torque[1] = 1.3125 * qt(0);
-            hopper->torque[2] = 1.3125 * qt(1);
-            hopper->torque[3] = 1.3125 * qt(2);
-        }
+        hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
 
         e = quat_des.inverse() * hopper->state_.quat;
         auto e_ = manif::SO3<scalar_t>(e);
@@ -192,8 +141,8 @@ int main()
         }
         else
         {
-            TX_torques[11] = desired_command(0, 0);
-            TX_torques[12] = desired_command(0, 1);
+            TX_torques[11] = desired_command(desired_command.rows() - 1, 0);
+            TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

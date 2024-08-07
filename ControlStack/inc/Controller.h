@@ -28,7 +28,7 @@
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
+// using namespace pinocchio;
 
 const std::string gainYamlPath = "../config/gains.yaml";
 
@@ -81,3 +81,5 @@ int addrlen;
 std::condition_variable cv;
 std::mutex m;
 std::atomic<bool> running(true);
+
+matrix_t desired_command;

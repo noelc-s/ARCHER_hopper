@@ -48,3 +48,21 @@ MPC:
   circle_amp: -0.2
   circle_freq: 10
   max_vel: 1
+
+RL:
+  obs_scales:
+    lin_vel : 0.5
+    ang_vel : 0.25
+    dof_vel : 0.01
+    z_pos : 1.0
+  # rom_type: double_int
+  # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
+  # rom_type: single_int
+  # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
+  rom_type: position
+  model_name: ..
+  horizon: 10
+  dt_replan : 0.02
+  v_max: 0.3
+  a_max: 1.0
+

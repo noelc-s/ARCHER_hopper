@@ -1,3 +1,5 @@
+#ifndef ROM_H
+#define ROM_H
 #include "../inc/Types.h"
 #include "../inc/UserInput.h"
 
@@ -49,3 +51,4 @@ public:
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
     matrix_t getCommand() {return command;};
 };
+#endif

@@ -59,9 +59,10 @@ RaibertPolicy::RaibertPolicy(const std::string yamlPath)
 quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
     if ((command.rows() != 3) || (command.cols() != 1)) {
-        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+        std::cout << command.rows() << ',' << command.cols() << std::endl;
+        throw std::runtime_error("Input to Raibert is not of proper shape (expected 3x1)");
     }
-
+    
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
     scalar_t y_a = state.pos[1];
