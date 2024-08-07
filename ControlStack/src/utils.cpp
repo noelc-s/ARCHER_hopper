@@ -53,7 +53,7 @@ void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, i
     }
 }
 
-void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p) {
+void setupGains(const std::string filepath, Parameters &p) { // MPC::MPC_Params &mpc_p, 
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
@@ -64,33 +64,40 @@ void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &
     p.roll_offset = config["roll_offset"].as<scalar_t>();
     p.pitch_offset = config["pitch_offset"].as<scalar_t>();
     p.yaw_drift = config["Simulator"]["yaw_drift"].as<scalar_t>();
+    p.model_name = config["RL"]["model_name"].as<std::string>();
+    p.rom_type = config["RL"]["rom_type"].as<std::string>();
+    p.v_max = config["RL"]["v_max"].as<scalar_t>();
+    p.a_max = config["RL"]["a_max"].as<scalar_t>();
+    p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
+    p.horizon = config["RL"]["horizon"].as<scalar_t>();
 
-    mpc_p.N = config["MPC"]["N"].as<int>();
-    mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
-    mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
-    std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
-    mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
-    mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    mpc_p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
-    mpc_p.groundDuration = config["MPC"]["groundDuration"].as<scalar_t>();
-    mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
-    mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
-    mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
-    int nx = 20;
-    int nu = 4;
-    mpc_p.stateScaling.resize(nx);
-    mpc_p.inputScaling.resize(nu);
-    for (int i = 0; i < nx; i++)
-        mpc_p.stateScaling(i) = tmp[i];
-    tmp = config["MPC"]["inputScaling"].as<std::vector<scalar_t>>();
-    for (int i = 0; i < nu; i++)
-        mpc_p.inputScaling(i) = tmp[i];
-    mpc_p.tau_max = config["MPC"]["tau_max"].as<scalar_t>();
-    mpc_p.f_max = config["MPC"]["f_max"].as<scalar_t>();
-    mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
-    mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
-    mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
-    mpc_p.max_vel = config["MPC"]["max_vel"].as<scalar_t>();
+
+    // mpc_p.N = config["MPC"]["N"].as<int>();
+    // mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
+    // mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
+    // std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
+    // mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
+    // mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
+    // mpc_p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
+    // mpc_p.groundDuration = config["MPC"]["groundDuration"].as<scalar_t>();
+    // mpc_p.heightOffset = config["MPC"]["heightOffset"].as<scalar_t>();
+    // mpc_p.circle_freq = config["MPC"]["circle_freq"].as<scalar_t>();
+    // mpc_p.circle_amp = config["MPC"]["circle_amp"].as<scalar_t>();
+    // int nx = 20;
+    // int nu = 4;
+    // mpc_p.stateScaling.resize(nx);
+    // mpc_p.inputScaling.resize(nu);
+    // for (int i = 0; i < nx; i++)
+    //     mpc_p.stateScaling(i) = tmp[i];
+    // tmp = config["MPC"]["inputScaling"].as<std::vector<scalar_t>>();
+    // for (int i = 0; i < nu; i++)
+    //     mpc_p.inputScaling(i) = tmp[i];
+    // mpc_p.tau_max = config["MPC"]["tau_max"].as<scalar_t>();
+    // mpc_p.f_max = config["MPC"]["f_max"].as<scalar_t>();
+    // mpc_p.terminalScaling = config["MPC"]["terminalScaling"].as<scalar_t>();
+    // mpc_p.time_between_contacts = config["MPC"]["time_between_contacts"].as<scalar_t>();
+    // mpc_p.hop_height = config["MPC"]["hop_height"].as<scalar_t>();
+    // mpc_p.max_vel = config["MPC"]["max_vel"].as<scalar_t>();
 }
 
 vector_3t Quaternion2Euler(const quat_t &q)

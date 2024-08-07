@@ -12,8 +12,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <iostream>
+#include "yaml-cpp/yaml.h"
 
-#include "../inc/MPC.h"
+// #include "../inc/MPC.h"
 
 #define PORT 8080
 
@@ -33,12 +34,18 @@ struct Parameters {
     scalar_t roll_offset;
     scalar_t pitch_offset;
     scalar_t yaw_drift;
+    std::string model_name;
+    scalar_t v_max;
+    scalar_t a_max;
+    scalar_t dt_replan;
+    int horizon;
+    std::string rom_type;
     int stop_index; 
 };
 
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
-void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p);
+void setupGains(const std::string filepath, Parameters &p); // MPC::MPC_Params &mpc_p, 
 
 vector_3t Quaternion2Euler(const quat_t &q);
 

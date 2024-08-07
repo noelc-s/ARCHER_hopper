@@ -1,5 +1,5 @@
 #include "../inc/Hopper.h"
-#include "../inc/MPC.h"
+// #include "../inc/MPC.h"
 #include <stdexcept>
 
 #include <manif/manif.h>
@@ -46,12 +46,12 @@ Hopper::Hopper(const std::string yamlFile)
     pinocchio::urdf::buildModel(urdf_path_c, pinocchio::JointModelFreeFlyer(), model);
     data = Data(model);
 
-    contact_model_ground.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, 2, SE3::Identity(), LOCAL_WORLD_ALIGNED));
+    contact_model_ground.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2, SE3::Identity(), LOCAL_WORLD_ALIGNED));
     contact_data_ground.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_ground.at(0)));
     initConstraintDynamics(model, data, contact_model_ground);
 
     // Contact for when foot hits hard stops going to flight phase
-    contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, 2,LOCAL));
+    contact_model_flight.emplace_back(RigidConstraintModelTpl<scalar_t, 0>(CONTACT_3D, model, 2,LOCAL));
     contact_data_flight.emplace_back(RigidConstraintDataTpl<scalar_t, 0>(contact_model_flight.at(0)));
     initConstraintDynamics(model, data, contact_model_flight);
 
@@ -187,56 +187,56 @@ vector_t Hopper::f(const vector_t& q, const vector_t& v, const vector_t& a, cons
     return x_dot;
 };
 
-void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
-                matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0) {
-	matrix_t springJacobian(10,10);
-	// Call dynamics first to populate q, v, a, for ComputeConstraintDynamicsDerivatives
-	vector_t f = Hopper::f(q, v, a, d);
-    switch(d)
-    {
-        case flight: {
-		//Not constrained dynamics for flight, because that would fix the foot position
-		computeABADerivatives(model, data, q,v,a);
-		springJacobian.setZero();
-		break;
-	}
-        case ground: {
-                initConstraintDynamics(model, data, contact_model_ground);
-		computeConstraintDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
-		springJacobian << matrix_t::Zero(2,10),
-		       0,0,0,0,0,0,springStiffness,0,0,0,
-		       matrix_t::Zero(3,10),
-		       0,0,0,0,0,0,-springStiffness,0,0,0,
-		       matrix_t::Zero(3,10);
-		break;
-        }
-	otherwise: {
-	     throw std::invalid_argument("Invalid domain in Df");
-	     break;
-	}
-    }
-    A << matrix_t::Zero(10,10),matrix_t::Identity(10,10), data.ddq_dq+springJacobian, data.ddq_dv;
+// void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
+//                 matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0) {
+// 	matrix_t springJacobian(10,10);
+// 	// Call dynamics first to populate q, v, a, for ComputeConstraintDynamicsDerivatives
+// 	vector_t f = Hopper::f(q, v, a, d);
+//     switch(d)
+//     {
+//         case flight: {
+// 		//Not constrained dynamics for flight, because that would fix the foot position
+// 		computeABADerivatives(model, data, q,v,a);
+// 		springJacobian.setZero();
+// 		break;
+// 	}
+//         case ground: {
+//                 initConstraintDynamics(model, data, contact_model_ground);
+// 		computeConstraintDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
+// 		springJacobian << matrix_t::Zero(2,10),
+// 		       0,0,0,0,0,0,springStiffness,0,0,0,
+// 		       matrix_t::Zero(3,10),
+// 		       0,0,0,0,0,0,-springStiffness,0,0,0,
+// 		       matrix_t::Zero(3,10);
+// 		break;
+//         }
+// 	otherwise: {
+// 	     throw std::invalid_argument("Invalid domain in Df");
+// 	     break;
+// 	}
+//     }
+//     A << matrix_t::Zero(10,10),matrix_t::Identity(10,10), data.ddq_dq+springJacobian, data.ddq_dv;
 
-    matrix_t B_mat(10,4);
-    B_mat << 0,0,0,0,
-        0,0,0,0,
-        0,0,0,0,
-        0,0,0,0,
-        0,0,0,0,
-        0,0,0,0,
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1;
-    B << matrix_t::Zero(10,4), data.Minv*B_mat;
+//     matrix_t B_mat(10,4);
+//     B_mat << 0,0,0,0,
+//         0,0,0,0,
+//         0,0,0,0,
+//         0,0,0,0,
+//         0,0,0,0,
+//         0,0,0,0,
+//         1,0,0,0,
+//         0,1,0,0,
+//         0,0,1,0,
+//         0,0,0,1;
+//     B << matrix_t::Zero(10,4), data.Minv*B_mat;
 
-    vector_t s(20);
-    vector_t x(21);
-    x << q,v;
-    s = MPC::qk_to_xik(x,q0);
+//     vector_t s(20);
+//     vector_t x(21);
+//     x << q,v;
+//     s = MPC::qk_to_xik(x,q0);
 	
-    C << f - A * s - B * a.tail(4);
-};
+//     C << f - A * s - B * a.tail(4);
+// };
 
 void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc, const float dt,
                                            matrix_t &Ad, matrix_t &Bd, matrix_t &Cd) {
@@ -258,18 +258,18 @@ void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc,
 };
 
 vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
-    const double mu0 = 0.;
     const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
+    const ProximalSettingsTpl<double> settings; // default has mu = 0
     switch(d)
     {
         case flight_ground: {
           initConstraintDynamics(model, data, contact_model_ground);
-          impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, mu0);
+          impulseDynamics(model, data, q, v, contact_model_ground, contact_data_ground, r_coeff, settings);
 	  break;
         }
 	case ground_flight: {
           initConstraintDynamics(model, data, contact_model_flight);
-          impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, mu0);
+          impulseDynamics(model, data, q, v, contact_model_flight, contact_data_flight, r_coeff, settings);
 	  break;
 	}
     }
@@ -278,69 +278,71 @@ vector_t Hopper::delta_f(const vector_t q, const vector_t v, const domain d){
     return x_plus;
 };
 
-void Hopper::Ddelta_f(const vector_t q, const vector_t v, const domain d,
-                      matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0){
-    vector_t df(21); 
-    switch(d)
-    {
-        case flight_ground: {
-          df = Hopper::delta_f(q, v, d);
-          initConstraintDynamics(model, data, contact_model_ground);
-          computeImpulseDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground);
-	  break;
-	}
-	case ground_flight: {
-          df = Hopper::delta_f(q, v, d);
-          initConstraintDynamics(model, data, contact_model_flight);
-          computeImpulseDynamicsDerivatives(model, data, contact_model_flight, contact_data_flight);
-	  break;
-	}
-    }
-    A << matrix_t::Identity(10,10),matrix_t::Zero(10,10), data.ddq_dq, data.ddq_dv;
+// void Hopper::Ddelta_f(const vector_t q, const vector_t v, const domain d,
+//                       matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0){
+//     vector_t df(21); 
+//     const double r_coeff = 0; // restitution coeff -- assumes perfectly plastic
+//     const ProximalSettingsTpl<double> settings; // default has mu = 0
+//     switch(d)
+//     {
+//         case flight_ground: {
+//           df = Hopper::delta_f(q, v, d);
+//           initConstraintDynamics(model, data, contact_model_ground);
+//           computeImpulseDynamicsDerivatives(model, data, contact_model_ground, contact_data_ground, r_coeff, settings);
+// 	  break;
+// 	}
+// 	case ground_flight: {
+//           df = Hopper::delta_f(q, v, d);
+//           initConstraintDynamics(model, data, contact_model_flight);
+//           computeImpulseDynamicsDerivatives(model, data, contact_model_flight, contact_data_flight, r_coeff, settings);
+// 	  break;
+// 	}
+//     }
+//     A << matrix_t::Identity(10,10),matrix_t::Zero(10,10), data.ddq_dq, data.ddq_dv;
 
-    B.setZero();
+//     B.setZero();
 
-    vector_t s(20);
-    vector_t x(21);
-    x << q,v;
-    s = MPC::qk_to_xik(x,q0);
+//     vector_t s(20);
+//     vector_t x(21);
+//     x << q,v;
+//     s = MPC::qk_to_xik(x,q0);
 
-    vector_t s_df(20);
-    s_df << s.segment(0,10),df.segment(11,10);
+//     vector_t s_df(20);
+//     s_df << s.segment(0,10),df.segment(11,10);
 
-    C << s_df - A * s;
-};
+//     C << s_df - A * s;
+// };
 
-void Hopper::DiscreteDynamics(const vector_t &x, const vector_t &u, const domain &d, const float dt,
-                              matrix_t &Ac, matrix_t &Bc, matrix_t &Cc,
-                              matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
-			      const vector_t q0) {
-    switch(d)
-    {
-        case flight: {
-            vector_t a(10);
-            a << 0, 0, 0, 0, 0, 0, u;
-            Df(x.segment(0, 11), x.segment(11, 10), a, d, Ac, Bc, Cc,q0);
-            css2dss(Ac, Bc, Cc, dt, Ad, Bd, Cd);
-            break;
-        }
-        case ground: {
-            vector_t a(10);
-            a << 0, 0, 0, 0, 0, 0, u;
-            Df(x.segment(0, 11), x.segment(11, 10), a, d, Ac, Bc, Cc,q0);
-            css2dss(Ac, Bc, Cc, dt, Ad, Bd, Cd);
-            break;
-        }
-        case flight_ground: {
-            Ddelta_f(x.segment(0, 11), x.segment(11, 10), d, Ad, Bd, Cd,q0);
-            break;
-        }
-        case ground_flight: {
-            Ddelta_f(x.segment(0, 11), x.segment(11, 10), d, Ad, Bd, Cd,q0);
-            break;
-        }
-    }
-};
+// void Hopper::DiscreteDynamics(const vector_t &x, const vector_t &u, const domain &d, const float dt,
+//                               matrix_t &Ac, matrix_t &Bc, matrix_t &Cc,
+//                               matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
+// 			      const vector_t q0) {
+//     switch(d)
+//     {
+//         case flight: {
+//             vector_t a(10);
+//             a << 0, 0, 0, 0, 0, 0, u;
+//             Df(x.segment(0, 11), x.segment(11, 10), a, d, Ac, Bc, Cc,q0);
+//             css2dss(Ac, Bc, Cc, dt, Ad, Bd, Cd);
+//             break;
+//         }
+//         case ground: {
+//             vector_t a(10);
+//             a << 0, 0, 0, 0, 0, 0, u;
+//             Df(x.segment(0, 11), x.segment(11, 10), a, d, Ac, Bc, Cc,q0);
+//             css2dss(Ac, Bc, Cc, dt, Ad, Bd, Cd);
+//             break;
+//         }
+//         case flight_ground: {
+//             Ddelta_f(x.segment(0, 11), x.segment(11, 10), d, Ad, Bd, Cd,q0);
+//             break;
+//         }
+//         case ground_flight: {
+//             Ddelta_f(x.segment(0, 11), x.segment(11, 10), d, Ad, Bd, Cd,q0);
+//             break;
+//         }
+//     }
+// };
 
 NNHopper::NNHopper(std::string model_name, const std::string yamlPath) : Hopper(yamlPath)
 {

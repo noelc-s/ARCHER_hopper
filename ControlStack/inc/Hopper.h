@@ -97,8 +97,8 @@ public:
     *  @param [in]     q, v, a  - state to compute the jacobians at
     *  @param [out]    A, B, C  - df/dx, df/du, and the residual
     */
-    void Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
-            matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
+    // void Df(const vector_t q, const vector_t v, const vector_t a, const domain d,
+    //         matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
     /*! @brief  compute the discretization of the system
     *  @param [in]     Ac Continuous A matrix
@@ -115,10 +115,10 @@ public:
     *  @param [in]     Ac, Bc, Cc - continuous time dynamics of the system
     *  @param [out]    Ad, Bd, Cd - discrete time dynamics of the system
     */
-    void DiscreteDynamics(const vector_t &x, const vector_t &u, const domain &d, const float dt,
-                          matrix_t &Ac, matrix_t &Bc, matrix_t &Cc,
-                          matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
-			  const vector_t q0);
+    // void DiscreteDynamics(const vector_t &x, const vector_t &u, const domain &d, const float dt,
+    //                       matrix_t &Ac, matrix_t &Bc, matrix_t &Cc,
+    //                       matrix_t &Ad, matrix_t &Bd, matrix_t &Cd,
+	// 		  const vector_t q0);
 
     /*! @brief  compute the discrete dynamics at impact. calls impulse-dynamics
     *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
@@ -130,8 +130,8 @@ public:
     *  @param [in]     q, v, J - state to compute the impact map at, and Jacobian of constraint
     *  @param [out]    A, B, C   -  ddelta_f/dx, ddelta_f/du, and the residual
     */
-    void Ddelta_f(const vector_t q, const vector_t v, const domain d,
-                  matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
+    // void Ddelta_f(const vector_t q, const vector_t v, const domain d,
+    //               matrix_t &A, matrix_t &B, matrix_t &C, const vector_t q0);
 
 };
 
