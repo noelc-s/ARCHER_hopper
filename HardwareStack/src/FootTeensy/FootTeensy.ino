@@ -19,11 +19,12 @@ Bia bia(dENC,elmo,cBia);
 
 uint32_t T1, Th;
 float tau_max = 10;
-int numHops = 50;
+int numHops = 5000;
 volatile uint32_t T0,nF,pF,rt;
 volatile float rb,wb,xf,vf,u;
 float d0 = 0.015; // spring deflection // 0.15
 float b0 = 0.75; // deflection to consider impact
+// float u0 = 0.0; // offset torque
 float u0 = -15.5; // offset torque
 int h = 0;
 float rb0,v0;
@@ -35,49 +36,49 @@ float x = 0;
 float v = 0;
 float x_meters = 0;
 float v_meters = 0;
-
-void exitProgram() {
-  rt = elmo.motorOff(IDX_BIA);
-  bia.setLEDs("1000");
-  while(1) {};
-}
+float theta = 0;
+float omega = 0;
 
 void setup() {
   Serial.begin(115200); //this is for the monitor
+  // Serial.println("Starting");
   delay(500);
 
   //initBia1
-  bia.flashR(1);
-  delay(5000);  
+  bia.setLEDs("0100");
+  delay(3000);  
   rt = bia.initComm(1);
-  delay(1000);
+  // delay(1000);
   if(rt>0){
-    bia.flashA1(2); }
+    bia.setLEDs("0010"); }
   else{
     bia.flashR(10); }
   delay(10);
   
   cBia.setTx(tau_max);
-  v0 = 100;
+  v0  = 100;
   Th = 2000000*numHops + 1000000;
 
+  // Serial.println("Starting Bia2");
   //initBia2
   delay(250);
   bia.STO(1);
   bia.waitSigK(1);
+  bia.setLEDs("1111");
   delay(250);
   elmo.motorOn(IDX_BIA);
-  delay(5000);
+  delay(3000);
   bia.resetState(1);
   bia.resetState(2);
+  Serial.println("Finding Zero");
   bia.findZero();
   bia.setLEDs("0100");
   bia.waitSigK(0);
   bia.reverseSig(1);
   bia.setSigK(0);
-  delay(5000);
-  bia.flashG(2);
-  delay(7000);
+  delay(50);
+  bia.setLEDs("0001");
+  delay(70);
 
   
   cBia.getRB0(rb0);
@@ -104,8 +105,10 @@ void KoiosCommThread() {
     memcpy(footStateToKoios+5, &v_meters, 4);
     }
     Serial.print((float)footStateToKoios[0]); Serial.print(";  ");
-    Serial.print(x_meters); Serial.print(";  ");
-    Serial.print(v_meters); Serial.println(";  ");
+    Serial.print(x); Serial.print("; ");
+    Serial.print(v); Serial.println(";        ");
+    Serial.print(theta); Serial.print("; ");
+    Serial.print(omega); Serial.println(";  ");
 
     for (int i = 0; i < 2; i++) {
       byte oneAdded = 0b00000001;
@@ -126,9 +129,14 @@ void KoiosCommThread() {
 }
 
 void loop() {
-  // Do not do leg control
-//  exitProgram();
-  
+
+  // threads.delay(100);
+  //   // Update states:
+  // bia.updateState(1,theta, omega); // theta and omega are motor angle and vel
+  // {std::lock_guard<std::mutex> lck(state_mtx);
+  // bia.updateState(2,x, v); // x and v are spring deflection in mm     
+  // }
+
   compPhase();    //
   {std::lock_guard<std::mutex> lck(state_mtx);
   contact = 1;
@@ -137,14 +145,10 @@ void loop() {
   {std::lock_guard<std::mutex> lck(state_mtx);
   contact = 0;
   }
-  h++;
-  if(h>=numHops){
-    exitProgram();
-  }
 }
 
 void compPhase() {
-  float theta,omega,xfs;
+  float xfs;
   uint32_t Tc0 = micros();
   uint32_t Ts0,dTs;
   int i = 0;
@@ -157,7 +161,7 @@ void compPhase() {
     contact = 0;
     // WIFI ESTOP: 
     if (bia.checkSigK() == 1) {
-      exitProgram();
+      bia.exitProgram();
     }
     // Update states:
     bia.updateState(1,theta, omega); // theta and omega are motor angle and vel
@@ -170,8 +174,9 @@ void compPhase() {
     float x_star = 30;
     u = -kp*(x - x_star) - kd*v;
 //    Serial.println(x);
-    if (theta-theta_0 >= 0.04) {
-      exitProgram();
+    if (theta-theta_0 >= 1.0) {
+      Serial.println("Exiting because t-t_0 deflection was too large");
+      bia.exitProgram();
     }
     rt = elmo.sendTC(-u+u0,4);
 
@@ -270,12 +275,7 @@ void releasePhase(){
   while(i<1){
     // WIFI ESTOP: 
     if (bia.checkSigK() == 1) {
-      exitProgram();
-    }
-    if((micros()-Tr0)>MAX_HOP_TIMEOUT){ // if in release phase for too long, exit release phase and end experiment
-      h = numHops+1;
-      i = 1;
-      break;
+      bia.exitProgram();
     }
     {std::lock_guard<std::mutex> lck(state_mtx);
     bia.testPDb(r,w,x,v,up,ud);
