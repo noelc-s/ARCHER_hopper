@@ -26,7 +26,7 @@ void RLPolicy::loadParams(const std::string filepath, RLParams &RLparams)
     RLparams.ang_vel_scaling = config["RL"]["obs_scales"]["ang_vel"].as<scalar_t>();
     RLparams.dof_vel_scaling = config["RL"]["obs_scales"]["dof_vel"].as<scalar_t>();
     RLparams.z_pos_scaling = config["RL"]["obs_scales"]["z_pos"].as<scalar_t>();
-    RLparams.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
+    RLparams.dt_replan = config["Policy"]["dt_policy"].as<scalar_t>();
 }
 
 void RLTrajPolicy::loadParams(const std::string filepath, RLParams &RLparams)
@@ -36,7 +36,7 @@ void RLTrajPolicy::loadParams(const std::string filepath, RLParams &RLparams)
     RLparams.ang_vel_scaling = config["RL"]["obs_scales"]["ang_vel"].as<scalar_t>();
     RLparams.dof_vel_scaling = config["RL"]["obs_scales"]["dof_vel"].as<scalar_t>();
     RLparams.z_pos_scaling = config["RL"]["obs_scales"]["z_pos"].as<scalar_t>();
-    RLparams.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
+    RLparams.dt_replan = config["Policy"]["dt_policy"].as<scalar_t>();
 }
 
 void Policy::updateOffsets(const vector_2t offsets)
@@ -69,12 +69,12 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t xd_a = state.vel[0];
     scalar_t yd_a = state.vel[1];
 
-    if (contact) {
-        x_a = 0;
-        y_a = 0;
-        command(0) = xd_a;
-        command(1) = yd_a;
-    }
+    // if (contact) {
+    //     xd_a = 0;
+    //     yd_a = 0;
+    //     command(0) = x_a;
+    //     command(1) = y_a;
+    // }
 
     // position error
     scalar_t del_x = x_a - command(0);
@@ -564,9 +564,9 @@ vector_4t RLTrajPolicy::DesiredInputs(const vector_3t wheel_vel, const bool cont
 {
     vector_4t u_des;
     u_des.setZero();
-    // vector_3t desired_wheel_vel(0, 0,0);
-    // if (contact) {
-    //     u_des.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
-    // }
+    vector_3t desired_wheel_vel(0, 0,0);
+    if (contact) {
+        u_des.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
+    }
     return u_des;
 }

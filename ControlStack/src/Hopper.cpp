@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <manif/manif.h>
+#include "../inc/utils.h"
 
 // #include "pinocchio/algorithm/cholesky.hpp"
 // #include "pinocchio/algorithm/joint-configuration.hpp"
@@ -57,10 +58,10 @@ Hopper::Hopper(const std::string yamlFile)
 
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(yamlFile);
-    std::vector<scalar_t> orientation_kp = config["LowLevel"]["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-    std::vector<scalar_t> orientation_kd = config["LowLevel"]["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-    gains.leg_kp = config["LowLevel"]["Leg"]["Kp"].as<scalar_t>();
-    gains.leg_kd = config["LowLevel"]["Leg"]["Kd"].as<scalar_t>();
+    std::vector<scalar_t> orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
+    gains.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
+    gains.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
 
     gains.orientation_kp << orientation_kp[0], orientation_kp[1], orientation_kp[2];
     gains.orientation_kd << orientation_kd[0], orientation_kd[1], orientation_kd[2];
@@ -151,7 +152,11 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     Kd.diagonal() << gains.orientation_kd;
 
     vector_3t tau;
+    
+    // Keep orientation control on in the ground phase
+    // tau = quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (state_.omega - omega_d));
     // switch orientation control off in the ground phase
+    
     tau = (1 - state_.contact) * quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (state_.omega - omega_d));
 
     scalar_t spring_f = (1 - state_.contact) * (-gains.leg_kp * (state_.leg_pos - length_des) - gains.leg_kd * state_.leg_vel);

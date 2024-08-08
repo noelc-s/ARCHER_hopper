@@ -26,6 +26,8 @@ const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
 static vector_3t getInput();
 
+void hi(int num);
+
 struct Parameters {
     scalar_t dt;
     scalar_t MPC_dt_flight;

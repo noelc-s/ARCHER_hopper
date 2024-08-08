@@ -16,7 +16,8 @@ char buff[52];
 float states[13];
 vector_t ESPstate(13);
 volatile bool ESP_initialized = false;
-struct State {
+struct State
+{
   scalar_t x;
   scalar_t y;
   scalar_t z;
@@ -38,7 +39,6 @@ struct HardwareParameters
   std::vector<scalar_t> orientation_kd;
   scalar_t leg_kp;
   scalar_t leg_kd;
-  scalar_t dt;
   scalar_t frameOffset;
   scalar_t markerOffset;
   int predHorizon;
@@ -50,7 +50,8 @@ struct HardwareParameters
   std::string model_name;
   scalar_t v_max;
   scalar_t a_max;
-  scalar_t dt_replan;
+  scalar_t dt_lowlevel;
+  scalar_t dt_policy;
   int optiTrackSetting;
   std::string rom_type;
   int horizon;
@@ -63,44 +64,124 @@ sockaddr_in source, destination;
 sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
+scalar_t alpha; // filtering alpha
 
-void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+// Kalman Filter gains
+matrix_t A_kf(6, 6);
+matrix_t B_kf(6, 4);
+bool contact = false;
+
+void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
-  OptiState.x = msg->pose.position.x;
-  OptiState.y = msg->pose.position.y;
+  static std::chrono::high_resolution_clock::time_point t1;
+  t1 = std::chrono::high_resolution_clock::now();
+  static std::chrono::seconds oneSecond(1);
+  static std::chrono::high_resolution_clock::time_point last_t_state_log = t1 - oneSecond;
+  static bool init = false;
+  static scalar_t dt;
+  static vector_3t state_init(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z + p.frameOffset + p.markerOffset);
+  static vector_3t last_state(0, 0, msg->pose.position.z + p.frameOffset + p.markerOffset);
+  static vector_3t current_vel(0, 0, 0);
+  static vector_3t filtered_current_vel(0, 0, 0);
+  static bool first_contact = false;
+
+  static vector_3t previous_vel(0, 0, 0);
+  static vector_t est_state(2);
+
+  if (est_state.size() == 2)
+  {
+    est_state.resize(6);
+    est_state <<  msg->pose.position.x - state_init(0), msg->pose.position.y - state_init(1), msg->pose.position.z + p.frameOffset + p.markerOffset, 0, 0, 0;
+    last_state << est_state.segment(0,3);
+  }
+
+  static const scalar_t g = 9.81;
+
+  // else
+  OptiState.x = msg->pose.position.x - state_init(0);
+  OptiState.y = msg->pose.position.y - state_init(1);
   OptiState.z = msg->pose.position.z + p.frameOffset + p.markerOffset;
   OptiState.q_w = msg->pose.orientation.w;
   OptiState.q_x = msg->pose.orientation.x;
   OptiState.q_y = msg->pose.orientation.y;
   OptiState.q_z = msg->pose.orientation.z;
+
+  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - last_t_state_log).count() * 1e-9;
+  if (dt < 1e-3)
+    return;
+
+  current_vel << (OptiState.x - last_state(0)) / dt, (OptiState.y - last_state(1)) / dt, (OptiState.z - last_state(2)) / dt;
+  filtered_current_vel << alpha * current_vel + (1 - alpha) * previous_vel;
+  last_state << OptiState.x, OptiState.y, OptiState.z;
+
+  if (contact)
+    first_contact = true;
+
+  // Kalman Filter
+  vector_4t input(-g, OptiState.x, OptiState.y, OptiState.z);
+  est_state << A_kf * est_state + B_kf * input;
+  if (!first_contact || contact)
+  {
+    est_state(2) = OptiState.z;
+    est_state(5) = filtered_current_vel(2);
+  }
+
+  OptiState.x = est_state(0);
+  OptiState.y = est_state(1);
+  OptiState.z = est_state(2);
+  OptiState.x_dot = est_state(3);
+  OptiState.y_dot = est_state(4);
+  OptiState.z_dot = est_state(5);
+
+  // for ii = 2:size(xyz, 1)
+
+  //         % predict
+  //         xyz_hat = A * estim(ii-1, :)' + B * -u;
+  //         % update
+  //         estim(ii, :) = xyz_hat + K * (xyz(ii, :)' - C * xyz_hat);
+  //         estim2(ii, :) = kf.A * estim2(ii-1, :)' + kf.B * [-u; xyz(ii, :)'];
+  //     if contact_sampled(ii)
+  //         estim(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
+  //         estim2(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
+  //     end
+  // end
+
+  // OptiState.x_dot = alpha * current_vel(0) + (1-alpha) * previous_vel(0);
+  // OptiState.y_dot = alpha * current_vel(1) + (1-alpha) * previous_vel(1);
+  // OptiState.z_dot = alpha * current_vel(2) + (1-alpha) * previous_vel(2);
+  // OptiState.x_dot = (alpha * (current_vel(0) + previous_vel(0)) + (1. - alpha) * OptiState.x_dot) / (alpha + 1.);
+  // OptiState.y_dot = (alpha * (current_vel(1) + previous_vel(1)) + (1. - alpha) * OptiState.y_dot) / (alpha + 1.);
+  // OptiState.z_dot = (alpha * (current_vel(2) + previous_vel(2)) + (1. - alpha) * OptiState.z_dot) / (alpha + 1.);
+  previous_vel << current_vel;
+  last_t_state_log = t1;
+  // optitrack_updated = true;
 }
 
-void setupGainsHardware(const std::string filepath) 
+void setupGainsHardware(const std::string filepath)
 {
-    YAML::Node config = YAML::LoadFile(filepath);
-    p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-    p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-    p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
-    p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
-    p.dt = config["Debug"]["dt"].as<scalar_t>();
-    p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
-    p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
-    p.predHorizon = config["Debug"]["predHorizon"].as<int>();
-    p.stop_index = config["Debug"]["stopIndex"].as<int>();
-    p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
-    p.gains.resize(8);
-    p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
-            p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
-            p.leg_kp, p.leg_kd;
-            
-    p.model_name = config["RL"]["model_name"].as<std::string>();
-    p.rom_type = config["RL"]["rom_type"].as<std::string>();
-    p.v_max = config["RL"]["v_max"].as<scalar_t>();
-    p.a_max = config["RL"]["a_max"].as<scalar_t>();
-    p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
-    p.horizon = config["RL"]["horizon"].as<scalar_t>();
+  YAML::Node config = YAML::LoadFile(filepath);
+  p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
+  p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
+  p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
+  p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
+  p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
+  p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
+  p.predHorizon = config["Debug"]["predHorizon"].as<int>();
+  p.stop_index = config["Debug"]["stopIndex"].as<int>();
+  p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
+  p.gains.resize(8);
+  p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
+      p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
+      p.leg_kp, p.leg_kd;
+  p.model_name = config["RL"]["model_name"].as<std::string>();
+  p.rom_type = config["RL"]["rom_type"].as<std::string>();
+  p.v_max = config["RL"]["v_max"].as<scalar_t>();
+  p.a_max = config["RL"]["a_max"].as<scalar_t>();
+  p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
+  p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
+  p.horizon = config["RL"]["horizon"].as<scalar_t>();
+  alpha = config["filter_alpha"].as<scalar_t>();
 }
-
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)
 {
@@ -137,10 +218,6 @@ void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mut
     //  std::cout<<"Reading..."<<std::endl;
     recvBytes = ::recvfrom(sock, buff, sizeof(buff), 0, reinterpret_cast<sockaddr *>(&senderAddr), &senderAddrLen);
 
-    float data[13] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                      0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    std::memcpy(data, buff, sizeof(data));
-
     memcpy(&states, buff, 13 * sizeof(float));
     quat_t quat_a = quat_t(states[6], states[7], states[8], states[9]);
     quat_a.normalize();
@@ -154,10 +231,11 @@ void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mut
   ::close(sock);
 }
 
-void signal_callback_handler(int signum) {
-        std::cout << "Caught signal " << signum << std::endl;
-   // Terminate program
-   exit(signum);
+void signal_callback_handler(int signum)
+{
+  std::cout << "Caught signal " << signum << std::endl;
+  // Terminate program
+  exit(signum);
 }
 
 void setupSocketHardware()

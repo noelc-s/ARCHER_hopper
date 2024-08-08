@@ -1,13 +1,13 @@
 # Gains associated with the low-level controller
+# For the reaction wheeels multiplying orientation error and angular rate
+Orientation:
+  Kp: [ -15,-15,-15 ]
+  Kd: [ -3,-3,-3]
+# For the leg multiplying deflection error and velocity
+Leg:
+  Kp: .4
+  Kd: 0.02
 LowLevel:
-  # For the reaction wheeels multiplying orientation error and angular rate
-  Orientation:
-    Kp: [ -15,-15,-15 ]
-    Kd: [ -3,-3,-3]
-  # For the leg multiplying deflection error and velocity
-  Leg:
-    Kp: .4
-    Kd: 0.02
   dt: 0.001
 
 Simulator:
@@ -61,6 +61,9 @@ SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a
 roll_offset: 0.00
 pitch_offset: -0.00
 
+Policy:
+  dt_policy: 0.02
+
 RL:
   obs_scales:
     lin_vel : 0.5
@@ -69,10 +72,10 @@ RL:
     z_pos : 1.0
   # rom_type: double_int
   # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
-  # rom_type: single_int
-  # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
-  rom_type: position
-  model_name: ..
+  model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
+  rom_type: single_int
+  # rom_type: position
+  # model_name: ..
   horizon: 10
   dt_replan : 0.02
   v_max: 0.3

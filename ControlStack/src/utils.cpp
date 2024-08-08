@@ -13,6 +13,10 @@ static vector_3t getInput() {
   return input;
 }
 
+void hi(int num) {
+    std::cout << "hi: " << num <<  std::endl;
+}
+
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen) {
     // server_fd = new int;
     // new_socket = new int;

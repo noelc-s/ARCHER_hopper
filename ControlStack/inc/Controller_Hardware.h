@@ -49,8 +49,9 @@ std::condition_variable cv;
 std::mutex m;
 std::atomic<bool> running(true);
 
-std::chrono::high_resolution_clock::time_point t1;
-std::chrono::high_resolution_clock::time_point t2;
+std::chrono::high_resolution_clock::time_point t_loop;
+std::chrono::high_resolution_clock::time_point t_policy;
+std::chrono::high_resolution_clock::time_point t_lowlevel;
 std::chrono::high_resolution_clock::time_point tstart;
 
 const std::string gainYamlPath = "../config/gains_hardware.yaml";
@@ -67,10 +68,6 @@ vector_2t offsets;
 UserInput readUserInput;
 
 vector_3t last_state;
-
-matrix_t A_kf(6,6);
-matrix_t B_kf(6,4);
-bool contact;
 
 quat_t quat_optitrack;
 matrix_t desired_command;
