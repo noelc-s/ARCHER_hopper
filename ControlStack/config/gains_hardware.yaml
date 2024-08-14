@@ -61,10 +61,12 @@ RaibertHeuristic:
   kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.3                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
   angle_max: 1.0
-  yaw_damping: 0.004 
+  yaw_damping: 0.004
 
-pitch_offset: 0.
-roll_offset: 0.
+# roll_offset:  -0.0011
+# pitch_offset: 0.02158
+roll_offset:  -0.0
+pitch_offset: 0.0
 
 Policy:
   dt_lowlevel: 0.001
@@ -78,11 +80,11 @@ RL:
     z_pos : 1.0
   # rom_type: double_int
   # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
-  # rom_type: single_int
+  rom_type: single_int
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
-  # model_name: ../../models/hopper_traj_single_int_cur3_rojj0ra6.onnx # Spindown
-  rom_type: position
-  model_name: ..
+  model_name: ../../models/hopper_traj_single_int_cur3_rojj0ra6.onnx # Spindown
+  # rom_type: position
+  # model_name: ..
   horizon: 10
   # dt_replan: 0.02
   v_max: 0.3

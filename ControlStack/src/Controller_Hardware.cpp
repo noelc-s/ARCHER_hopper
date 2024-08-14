@@ -41,10 +41,10 @@ int main(int argc, char **argv)
   }
   // Instantiate a new policy.
   // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
-  RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+  // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
   // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
   // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
-  // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
+  RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
   std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
             ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
             OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
-            ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2);
+            ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
       hopper->updateState(state);
       contact = hopper->state_.contact;

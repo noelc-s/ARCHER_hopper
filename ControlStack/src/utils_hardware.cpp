@@ -80,19 +80,18 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
   static bool init = false;
   static scalar_t dt;
   static vector_3t state_init(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z + p.frameOffset + p.markerOffset);
-  static vector_3t last_state(0, 0, msg->pose.position.z + p.frameOffset + p.markerOffset);
   static vector_3t current_vel(0, 0, 0);
   static vector_3t filtered_current_vel(0, 0, 0);
   static bool first_contact = false;
 
   static vector_3t previous_vel(0, 0, 0);
-  static vector_t est_state(2);
-
-  if (est_state.size() == 2)
+  static vector_3t last_state(0.,0., msg->pose.position.z + p.frameOffset + p.markerOffset);
+  static vector_6t est_state(6);
+  if (!init) 
   {
-    est_state.resize(6);
-    est_state <<  msg->pose.position.x - state_init(0), msg->pose.position.y - state_init(1), msg->pose.position.z + p.frameOffset + p.markerOffset, 0, 0, 0;
-    last_state << est_state.segment(0,3);
+    est_state.setZero();
+    est_state.segment(0,3) << last_state;
+    init = true;
   }
 
   static const scalar_t g = 9.81;

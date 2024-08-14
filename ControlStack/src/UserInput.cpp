@@ -141,7 +141,7 @@ void UserInput::getJoystickInput(vector_2t &offsets,
                 offsets[1] += increment;
             if (event.number == 3 && event.value == 1)
                 offsets[0] -= increment;
-            std::cout << "Offsets: " << offsets.transpose() << std::endl;
+            std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
             break;
 
         // ignore init events
