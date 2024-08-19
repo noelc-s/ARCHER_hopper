@@ -57,7 +57,7 @@ void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, i
     }
 }
 
-void setupGains(const std::string filepath, Parameters &p, MPC::MPC_Params &mpc_p) {
+void setupGains(const std::string filepath, MPC::MPC_Params &mpc_p, Parameters &p) {
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
