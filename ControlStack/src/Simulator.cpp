@@ -237,7 +237,7 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t RX_torques[4 + 7 + 2 + 2 + 2 * 10] = {0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -421,6 +421,8 @@ int main(int argc, const char **argv) {
 
 	d->qpos[body_offset+0] = RX_torques[11];
 	d->qpos[body_offset+1] = RX_torques[12];
+    d->qpos[body_offset+2] = RX_torques[13];
+    d->qpos[body_offset+3] = RX_torques[14];
 	//d->qpos[body_offset+2] = RX_torques[13];
 	//d->qpos[25] = RX_torques[14];
 	//d->qpos[26] = RX_torques[15];
@@ -448,6 +450,19 @@ int main(int argc, const char **argv) {
         cam.lookat[0] = d->qpos[0];
         cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+
+
+        static double zero3[3] = {0};
+        static double zero9[9] = {0};
+        float color[4] = {1.0, 0.0, 0.0, 1.0};
+        for (int i = 0; i < 10-1; i++) {
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
+            mjv_makeConnector(
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .015, 
+                    RX_torques[15+2*i],RX_torques[15+2*i+1],0,RX_torques[17+2*i],RX_torques[17+2*i+1],0);
+                    scn.ngeom += 1;
+        }
+
         mjr_render(viewport, &scn, &con);
 
         // swap OpenGL buffers (blocking call due to v-sync)

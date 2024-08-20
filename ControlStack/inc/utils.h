@@ -40,6 +40,7 @@ struct Parameters {
     scalar_t v_max;
     scalar_t a_max;
     scalar_t dt_replan;
+    scalar_t dt_planner;
     int horizon;
     std::string rom_type;
     int stop_index; 

@@ -44,7 +44,7 @@ public:
     size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 
     void getJoystickInput(vector_2t &offsets,
-                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
+                          scalar_t &dist, vector_2t &obstacle_pos, std::condition_variable & cv, std::mutex & m);
 
     static vector_3t keyboardInput();
 

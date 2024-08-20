@@ -20,6 +20,7 @@ int main()
     u_des.setZero();
     x_term.setZero();
     ind = 1;
+    obstacle_pos << -0, 0;
 
     std::unique_ptr<Command> command;
     if (p.rom_type == "single_int")
@@ -40,25 +41,43 @@ int main()
     // Instantiate a new policy.
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
     // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
     // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
-    RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
+    // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(obstacle_pos), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
     desired_command = command->getCommand();
 
+    Obstacle O = Obstacle();
+    Planner planner(O);
+
+    vector_t planned_command;
+    vector_t IC;
+    vector_t EC;
+    vector_3t path_command;
+    int index;
+    IC.resize(4);
+    EC.resize(4);
+    planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
+    IC.setZero();
+    EC.setZero();
+    planned_command.setZero();
+   
+    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+
     for (;;)
     {
-        read(new_socket, &RX_state, sizeof(RX_state));
+        auto ret = read(new_socket, &RX_state, sizeof(RX_state));
         t1 = std::chrono::high_resolution_clock::now();
 
         Map<vector_t> state(RX_state, 20);
         dt_elapsed = state(0) - t_last;
+        dt_planner_elapsed = state(0) - t_planner_last;
 
         hopper->updateState(state);
 
@@ -87,10 +106,16 @@ int main()
         hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
         hopper->state_.v.segment(3, 3) = hopper->state_.quat._transformVector(hopper->state_.v.segment(3, 3)); // Turn local omega to global omega
 
+        O.updateObstaclePositions(0, obstacle_pos[0], obstacle_pos[1]);
+        IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
+        EC << desired_command(0), desired_command(1), 0, 0;
+        path_command << planned_command.segment(4*index,2), 0;
+        t_planner_last = state(0);
+
         if (dt_elapsed > p.dt)
         {
             desired_command = command->getCommand();
-            quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+            quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
             // Add initial yaw to desired signal
             quat_des = plus(quat_des, initial_yaw_quat);
             omega_des = policy.DesiredOmega();
@@ -143,6 +168,14 @@ int main()
         {
             TX_torques[11] = desired_command(desired_command.rows() - 1, 0);
             TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
+        }
+
+        TX_torques[13] = obstacle_pos(0);
+        TX_torques[14] = obstacle_pos(1);
+
+        for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++) {
+            TX_torques[15+2*i] = planned_command[4*i];
+            TX_torques[15+2*i+1] = planned_command[4*i+1];
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

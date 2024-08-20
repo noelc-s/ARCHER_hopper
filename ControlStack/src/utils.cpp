@@ -74,6 +74,7 @@ void setupGains(const std::string filepath, Parameters &p) { // MPC::MPC_Params 
     p.a_max = config["RL"]["a_max"].as<scalar_t>();
     p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
     p.horizon = config["RL"]["horizon"].as<scalar_t>();
+    p.dt_planner = config["dt_planner"].as<scalar_t>();
 
 
     // mpc_p.N = config["MPC"]["N"].as<int>();

@@ -60,7 +60,7 @@ struct HardwareParameters
 std::mutex state_mtx;
 std::mutex des_state_mtx;
 int sock;
-sockaddr_in source, destination;
+sockaddr_in source_sock, destination;
 sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
@@ -256,9 +256,9 @@ void setupSocketHardware()
     printf("Socket successfully created..\n");
   }
 
-  source.sin_family = AF_INET;
-  source.sin_port = htons(port);
-  source.sin_addr.s_addr = inet_addr(hostname.c_str());
+  source_sock.sin_family = AF_INET;
+  source_sock.sin_port = htons(port);
+  source_sock.sin_addr.s_addr = inet_addr(hostname.c_str());
 
   destination.sin_family = AF_INET;
   destination.sin_port = htons(port);
@@ -268,8 +268,8 @@ void setupSocketHardware()
   int enabled = 1;
   setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled));
 
-  int val = bind(sock, (struct sockaddr *)&source,
-                 sizeof(source));
+  int val = bind(sock, (struct sockaddr *)&source_sock,
+                 sizeof(source_sock));
 
   senderAddr.sin_family = AF_INET;
   senderAddr.sin_port = htons(port);
