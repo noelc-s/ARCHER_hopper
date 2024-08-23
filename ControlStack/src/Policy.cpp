@@ -192,7 +192,8 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t comma
     }
     vector_4t input_state;
     input_state << x_a - command(0), y_a - command(1), xd_a, yd_a;
-    scalar_t yaw_des = command(2);
+    // scalar_t yaw_des = command(2);
+    scalar_t yaw_des = 0; // no des yaw
     vector_2t rp_des;
     EvaluateNetwork(input_state, rp_des);
 

@@ -53,22 +53,32 @@ int main()
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
     desired_command = command->getCommand();
 
-    Obstacle O = Obstacle();
+    ObstacleCollector O = ObstacleCollector();
     Planner planner(O);
+    std::cout << "Number of Edges: " << planner.planner->edges.size() << std::endl;
+
+    // 4 torques, 7 terminal s SE(3) state, 2 command, obstacle_pos, xy mpc sol
+    scalar_t TX_torques[4 + 7 + 2 + 2 + 2 * planner.planner->mpc_->mpc_params_.N] = {};
+    // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
+    scalar_t RX_state[20] = {};
 
     vector_t planned_command;
     vector_t IC;
     vector_t EC;
     vector_3t path_command;
-    int index;
+    int index = 3;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
     IC.setZero();
     EC.setZero();
     planned_command.setZero();
+
    
     std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+
+    vector_t prev_planned_command(4 * planner.planner->mpc_->mpc_params_.N);
+    prev_planned_command.setZero();
 
     for (;;)
     {
@@ -78,6 +88,7 @@ int main()
         Map<vector_t> state(RX_state, 20);
         dt_elapsed = state(0) - t_last;
         dt_planner_elapsed = state(0) - t_planner_last;
+        dt_print_elapsed = state(0) - t_print_last;
 
         hopper->updateState(state);
 
@@ -106,10 +117,40 @@ int main()
         hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
         hopper->state_.v.segment(3, 3) = hopper->state_.quat._transformVector(hopper->state_.v.segment(3, 3)); // Turn local omega to global omega
 
+        // Obstacle positions are in local frame of hopper
+        vector_t sol(planned_command.size());
         O.updateObstaclePositions(0, obstacle_pos[0], obstacle_pos[1]);
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
-        path_command << planned_command.segment(4*index,2), 0;
+        path_command << planned_command(4*index), planned_command(4*index+1), 0;
+        sol << planned_command;
+
+        // print at 40 Hz
+        if (PRINT_TIMING == false) {
+            if (dt_print_elapsed > 0.025) {
+                print_block(planner.plannerTiming.cut, planner.plannerTiming.findPath, planner.plannerTiming.refinement,
+                            planner.meanTiming.cut, planner.meanTiming.findPath, planner.meanTiming.refinement, 
+                            planner.stdTiming.cut, planner.stdTiming.findPath, planner.stdTiming.refinement, 
+                            planner.planner->edges.size(), planner.planner->percentageEdgesRemovedWithHeuristic, planner.planner->optimalPathFound);
+                t_print_last = state(0);
+            }
+        }
+
+        // O.updateObstaclePositions(0, obstacle_pos[0] - hopper->state_.pos(0), obstacle_pos[1] - hopper->state_.pos(1));
+        // IC << 0, 0, hopper->state_.vel(0), hopper->state_.vel(1);
+        // EC << desired_command(0) - hopper->state_.pos(0), desired_command(1) - hopper->state_.pos(1), 0, 0;
+        // if ((prev_planned_command - planned_command).norm() > 1e-1)
+        // {
+        //     path_command << planned_command(4*index) + hopper->state_.pos(0), planned_command(4*index+1) + hopper->state_.pos(1), 0;
+        //     sol << planned_command;
+        //     for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++) {
+        //         sol(4*i) += hopper->state_.pos(0);
+        //         sol(4*i+1) += hopper->state_.pos(1);
+        //     }
+        //     prev_planned_command = planned_command;
+        // }
+
+
         t_planner_last = state(0);
 
         if (dt_elapsed > p.dt)
@@ -174,8 +215,8 @@ int main()
         TX_torques[14] = obstacle_pos(1);
 
         for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++) {
-            TX_torques[15+2*i] = planned_command[4*i];
-            TX_torques[15+2*i+1] = planned_command[4*i+1];
+            TX_torques[15+2*i] = sol[4*i];
+            TX_torques[15+2*i+1] = sol[4*i+1];
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

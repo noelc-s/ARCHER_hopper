@@ -56,7 +56,7 @@ int main(int argc, char **argv)
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
   desired_command = command->getCommand();
 
-  Obstacle O = Obstacle();
+  ObstacleCollector O = ObstacleCollector();
   Planner planner(O);
 
   vector_t planned_command;

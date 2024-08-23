@@ -99,6 +99,10 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             {
                 joystick_command[2] = axes[axis].x / joystick_max;
                 joystick_command[3] = -axes[axis].y / joystick_max;
+
+                obstacle_pos(0) = joystick_command[2];
+                obstacle_pos(1) = joystick_command[3];
+
                 if (abs(joystick_command[2]) < deadzone)
                 { // Deadzone
                     joystick_command[2] = 0.0;
@@ -107,12 +111,6 @@ void UserInput::getJoystickInput(vector_2t &offsets,
                 { // Deadzone
                     joystick_command[3] = 0.0;
                 }
-            }
-
-            if (axis == 2)
-            {
-                obstacle_pos(0) += axes[axis].x / joystick_max;
-                obstacle_pos(1) += -axes[axis].y / joystick_max;
             }
             
             break;

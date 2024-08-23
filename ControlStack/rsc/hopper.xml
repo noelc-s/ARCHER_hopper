@@ -78,6 +78,8 @@
 
     <body name="box1" pos="0.5 0 0.2" zaxis="0 0 1">
 		<geom type="box" size=".15 .15 0.2" rgba=".9 .9 .0 1"/>
+        <joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
     </body>
      <body name="box2" pos="-0.5 0 0.2" zaxis="0 0 1">
 		<geom type="box" size=".15 .15 0.2" rgba=".9 .9 .0 1"/>

@@ -68,4 +68,10 @@ static quat_t Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw) {
                 * AngleAxisd(yaw, Vector3d::UnitZ());
 }
 
+
+void print_block(scalar_t cutTiming, scalar_t pathTiming, scalar_t refinementTiming, 
+            scalar_t meancutTiming, scalar_t meanpathTiming, scalar_t meanrefinementTiming, 
+            scalar_t stdcutTiming, scalar_t stdpathTiming, scalar_t stdrefinementTiming, 
+            int numberOfEdges, scalar_t edgeRemoval, bool optimalPath);
+
 #endif

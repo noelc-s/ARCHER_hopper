@@ -117,3 +117,34 @@ vector_3t Quaternion2Euler(const quat_t &q)
 quat_t minus(quat_t q_1, quat_t q_2) { return q_2.inverse() * q_1; }
 quat_t plus(quat_t q_1, quat_t q_2) { return q_1 * q_2; }
 scalar_t extract_yaw(quat_t q) { return atan2(2 * (q.w() * q.z() + q.x() * q.y()), 1 - 2 * (pow(q.y(), 2) + pow(q.z(), 2))); }
+
+
+void print_block(scalar_t cutTiming, scalar_t pathTiming, scalar_t refinementTiming, 
+            scalar_t meancutTiming, scalar_t meanpathTiming, scalar_t meanrefinementTiming, 
+            scalar_t stdcutTiming, scalar_t stdpathTiming, scalar_t stdrefinementTiming, 
+            int numberOfEdges, scalar_t edgeRemoval, bool optimalPath) {
+    // Clear screen using ANSI escape codes
+    printf("\033[2J");  // Clear entire screen
+    printf("\033[H");   // Move cursor to the top left
+
+    printf("-----------------------------------------------------------------\n");
+    printf("|                         STATISTICS                            |\n");
+    printf("-----------------------------------------------------------------\n");
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Total number of edges: %-36d  |\n", numberOfEdges);
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Percentage of edges removed with heuristic: %-15.4f  |\n", edgeRemoval*100);
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Optimal path found: %-39d  |\n", optimalPath);
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("-----------------------------------------------------------------\n");
+    printf("|                           TIMING                              |\n");
+    printf("-----------------------------------------------------------------\n");
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Cut the graph [ms]: %-10.2f  µ: %-10.2f  σ: %-9.2f  |\n", cutTiming, meancutTiming, stdcutTiming);
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Plan the Path [ms]: %-10.2f  µ: %-10.2f  σ: %-9.2f  |\n", pathTiming, meanpathTiming, stdpathTiming);
+    printf("|  %-59s  |\n", ""); // Empty line for spacing
+    printf("|  Refine with MPC [ms]: %-8.2f  µ: %-10.2f  σ: %-9.2f  |\n", refinementTiming, meanrefinementTiming, stdrefinementTiming);
+    printf("-----------------------------------------------------------------\n");
+}

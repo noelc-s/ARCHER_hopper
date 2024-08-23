@@ -6,7 +6,7 @@ project(hopper)
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "-O3 -pthread")
+set(CMAKE_CXX_FLAGS "-O3 -pthread -fopenmp")
 
 set(PATH_TO_REPOS /home/noelcs/repos CACHE PATH "Path to repos")
 message(${PATH_TO_REPOS})

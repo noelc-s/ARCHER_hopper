@@ -236,10 +236,6 @@ int main(int argc, const char **argv) {
     int *new_socket = new int;
     int valread;
     struct sockaddr_in serv_addr;
-    // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[4 + 7 + 2 + 2 + 2 * 10] = {0};
-    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
-    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
@@ -270,6 +266,14 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
+
+    config = YAML::LoadFile("../config/planner_params.yaml");
+    int N = config["MPC"]["N"].as<int>();
+
+    // [receive - RX] Torques and horizon states: TODO: Fill in
+    scalar_t RX_torques[4 + 7 + 2 + 2 + 2 * N] = {0};
+    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
+    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
@@ -454,11 +458,11 @@ int main(int argc, const char **argv) {
 
         static double zero3[3] = {0};
         static double zero9[9] = {0};
-        float color[4] = {1.0, 0.0, 0.0, 1.0};
-        for (int i = 0; i < 10-1; i++) {
+        float color[4] = {0.8588,0.3176,0.3176, 1.0};
+        for (int i = 0; i < N-1; i++) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
             mjv_makeConnector(
-                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .015, 
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 
                     RX_torques[15+2*i],RX_torques[15+2*i+1],0,RX_torques[17+2*i],RX_torques[17+2*i+1],0);
                     scn.ngeom += 1;
         }

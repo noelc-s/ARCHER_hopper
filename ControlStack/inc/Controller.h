@@ -33,11 +33,6 @@ using namespace Hopper_t;
 
 const std::string gainYamlPath = "../config/gains.yaml";
 
-// 4 torques, 7 terminal s SE(3) state, 2 command, obstacle_pos, xy mpc sol
-scalar_t TX_torques[4 + 7 + 2 + 2 + 2 * 10] = {};
- // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
-scalar_t RX_state[20] = {};
-
 bool fileWrite = true;
 std::string dataLog = "../data/data.csv";
 std::string predictionLog = "../data/prediction.csv";
@@ -47,8 +42,10 @@ std::ofstream fileHandleDebug;
 int ind;
 scalar_t t_last = -1;
 scalar_t t_planner_last = -1;
+scalar_t t_print_last = -1;
 scalar_t dt_elapsed;
 scalar_t dt_planner_elapsed;
+scalar_t dt_print_elapsed;
 
 quat_t quat_des = Quaternion<scalar_t>(1, 0, 0, 0);
 vector_3t omega_des;
