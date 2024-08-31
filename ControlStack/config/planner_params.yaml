@@ -1,17 +1,19 @@
 num_traj: 0
 
+use_planner: true
+
 MPC:
   N: 25
   dt: 0.5
-  SQP_iters: 2
-  buffer: 0.2
+  SQP_iters: 3
   stateScaling: [1, 1, 10, 10]
   inputScaling: [10, 10]
   terminalScaling: 10
   tau_max: 5
-  use_previous_reference: false
+  use_previous_reference: true
 
 Planner:
+  buffer: 0.1
   num_points: 3000
   x_bounds: [-2, 2, -2, 2] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy

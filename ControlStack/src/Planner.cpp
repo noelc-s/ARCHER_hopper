@@ -32,10 +32,18 @@ double compute_stddev(const std::deque<double>& window, double mean) {
 void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, int &index, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
 {
     Timer timer(false);
+    std::ofstream graph_file = open_log_file("../stored_graph.m");
+    std::ofstream output_file = open_log_file("../output.m");
+    log(planner->points, graph_file, "Points");
+    log(planner->edges, graph_file, "EdgeControlPoints");
     while (running)
     {
         timer.start();
-        planner->cutGraph(O);
+        if (planner->params_.log_edges) {
+            planner->cutGraph(O, output_file);
+        } else {
+            planner->cutGraph(O);
+        }
         plannerTiming.cut = timer.time();
 
         std::vector<int> optimalInd;
@@ -68,5 +76,9 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         stdTiming.cut = compute_stddev(cutTimingWindow, meanTiming.cut);
         stdTiming.findPath = compute_stddev(pathTimingWindow, meanTiming.findPath);
         stdTiming.refinement = compute_stddev(mpcTimingWindow, meanTiming.refinement);
+        if (planner->params_.log_edges) {
+            printf("Exiting because obstacle size is: %d", O.obstacles.size());
+            exit(0);
+        }
     }
 }

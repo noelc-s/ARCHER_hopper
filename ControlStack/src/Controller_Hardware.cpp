@@ -63,13 +63,13 @@ int main(int argc, char **argv)
   vector_t IC;
   vector_t EC;
   vector_3t path_command;
-  int index;
+  int index = 1;
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
   IC.setZero();
   EC.setZero();
-  planned_command.setZero();
+  planned_command.setZero ();
   
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
 
@@ -167,7 +167,11 @@ int main(int argc, char **argv)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
-        quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
+        if (planner.planner->params_.use_planner) {
+          quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
+        } else {
+          quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);          
+        }
 
         // Add initial yaw to desired signal
         quat_des = plus(quat_des, initial_yaw_quat);

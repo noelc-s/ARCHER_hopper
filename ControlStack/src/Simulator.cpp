@@ -154,6 +154,11 @@ void mycontroller(const mjModel *m, mjData *d) {
 
 }
 
+// Helper function to compute distance between two points
+double distance(double x1, double y1, double x2, double y2) {
+    return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+}
+
 // main function
 int main(int argc, const char **argv) {
 
@@ -271,7 +276,7 @@ int main(int argc, const char **argv) {
     int N = config["MPC"]["N"].as<int>();
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[4 + 7 + 2 + 2 + 2 * N] = {0};
+    scalar_t RX_torques[4 + 7 + 2 + 8 * 10 + 2 * N] = {0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -425,8 +430,8 @@ int main(int argc, const char **argv) {
 
 	d->qpos[body_offset+0] = RX_torques[11];
 	d->qpos[body_offset+1] = RX_torques[12];
-    d->qpos[body_offset+2] = RX_torques[13];
-    d->qpos[body_offset+3] = RX_torques[14];
+    // d->qpos[body_offset+2] = RX_torques[13];
+    // d->qpos[body_offset+3] = RX_torques[14];
 	//d->qpos[body_offset+2] = RX_torques[13];
 	//d->qpos[25] = RX_torques[14];
 	//d->qpos[26] = RX_torques[15];
@@ -463,8 +468,65 @@ int main(int argc, const char **argv) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
             mjv_makeConnector(
                     &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 
-                    RX_torques[15+2*i],RX_torques[15+2*i+1],0,RX_torques[17+2*i],RX_torques[17+2*i+1],0);
-                    scn.ngeom += 1;
+                    RX_torques[13+8*10+2*i],RX_torques[13+8*10+2*i+1],0,RX_torques[13+8*10+2+2*i],RX_torques[13+8*10+2+2*i+1],0);
+            scn.ngeom += 1;
+        }
+
+        // d->qpos[body_offset+2] = RX_torques[13:20];
+        for (int o = 0; o < 10-1; o++) {
+            scalar_t corner[8];
+            memcpy(corner, RX_torques + 13+8*o, 8*sizeof(scalar_t));
+
+            float box_color[4] = {0.235,0.478,0.870, 1.0};
+            // Compute the centroid (average of all corners)
+            double pos[3] = {
+                (corner[0] + corner[2] + corner[4] + corner[6]) / 4.0,  // x-coordinate
+                (corner[1] + corner[3] + corner[5] + corner[7]) / 4.0,  // y-coordinate
+                0.0  // z-coordinate
+            };
+
+            // Compute width and height
+            // Find all distances and select maximum for width and height
+            double d1 = distance(corner[0], corner[1], corner[2], corner[3]);
+            double d2 = distance(corner[2], corner[3], corner[4], corner[5]);
+            double d3 = distance(corner[4], corner[5], corner[6], corner[7]);
+            double d4 = distance(corner[6], corner[7], corner[0], corner[1]);
+
+            std::vector<double> e = {d1, d2, d3, d4};
+            double angle;
+            double width = std::max({d1, d2, d3, d4});
+            double height = std::min({d1, d2, d3, d4});
+            int index = std::distance(e.begin(), std::max_element(e.begin(), e.end()));
+            switch(index) {
+                case 0:
+                    angle = std::atan2(corner[3] - corner[1], corner[2] - corner[0]);
+                    break;
+                case 1:
+                    angle = std::atan2(corner[5] - corner[3], corner[4] - corner[2]);
+                    break;
+                case 2:
+                    angle = std::atan2(corner[7] - corner[5], corner[6] - corner[4]);
+                    break;
+                case 3:
+                    angle = std::atan2(corner[1] - corner[7], corner[0] - corner[6]);
+                    break;
+            }
+        
+            // angle = std::atan2(corner[3] - corner[1], corner[2] - corner[0]);
+            if (height > width) std::swap(width, height);
+
+            // Rotation matrix
+            double rot[9] = {
+                std::cos(angle), -std::sin(angle), 0,
+                std::sin(angle),  std::cos(angle), 0,
+                0,               0,               1
+            };
+            double size[3] = {width / 2.0, height / 2.0, 0.03};  // Depth, adjust as needed
+            // std::cout << size[0] << ", " <<  size[1] << ", " <<  size[2] << std::endl;
+            // std::cout << pos[0] << ", " <<  pos[1] << ", " <<  pos[2] << std::endl;
+            // std::cout << rot[0] << ", " <<  rot[1] << ", " <<  rot[2] << ", " <<  rot[3] << std::endl;
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_BOX, size, pos, rot, box_color);
+            scn.ngeom += 1;
         }
 
         mjr_render(viewport, &scn, &con);
