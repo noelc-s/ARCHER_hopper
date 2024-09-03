@@ -13,6 +13,11 @@ void Policy::loadParams(const std::string filepath, Params &params)
     params.ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
     params.kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
     params.ky_d = config["RaibertHeuristic"]["ky_d"].as<scalar_t>();
+    params.kx_f = config["RaibertHeuristic"]["kx_f"].as<scalar_t>();
+    params.ky_f = config["RaibertHeuristic"]["ky_f"].as<scalar_t>();
+    params.p_clip = config["RaibertHeuristic"]["pos_clip"].as<scalar_t>();
+    params.v_clip = config["RaibertHeuristic"]["vel_clip"].as<scalar_t>();
+    params.vd_clip = config["RaibertHeuristic"]["v_des_clip"].as<scalar_t>();    
     params.angle_max = config["RaibertHeuristic"]["angle_max"].as<scalar_t>();
     params.pitch_d_offset = config["pitch_offset"].as<scalar_t>();
     params.roll_d_offset = config["roll_offset"].as<scalar_t>();
@@ -58,9 +63,9 @@ RaibertPolicy::RaibertPolicy(const std::string yamlPath)
 
 quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
-    if ((command.rows() != 3) || (command.cols() != 1)) {
+    if ((command.rows() != 5) || (command.cols() != 1)) {
         std::cout << command.rows() << ',' << command.cols() << std::endl;
-        throw std::runtime_error("Input to Raibert is not of proper shape (expected 3x1)");
+        throw std::runtime_error("Input to Raibert is not of proper shape (expected 5x1)");
     }
     
     bool contact = state.contact;
@@ -79,12 +84,14 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     // position error
     scalar_t del_x = x_a - command(0);
     scalar_t del_y = y_a - command(1);
-    scalar_t yaw_des = command(2);
+    scalar_t des_vx = std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
+    scalar_t des_vy = std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
+    scalar_t yaw_des = command(4);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * xd_a, params.angle_max);
+    scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
     pitch_d = std::max(pitch_d, -params.angle_max);
-    scalar_t roll_d = std::min(params.ky_p * del_y + params.ky_d * yd_a, params.angle_max);
+    scalar_t roll_d = std::min(params.ky_p * del_y + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
     roll_d = std::max(roll_d, -params.angle_max);
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
@@ -175,8 +182,9 @@ void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &outpu
 
 quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
-    if ((command.rows() != 3) || (command.cols() != 1)) {
-        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    if ((command.rows() != 5) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to ZD Policy is not of proper shape (expected 5x1) but got " +
+                            std::to_string(command.rows()) + "x" + std::to_string(command.cols()));
     }
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
@@ -191,8 +199,12 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t comma
         command(1) = yd_a;
     }
     vector_4t input_state;
-    input_state << x_a - command(0), y_a - command(1), xd_a, yd_a;
-    scalar_t yaw_des = command(2);
+
+    scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
+    scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
+
+    input_state << x_a - command(0), y_a - command(1), xd_a + params.kx_f * des_vx, yd_a + params.ky_f * des_vy;
+    scalar_t yaw_des = command(4);
     vector_2t rp_des;
     EvaluateNetwork(input_state, rp_des);
 
@@ -349,7 +361,7 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command
     input[13] = RLparams.dof_vel_scaling*state.wheel_vel[2];
     input[14] = command(0);
     input[15] = command(1);
-    input[16] = command(2);
+    input[16] = command(4);
     input[17] = previous_action[0]; // w
     input[18] = previous_action[1]; // x
     input[19] = previous_action[2]; // y
@@ -389,8 +401,8 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command
 
 quat_t RLPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
 {
-    if ((command.rows() != 3) || (command.cols() != 1)) {
-        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 3x1)");
+    if ((command.rows() != 5) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to RL Policy is not of proper shape (expected 5x1)");
     }
     dt_elapsed_RL = state.t - t_last_RL;
     bool replan = dt_elapsed_RL >= RLparams.dt_replan;
