@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
 
-set(PATH_TO_REPOS /home/wcompton/Repos CACHE PATH "Path to repos")
+set(PATH_TO_REPOS /home/noelcs/repos CACHE PATH "Path to repos")
 message(${PATH_TO_REPOS})
 
 # Option to build hardare support (requires ros to be installed, not needed for sim only results)
