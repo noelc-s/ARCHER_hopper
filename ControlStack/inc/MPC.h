@@ -30,26 +30,7 @@ public:
     OsqpEigen::Solver solver;
 
     // Parameters for the MPC program
-    struct MPC_Params {
-        int N;
-	int SQP_iter;
-        vector_t stateScaling;
-        vector_t inputScaling;
-        scalar_t discountFactor;
-	scalar_t dt_flight;
-	scalar_t dt_ground;
-        scalar_t MPC_dt_replan;
-	scalar_t tau_max;
-	scalar_t f_max;
-	scalar_t terminalScaling;
-	scalar_t groundDuration;
-	scalar_t heightOffset;
-	scalar_t time_between_contacts;
-	scalar_t hop_height;
-	scalar_t circle_freq;
-	scalar_t circle_amp;
-	scalar_t max_vel;
-    } p;
+    MPC_Params p;
 
     // Initialize the MPC object
     MPC(int nx, int nu, MPC_Params &loaded_p) {

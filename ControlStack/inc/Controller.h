@@ -20,7 +20,6 @@
 #include "../inc/Policy.h"
 #include "../inc/Hopper.h"
 #include "../inc/Types.h"
-#include "../inc/MPC.h"
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
 #include "../inc/rom.h"
@@ -28,7 +27,6 @@
 
 using namespace Eigen;
 using namespace Hopper_t;
-using namespace pinocchio;
 
 const std::string gainYamlPath = "../config/gains.yaml";
 
@@ -66,7 +64,7 @@ UserInput readUserInput;
 std::chrono::high_resolution_clock::time_point t1;
 std::chrono::high_resolution_clock::time_point t2;
 
-MPC::MPC_Params mpc_p;
+MPC_Params mpc_p;
 Parameters p;
 
 // Socket Stuff

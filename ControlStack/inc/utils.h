@@ -45,9 +45,30 @@ struct Parameters {
     int stop_index; 
 };
 
+struct MPC_Params {
+    int N;
+	int SQP_iter;
+    vector_t stateScaling;
+    vector_t inputScaling;
+    scalar_t discountFactor;
+	scalar_t dt_flight;
+	scalar_t dt_ground;
+    scalar_t MPC_dt_replan;
+	scalar_t tau_max;
+	scalar_t f_max;
+	scalar_t terminalScaling;
+	scalar_t groundDuration;
+	scalar_t heightOffset;
+	scalar_t time_between_contacts;
+	scalar_t hop_height;
+	scalar_t circle_freq;
+	scalar_t circle_amp;
+	scalar_t max_vel;
+};
+
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
-void setupGains(const std::string filepath, Parameters &p); // MPC::MPC_Params &mpc_p, 
+void setupGains(const std::string filepath, MPC_Params &mpc_p, Parameters &p); // MPC::MPC_Params &mpc_p, 
 
 vector_3t Quaternion2Euler(const quat_t &q);
 

@@ -84,8 +84,8 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     // position error
     scalar_t del_x = x_a - command(0);
     scalar_t del_y = y_a - command(1);
-    scalar_t des_vx = std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
-    scalar_t des_vy = std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
+    scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
+    scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
     scalar_t yaw_des = command(4);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
@@ -192,12 +192,12 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t comma
     scalar_t xd_a = state.vel[0];
     scalar_t yd_a = state.vel[1];
 
-    if (contact) {
-        x_a = 0;
-        y_a = 0;
-        command(0) = xd_a;
-        command(1) = yd_a;
-    }
+    // if (contact) {
+    //     x_a = 0;
+    //     y_a = 0;
+    //     command(0) = xd_a;
+    //     command(1) = yd_a;
+    // }
     vector_4t input_state;
 
     scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);

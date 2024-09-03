@@ -4,7 +4,7 @@
 int main()
 {
     setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
-    setupGains(gainYamlPath, p); // mpc_p,
+    setupGains(gainYamlPath, mpc_p, p); // mpc_p,
     // std::shared_ptr<MPC> opt(new MPC(20, 4, mpc_p));
     std::shared_ptr<Hopper> hopper(new Hopper(gainYamlPath));
 
