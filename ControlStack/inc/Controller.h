@@ -81,3 +81,4 @@ std::mutex m;
 std::atomic<bool> running(true);
 
 matrix_t desired_command;
+matrix_t safe_command;

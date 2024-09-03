@@ -52,7 +52,7 @@ add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/reduced_order_safety_filter.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
 target_link_libraries(hopper_ctrl pinocchio::pinocchio)
 message(${PINOCCHIO_LIBRARIES})
