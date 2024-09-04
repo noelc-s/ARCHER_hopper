@@ -6,7 +6,7 @@ project(hopper)
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "-O3 -pthread")
+set(CMAKE_CXX_FLAGS "-O3 -pthread -fopenmp")
 
 set(PATH_TO_REPOS /home/noelcs/repos CACHE PATH "Path to repos")
 message(${PATH_TO_REPOS})
@@ -17,23 +17,23 @@ option(MPC "build with MPC controller" ON)
 option(LEARNING "build with NN controller" ON)
 
 # Set pat dependencies (can be set manually if they are in different locations)
+SET(PLANNER_DIR ${PATH_TO_REPOS}/PathPlanner CACHE PATH "Path to PathPlanner dir")
+set(bezier_DIR ${PATH_TO_REPOS}/BezierTubes/cpp)
 SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
-SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
+# SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
 SET(MANIF_DIR ${PATH_TO_REPOS}/manif_install CACHE PATH "Path to manif dir")
 SET(onnxruntime_DIR ${PATH_TO_REPOS}/onnxruntime_install CACHE PATH "Path to onnx dir")
-list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
+# list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS})
 list(APPEND CMAKE_PREFIX_PATH ${PATH_TO_REPOS}/eigenpy_install)
-list(APPEND CMAKE_PREFIX_PATH ${OSQP_DIR})
-list(APPEND CMAKE_PREFIX_PATH ${OSQP_EIGEN_DIR})
+# list(APPEND CMAKE_PREFIX_PATH ${OSQP_DIR})
+# list(APPEND CMAKE_PREFIX_PATH ${OSQP_EIGEN_DIR})
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(manif REQUIRED HINTS ${MANIF_DIR})
 if(MPC)
-find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
-include_directories(${PINOCCHIO_DIR}/include)
 endif()
 if(HARDWARE)
     find_package(roscpp REQUIRED)
@@ -52,23 +52,38 @@ add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+include_directories(${PLANNER_DIR}/inc)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/Planner.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
-target_link_libraries(hopper_ctrl pinocchio::pinocchio)
-message(${PINOCCHIO_LIBRARIES})
-target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
+
+### Bezier Tubes
+include_directories(bezier INTERFACE ${bezier_DIR}/inc)
+####
+
+include(FetchContent)
+FetchContent_Declare(
+    graph
+    SOURCE_DIR ${PLANNER_DIR}
+)
+FetchContent_MakeAvailable(graph)
+
+# target_link_libraries(hopper_ctrl pinocchio::pinocchio)
+# message(${PINOCCHIO_LIBRARIES})
+# target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
 if(LEARNING)
     target_link_libraries(hopper_ctrl onnxruntime::onnxruntime)
     target_include_directories(hopper_ctrl PUBLIC ${onnxruntime_DIR}/include)
 endif()
+
+target_link_libraries(hopper_ctrl graph)
+
 if(MPC)
     # add_library(MPC SHARED
     #     src/MPC.cpp
     # )
     target_link_libraries(hopper_ctrl Eigen3::Eigen)
-    target_link_libraries(hopper_ctrl ${PINOCCHIO_LIBRARIES})
     target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
-    target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
+    # target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
     # target_link_libraries(hopper_ctrl MPC)
     if(LEARNING)
         target_link_libraries(hopper_ctrl onnxruntime::onnxruntime)
@@ -78,7 +93,7 @@ endif()
 
 if(HARDWARE)
     message(STATUS "Hardware is building")
-    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/Planner.cpp)
     target_link_libraries(hopper_ctrl_hardware yaml-cpp)
     target_link_libraries(hopper_ctrl_hardware Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
@@ -88,10 +103,16 @@ if(HARDWARE)
         target_link_libraries(hopper_ctrl_hardware onnxruntime::onnxruntime)
         target_include_directories(hopper_ctrl_hardware PUBLIC ${onnxruntime_DIR}/include)
     endif()
+    target_link_libraries(hopper_ctrl_hardware graph)
     # if(MPC)
     #     target_link_libraries(hopper_ctrl_hardware MPC)
     # endif()
 endif()
+
+# Create the library
+add_library(box_position_subscriber src/ros_subscriber.cpp)
+target_include_directories(box_position_subscriber PUBLIC ${roscpp_INCLUDE_DIRS})
+target_link_libraries(box_position_subscriber ${roscpp_LIBRARIES})
 
 add_executable(hopper_sim src/Simulator.cpp)
 target_link_libraries(hopper_sim PUBLIC Eigen3::Eigen)
@@ -99,3 +120,5 @@ target_link_libraries(hopper_sim PUBLIC glfw)
 target_link_libraries(hopper_sim PUBLIC yaml-cpp)
 target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
+
+target_link_libraries(hopper_ctrl box_position_subscriber)

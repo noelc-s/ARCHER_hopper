@@ -48,7 +48,7 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
 }
 
 void UserInput::getJoystickInput(vector_2t &offsets,
-                                 scalar_t &reset, std::condition_variable &cv, std::mutex &m)
+                                 scalar_t &reset, vector_2t &obstacle_pos, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -99,6 +99,10 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             {
                 joystick_command[2] = axes[axis].x / joystick_max;
                 joystick_command[3] = -axes[axis].y / joystick_max;
+
+                obstacle_pos(0) = joystick_command[2];
+                obstacle_pos(1) = joystick_command[3];
+
                 if (abs(joystick_command[2]) < deadzone)
                 { // Deadzone
                     joystick_command[2] = 0.0;

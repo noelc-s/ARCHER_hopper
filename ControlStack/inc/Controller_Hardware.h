@@ -27,6 +27,8 @@
 #include "../src/utils_hardware.cpp"
 #include "../inc/rom.h"
 
+#include "../inc/Planner.h"
+
 using namespace Eigen;
 using namespace Hopper_t;
 
@@ -71,6 +73,7 @@ vector_3t last_state;
 
 quat_t quat_optitrack;
 matrix_t desired_command;
+vector_2t obstacle_pos;
 
 vector_3t error;
 quat_t e;

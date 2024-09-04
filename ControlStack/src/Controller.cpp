@@ -1,7 +1,7 @@
 #include "../inc/Controller.h"
 
 // Driver code
-int main()
+int main(int argc, char **argv)
 {
     setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
     setupGains(gainYamlPath, mpc_p, p); // mpc_p,
@@ -20,6 +20,7 @@ int main()
     u_des.setZero();
     x_term.setZero();
     ind = 1;
+    obstacle_pos << -0, 0;
 
     std::unique_ptr<Command> command;
     if (p.rom_type == "single_int")
@@ -45,20 +46,52 @@ int main()
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(obstacle_pos), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
     desired_command = command->getCommand();
 
+    ObstacleCollector O = ObstacleCollector();
+    Planner planner(O);
+    std::cout << "Number of Edges: " << planner.planner->edges.size() << std::endl;
+
+    startRosNode(argc, argv);
+    // Give ROS some time to initialize
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
+    scalar_t TX_torques[4 + 7 + 2 + 8 * 10 + 2 * planner.planner->mpc_->mpc_params_.N] = {};
+    // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
+    scalar_t RX_state[20] = {};
+
+    vector_t planned_command;
+    vector_t IC;
+    vector_t EC;
+    vector_3t path_command;
+    int index = 3;
+    IC.resize(4);
+    EC.resize(4);
+    planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
+    IC.setZero();
+    EC.setZero();
+    planned_command.setZero();
+
+    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+
+    vector_t prev_planned_command(4 * planner.planner->mpc_->mpc_params_.N);
+    prev_planned_command.setZero();
+
     for (;;)
     {
-        read(new_socket, &RX_state, sizeof(RX_state));
+        auto ret = read(new_socket, &RX_state, sizeof(RX_state));
         t1 = std::chrono::high_resolution_clock::now();
 
         Map<vector_t> state(RX_state, 20);
         dt_elapsed = state(0) - t_last;
+        dt_planner_elapsed = state(0) - t_planner_last;
+        dt_print_elapsed = state(0) - t_print_last;
 
         hopper->updateState(state);
 
@@ -87,10 +120,120 @@ int main()
         hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
         hopper->state_.v.segment(3, 3) = hopper->state_.quat._transformVector(hopper->state_.v.segment(3, 3)); // Turn local omega to global omega
 
+        // Obstacle positions are in local frame of hopper
+        vector_t sol(planned_command.size());
+        std::vector<vector_t> obstacle_pos_zed;
+        std::vector<Obstacle> obstacles;
+        Obstacle obs;
+        obs.center.resize(2);
+        obs.center.setZero();
+        obs.v.resize(4, 2);
+        obs.A.resize(4, 4);
+        obs.b.resize(4);
+        obs.Adjacency.resize(4, 4);
+        obs.Adjacency << 1, 0, 0, 1,
+            1, 1, 0, 0,
+            0, 1, 1, 0,
+            0, 0, 1, 1;
+        std::vector<float> boxes = getBoxPositions();
+        for (size_t i = 0; i < 10 * 8; i += 8) // 10 obstacles max
+        {
+            vector_t obst(8);
+            obst.setZero();
+            if (i < boxes.size())
+            {
+                for (size_t j = 0; j < 8; j++)
+                {
+                    obst[j] = boxes[i + j];
+                }
+                obs.v << obst[0], obst[1],
+                    obst[2], obst[3],
+                    obst[4], obst[5],
+                    obst[6], obst[7];
+
+                std::vector<Eigen::Vector2d> edgeVectors(4);
+                std::vector<Eigen::Vector2d> normals(4);
+
+                // Compute edge vectors
+                // 0,1
+                // 2,3
+                // 4,5
+                // 6,7
+                edgeVectors[0] = Eigen::Vector2d(obst[6] - obst[0], obst[7] - obst[1]);
+                edgeVectors[1] = Eigen::Vector2d(obst[0] - obst[2], obst[1] - obst[3]);
+                edgeVectors[2] = Eigen::Vector2d(obst[2] - obst[4], obst[3] - obst[5]);
+                edgeVectors[3] = Eigen::Vector2d(obst[4] - obst[6], obst[5] - obst[7]);
+                edgeVectors[0].normalize();
+                edgeVectors[1].normalize();
+                edgeVectors[2].normalize();
+                edgeVectors[3].normalize();
+
+                // Construct A and b
+                vector_t tmp(4);
+                tmp.setZero();
+                for (int i = 0; i < 4; ++i)
+                {
+                    obs.A.row(i) << -edgeVectors[i].transpose(), 0, 0;
+                    obs.b(i) = -edgeVectors[i].transpose().dot(Eigen::Vector2d(obst[2 * i], obst[2 * i + 1]));
+                }
+                // std::cout << obs.A << std::endl;
+                // std::cout << obs.b << std::endl;
+                // std::cout << obs.v << std::endl << std::endl;
+            } else {
+                obs.v.setZero();
+                obs.A.setZero();
+                obs.b << -1,-1,-1,-1;
+            }
+
+            obstacle_pos_zed.push_back(obst);
+            obstacles.push_back(obs);
+        }
+        O.obstacles = obstacles;
+        IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
+        EC << desired_command(0), desired_command(1), 0, 0;
+        path_command << planned_command(4 * index), planned_command(4 * index + 1), 0;
+        sol << planned_command;
+
+        // print at 40 Hz
+        if (PRINT_TIMING == false)
+        {
+            if (dt_print_elapsed > 0.025)
+            {
+                print_block(planner.plannerTiming.cut, planner.plannerTiming.findPath, planner.plannerTiming.refinement,
+                            planner.meanTiming.cut, planner.meanTiming.findPath, planner.meanTiming.refinement,
+                            planner.stdTiming.cut, planner.stdTiming.findPath, planner.stdTiming.refinement,
+                            planner.planner->edges.size(), planner.planner->percentageEdgesRemovedWithHeuristic, planner.planner->optimalPathFound);
+                t_print_last = state(0);
+            }
+        }
+
+        // O.updateObstaclePositions(0, obstacle_pos[0] - hopper->state_.pos(0), obstacle_pos[1] - hopper->state_.pos(1));
+        // IC << 0, 0, hopper->state_.vel(0), hopper->state_.vel(1);
+        // EC << desired_command(0) - hopper->state_.pos(0), desired_command(1) - hopper->state_.pos(1), 0, 0;
+        // if ((prev_planned_command - planned_command).norm() > 1e-1)
+        // {
+        //     path_command << planned_command(4*index) + hopper->state_.pos(0), planned_command(4*index+1) + hopper->state_.pos(1), 0;
+        //     sol << planned_command;
+        //     for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++) {
+        //         sol(4*i) += hopper->state_.pos(0);
+        //         sol(4*i+1) += hopper->state_.pos(1);
+        //     }
+        //     prev_planned_command = planned_command;
+        // }
+
+        t_planner_last = state(0);
+
         if (dt_elapsed > p.dt)
         {
             desired_command = command->getCommand();
-            quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+            if (planner.planner->params_.use_planner)
+            {
+                quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
+            }
+            else
+            {
+                quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+            }
             // Add initial yaw to desired signal
             quat_des = plus(quat_des, initial_yaw_quat);
             omega_des = policy.DesiredOmega();
@@ -143,6 +286,24 @@ int main()
         {
             TX_torques[11] = desired_command(desired_command.rows() - 1, 0);
             TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
+        }
+
+        for (int i = 0; i < obstacle_pos_zed.size(); i++)
+        {
+            TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
+            TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
+            TX_torques[15 + i * 8] = obstacle_pos_zed[i][2];
+            TX_torques[16 + i * 8] = obstacle_pos_zed[i][3];
+            TX_torques[17 + i * 8] = obstacle_pos_zed[i][4];
+            TX_torques[18 + i * 8] = obstacle_pos_zed[i][5];
+            TX_torques[19 + i * 8] = obstacle_pos_zed[i][6];
+            TX_torques[20 + i * 8] = obstacle_pos_zed[i][7];
+        }
+
+        for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+        {
+            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
+            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

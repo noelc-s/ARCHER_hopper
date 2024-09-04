@@ -23,17 +23,15 @@
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
 #include "../inc/rom.h"
+#include "../inc/Planner.h"
+
+#include "../inc/ros_subscriber.hpp"
 
 
 using namespace Eigen;
 using namespace Hopper_t;
 
 const std::string gainYamlPath = "../config/gains.yaml";
-
-// 4 torques, 7 terminal s SE(3) state, 2 command, 2*5 solution horizon COM xy pos
-scalar_t TX_torques[4 + 7 + 2 + 2 * 5] = {};
- // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
-scalar_t RX_state[20] = {};
 
 bool fileWrite = true;
 std::string dataLog = "../data/data.csv";
@@ -43,12 +41,17 @@ std::ofstream fileHandleDebug;
 
 int ind;
 scalar_t t_last = -1;
+scalar_t t_planner_last = -1;
+scalar_t t_print_last = -1;
 scalar_t dt_elapsed;
+scalar_t dt_planner_elapsed;
+scalar_t dt_print_elapsed;
 
 quat_t quat_des = Quaternion<scalar_t>(1, 0, 0, 0);
 vector_3t omega_des;
 vector_t u_des(4);
 vector_2t command_interp;
+vector_2t obstacle_pos;
 vector_t x_term(21);
 vector_3t error;
 manif::SO3Tangent<scalar_t> xi;
