@@ -36,7 +36,6 @@ public:
     } params;
 
     void loadParams(std::string filepath, Params& params);   
-    void updateOffsets(const vector_2t offsets);
     
     /*! @brief  evaluate the forward dynamics
     *  @param [in] roll  roll angle of the body frame wrt the world frame

@@ -97,8 +97,12 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
   static const scalar_t g = 9.81;
 
   // else
-  OptiState.x = msg->pose.position.x - state_init(0);
-  OptiState.y = msg->pose.position.y - state_init(1);
+  // local
+  // OptiState.x = msg->pose.position.x - state_init(0);
+  // OptiState.y = msg->pose.position.y - state_init(1);
+  // global
+  OptiState.x = msg->pose.position.x;
+  OptiState.y = msg->pose.position.y;
   OptiState.z = msg->pose.position.z + p.frameOffset + p.markerOffset;
   OptiState.q_w = msg->pose.orientation.w;
   OptiState.q_x = msg->pose.orientation.x;
@@ -159,6 +163,9 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 void setupGainsHardware(const std::string filepath)
 {
   YAML::Node config = YAML::LoadFile(filepath);
+  p.roll_offset = config["roll_offset"].as<scalar_t>();
+  p.pitch_offset = config["pitch_offset"].as<scalar_t>();
+
   p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
   p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
   p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();

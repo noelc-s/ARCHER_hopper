@@ -219,7 +219,7 @@ void UserInput::cornerTraversal(vector_2t &offsets,
         std::future<vector_3t> future = std::async(keyboardInput);
 
         if (future.wait_for(timeout) == std::future_status::ready)
-            joystick_command(0) = sign*0.8;
+            joystick_command(0) = -sign*0.8;
             joystick_command(1) = sign*0.8;
             joystick_command(2) = 0;
             sign *= -1;

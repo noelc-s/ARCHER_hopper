@@ -47,8 +47,9 @@ int main(int argc, char **argv)
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
-  std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  // std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
+  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
   vector_t EC;
   vector_t path_command;
   path_command.resize(5);
-  int index = 1;
+  int index = 4;
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
   u_des.setZero();
 
   offsets << p.roll_offset, p.pitch_offset;
+  std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
 
   A_kf << 0.4234, 0.0000, -0.0000, 0.0042, 0, 0,
       0.0000, 0.4234, 0.0000, 0, 0.0042, 0,
@@ -107,8 +109,8 @@ int main(int argc, char **argv)
   {
     ros::spinOnce();
     quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-    std::cout << "Waiting for optitrack quat" << std::endl;
-    std::cout << quat_opti.coeffs().transpose() << std::endl;
+    // std::cout << "Waiting for optitrack quat" << std::endl;
+    // std::cout << quat_opti.coeffs().transpose() << std::endl;
   };
 
   signal(SIGINT, signal_callback_handler);
@@ -233,7 +235,7 @@ int main(int argc, char **argv)
       EC << desired_command(0), desired_command(1), 0, 0;
       path_command << planned_command.segment(4 * index,4), 0;
       sol << planned_command;
-      
+
       if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_policy).count() * 1e-9 > p.dt_policy)
       {
         t_policy = t_loop;
@@ -298,6 +300,7 @@ int main(int argc, char **argv)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    // << "," << error.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
+                   << "," << sol.transpose().format(CSVFormat)
                    << std::endl;
       }
     }

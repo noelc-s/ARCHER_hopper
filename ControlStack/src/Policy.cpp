@@ -44,18 +44,6 @@ void RLTrajPolicy::loadParams(const std::string filepath, RLParams &RLparams)
     RLparams.dt_replan = config["Policy"]["dt_policy"].as<scalar_t>();
 }
 
-void Policy::updateOffsets(const vector_2t offsets)
-{
-    params.roll_d_offset = offsets[0];
-    params.pitch_d_offset = offsets[1];
-}
-
-// x_a = state(1);
-// y_a = state(2);
-// xd_a = state(8);
-// yd_a = state(9);
-
-
 RaibertPolicy::RaibertPolicy(const std::string yamlPath)
 {
     loadParams(yamlPath, params);
