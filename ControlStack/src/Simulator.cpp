@@ -269,7 +269,13 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_force_y = config["Simulator"]["pert_force_y"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> obs_x = config["Simulator"]["obsx"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> obs_y = config["Simulator"]["obsy"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> obs_r = config["Simulator"]["obsr"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
+
+    
+    // mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
 
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
@@ -448,6 +454,17 @@ int main(int argc, const char **argv) {
         cam.lookat[0] = d->qpos[0];
         cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+        for (int i = 0; i < obs_r.size(); i++){
+            const double size[3] = {obs_r[i], 0.25, 0.25};
+            const double pos[3] = {obs_x[i], obs_y[i], 0.25};
+            const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
+            const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
+
+            std::cout << obs_r[i] << ',' << obs_x[i] << ',' << obs_y[i] << std::endl;
+
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CYLINDER, size, pos, rot, box_color);
+            scn.ngeom++;
+        }
         mjr_render(viewport, &scn, &con);
 
         // swap OpenGL buffers (blocking call due to v-sync)

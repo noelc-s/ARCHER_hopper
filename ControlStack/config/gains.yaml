@@ -17,6 +17,9 @@ Simulator:
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
   speed: 1              # speed of simulation [multiplier]
+  obsx: [0.5, 1.05, 1.65]
+  obsy: [-0.1, 0.2, -0.08]
+  obsr: [0.125, 0.125, 0.075]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
