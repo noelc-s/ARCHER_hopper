@@ -51,7 +51,6 @@ quat_t quat_des = Quaternion<scalar_t>(1, 0, 0, 0);
 vector_3t omega_des;
 vector_t u_des(4);
 vector_2t command_interp;
-vector_2t obstacle_pos;
 vector_t x_term(21);
 vector_3t error;
 manif::SO3Tangent<scalar_t> xi;
@@ -67,7 +66,7 @@ UserInput readUserInput;
 std::chrono::high_resolution_clock::time_point t1;
 std::chrono::high_resolution_clock::time_point t2;
 
-MPC_Params mpc_p;
+MPC_Parameters mpc_p;
 Parameters p;
 
 // Socket Stuff

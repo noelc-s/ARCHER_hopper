@@ -29,6 +29,8 @@
 
 #include "../inc/Planner.h"
 
+#include "../inc/ros_subscriber.hpp"
+
 using namespace Eigen;
 using namespace Hopper_t;
 
@@ -73,7 +75,6 @@ vector_3t last_state;
 
 quat_t quat_optitrack;
 matrix_t desired_command;
-vector_2t obstacle_pos;
 
 vector_3t error;
 quat_t e;
@@ -103,7 +104,7 @@ scalar_t reset;
 // quat_t IMU_quat;
 
 
-// // MPC::MPC_Params mpc_p;
+// // MPC::MPC_Parameters mpc_p;
 
 
 // // Socket Stuff

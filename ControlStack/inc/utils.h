@@ -46,7 +46,7 @@ struct Parameters {
     int stop_index; 
 };
 
-struct MPC_Params {
+struct MPC_Parameters {
     int N;
 	int SQP_iter;
     vector_t stateScaling;
@@ -69,7 +69,7 @@ struct MPC_Params {
 
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
-void setupGains(const std::string filepath, MPC_Params &mpc_p, Parameters &p); // MPC::MPC_Params &mpc_p, 
+void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p); // MPC::MPC_Parameters &mpc_p, 
 
 vector_3t Quaternion2Euler(const quat_t &q);
 

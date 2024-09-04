@@ -20,7 +20,6 @@ int main(int argc, char **argv)
     u_des.setZero();
     x_term.setZero();
     ind = 1;
-    obstacle_pos << -0, 0;
 
     std::unique_ptr<Command> command;
     if (p.rom_type == "single_int")
@@ -40,14 +39,15 @@ int main(int argc, char **argv)
     }
     // Instantiate a new policy.
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
-    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
     // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(obstacle_pos), std::ref(cv), std::ref(m));
-    // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    // std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -69,8 +69,9 @@ int main(int argc, char **argv)
     vector_t planned_command;
     vector_t IC;
     vector_t EC;
-    vector_3t path_command;
-    int index = 3;
+    vector_t path_command;
+    path_command.resize(5);
+    int index = 2;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -176,9 +177,7 @@ int main(int argc, char **argv)
                     obs.A.row(i) << -edgeVectors[i].transpose(), 0, 0;
                     obs.b(i) = -edgeVectors[i].transpose().dot(Eigen::Vector2d(obst[2 * i], obst[2 * i + 1]));
                 }
-                // std::cout << obs.A << std::endl;
-                // std::cout << obs.b << std::endl;
-                // std::cout << obs.v << std::endl << std::endl;
+                obstacles.push_back(obs);
             } else {
                 obs.v.setZero();
                 obs.A.setZero();
@@ -186,12 +185,11 @@ int main(int argc, char **argv)
             }
 
             obstacle_pos_zed.push_back(obst);
-            obstacles.push_back(obs);
         }
         O.obstacles = obstacles;
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
-        path_command << planned_command(4 * index), planned_command(4 * index + 1), 0;
+        path_command << planned_command.segment(4 * index,4), 0;
         sol << planned_command;
 
         // print at 40 Hz
@@ -207,19 +205,6 @@ int main(int argc, char **argv)
             }
         }
 
-        // O.updateObstaclePositions(0, obstacle_pos[0] - hopper->state_.pos(0), obstacle_pos[1] - hopper->state_.pos(1));
-        // IC << 0, 0, hopper->state_.vel(0), hopper->state_.vel(1);
-        // EC << desired_command(0) - hopper->state_.pos(0), desired_command(1) - hopper->state_.pos(1), 0, 0;
-        // if ((prev_planned_command - planned_command).norm() > 1e-1)
-        // {
-        //     path_command << planned_command(4*index) + hopper->state_.pos(0), planned_command(4*index+1) + hopper->state_.pos(1), 0;
-        //     sol << planned_command;
-        //     for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++) {
-        //         sol(4*i) += hopper->state_.pos(0);
-        //         sol(4*i+1) += hopper->state_.pos(1);
-        //     }
-        //     prev_planned_command = planned_command;
-        // }
 
         t_planner_last = state(0);
 

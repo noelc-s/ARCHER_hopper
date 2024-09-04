@@ -48,7 +48,7 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
 }
 
 void UserInput::getJoystickInput(vector_2t &offsets,
-                                 scalar_t &reset, vector_2t &obstacle_pos, std::condition_variable &cv, std::mutex &m)
+                                 scalar_t &reset, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -99,9 +99,6 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             {
                 joystick_command[2] = axes[axis].x / joystick_max;
                 joystick_command[3] = -axes[axis].y / joystick_max;
-
-                obstacle_pos(0) = joystick_command[2];
-                obstacle_pos(1) = joystick_command[3];
 
                 if (abs(joystick_command[2]) < deadzone)
                 { // Deadzone
@@ -182,7 +179,8 @@ vector_3t UserInput::keyboardInput()
 // MH
 // waits for the user input and asyncronously wait for the input, if everything is okay, it reads the input to the command
 // don't read too much into it
-void UserInput::getKeyboardInput(std::condition_variable &cv, std::mutex &m)
+void UserInput::getKeyboardInput(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -195,6 +193,9 @@ void UserInput::getKeyboardInput(std::condition_variable &cv, std::mutex &m)
 
         if (future.wait_for(timeout) == std::future_status::ready)
             keyboard_command = future.get();
+            joystick_command(0) = keyboard_command(0);
+            joystick_command(1) = keyboard_command(1);
+            joystick_command(2) = keyboard_command(2);
         std::cout << keyboard_command << std::endl;
     }
 }
@@ -202,4 +203,25 @@ void UserInput::getKeyboardInput(std::condition_variable &cv, std::mutex &m)
 void UserInput::resetKeyboardInput()
 {
     keyboard_command.setZero();
+}
+
+void UserInput::cornerTraversal(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable &cv, std::mutex &m)
+{
+    vector_3t input;
+    input.setZero();
+
+    std::chrono::seconds timeout(50000);
+    scalar_t sign = 1;
+
+    while (1)
+    {
+        std::future<vector_3t> future = std::async(keyboardInput);
+
+        if (future.wait_for(timeout) == std::future_status::ready)
+            joystick_command(0) = sign*0.8;
+            joystick_command(1) = sign*0.8;
+            joystick_command(2) = 0;
+            sign *= -1;
+    }
 }

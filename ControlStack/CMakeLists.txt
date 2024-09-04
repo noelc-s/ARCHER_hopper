@@ -122,3 +122,4 @@ target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
 
 target_link_libraries(hopper_ctrl box_position_subscriber)
+target_link_libraries(hopper_ctrl_hardware box_position_subscriber)

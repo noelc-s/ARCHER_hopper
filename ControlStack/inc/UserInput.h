@@ -44,7 +44,7 @@ public:
     size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 
     void getJoystickInput(vector_2t &offsets,
-                          scalar_t &dist, vector_2t &obstacle_pos, std::condition_variable & cv, std::mutex & m);
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
 
     static vector_3t keyboardInput();
 
@@ -53,7 +53,10 @@ public:
     // MH
     // waits for the user input and asyncronously wait for the input, if everything is okay, it reads the input to the command
     // don't read too much into it
-    void getKeyboardInput(std::condition_variable & cv, std::mutex & m);
+    void getKeyboardInput(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
+    void cornerTraversal(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
     void resetKeyboardInput();
 };
 

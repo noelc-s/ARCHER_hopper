@@ -30,10 +30,10 @@ public:
     OsqpEigen::Solver solver;
 
     // Parameters for the MPC program
-    MPC_Params p;
+    MPC_Parameters p;
 
     // Initialize the MPC object
-    MPC(int nx, int nu, MPC_Params &loaded_p) {
+    MPC(int nx, int nu, MPC_Parameters &loaded_p) {
         this->nx = nx;
         this->nu = nu;
 	p = loaded_p;
