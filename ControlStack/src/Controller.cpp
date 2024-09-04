@@ -4,7 +4,7 @@
 int main(int argc, char **argv)
 {
     setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
-    setupGains(gainYamlPath, p); // mpc_p,
+    setupGains(gainYamlPath, mpc_p, p); // mpc_p,
     // std::shared_ptr<MPC> opt(new MPC(20, 4, mpc_p));
     std::shared_ptr<Hopper> hopper(new Hopper(gainYamlPath));
 
@@ -31,9 +31,8 @@ int main(int argc, char **argv)
     {
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
     }
-    else if (p.rom_type == "position")
-    {
-        command = std::make_unique<V3Command>();
+    else if (p.rom_type == "position") {
+        command = std::make_unique<V5Command>();
     }
     else
     {
@@ -278,7 +277,7 @@ int main(int argc, char **argv)
             TX_torques[i] = 0;
         }
 
-        if ((desired_command.rows() == 3) & (desired_command.cols() == 1))
+        if ((desired_command.rows() == 5) & (desired_command.cols() == 1))
         {
             TX_torques[11] = desired_command(0);
             TX_torques[12] = desired_command(1);

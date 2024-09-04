@@ -15,12 +15,12 @@ public:
     virtual int getStateDim() const = 0;
 };
 
-class V3Command : public Command{
+class V5Command : public Command{
 public: 
-    V3Command();
+    V5Command();
     int getHorizon() const override { return 1; }
     int getStateDim() const override { return 3; }
-    vector_3t command;
+    vector_t command;
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
     matrix_t getCommand() {return command;};
 };
@@ -32,10 +32,11 @@ public:
     const int horizon;
     int getHorizon() const override { return horizon; }
     int getStateDim() const override { return 2; }
+    int getInputDim() const { return 2; }
     const double dt;
     const double v_max;
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
-    matrix_t getCommand() {return command;};
+    matrix_t getCommand() {return command.transpose();};
 };
 
 class DoubleIntCommand : public Command {
@@ -49,6 +50,6 @@ public:
     const double v_max;
     const double a_max;
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
-    matrix_t getCommand() {return command;};
+    matrix_t getCommand() {return command.transpose();};
 };
 #endif

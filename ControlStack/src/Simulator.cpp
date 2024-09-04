@@ -412,12 +412,12 @@ int main(int argc, const char **argv) {
                 d->ctrl[i+1] = g_x[i]*RX_torques[i+1];
             }
 
-	    
-	    if (d->ncon == 0 || (d->ncon > 0 && d->contact[0].geom2 == 22)) {
-              d->xfrc_applied[44] = -100*d->qvel[12];
-	    } else {
-              d->xfrc_applied[44] = 0;
-	    }
+	    // trampoline logic
+	    // if (d->ncon == 0 || (d->ncon > 0 && d->contact[0].geom2 == 22)) {
+            //  d->xfrc_applied[44] = -100*d->qvel[12];
+	    // } else {
+            //  d->xfrc_applied[44] = 0;
+	    // }
 	
             // Take integrator step
             mj_step(m, d);

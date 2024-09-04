@@ -2,7 +2,7 @@
 # For the reaction wheeels multiplying orientation error and angular rate
 Orientation:
   Kp: [ -90,-90,-90 ]
-  Kd: [ -3,-3,-3]
+  Kd: [ -6,-6,-6]
 # For the leg multiplying deflection error and velocity
 Leg:
   Kp: .4
@@ -53,6 +53,11 @@ RaibertHeuristic:
   ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
   kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 1.0                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
+  ky_f: 1.0               # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
+  pos_clip: 0.5
+  vel_clip: 1
+  v_des_clip: 0.2
   angle_max: 1.0
   yaw_damping: 0.0035 
 
