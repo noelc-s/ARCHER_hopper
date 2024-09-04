@@ -30,26 +30,32 @@ int main()
     {
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
     }
-    else if (p.rom_type == "position") {
+    else if (p.rom_type == "position")
+    {
         command = std::make_unique<V3Command>();
+    }
+    else if (p.rom_type == "single_int_planner")
+    {
+        command = std::make_unique<SingleIntTube>(p.horizon, p.dt_replan, p.v_max);
     }
     else
     {
         throw std::runtime_error("RoM type unrecognized");
     }
+
     // Instantiate a new policy.
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
-    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
     // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
-    // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
-    RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
+    // TODO: replace this thread with one which communicates with the solver.
     std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
+    // std::thread getTubeInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m))
 
     // Thread for updating reduced order model
-    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
     desired_command = command->getCommand();
 
     for (;;)
@@ -121,7 +127,8 @@ int main()
                        << "," << hopper->torque.transpose().format(CSVFormat)
                        // << "," << error.transpose().format(CSVFormat)
                        << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                       << "," << command->getCommand().row(0).format(CSVFormat) << std::endl;
+                       << "," << command->getCommand().transpose().format(CSVFormat) 
+                       << std::endl;
         }
 
         for (int i = 0; i < 4; i++)
@@ -134,7 +141,7 @@ int main()
             TX_torques[i] = 0;
         }
 
-        if ((desired_command.rows() == 3) & (desired_command.cols() == 1))
+        if ((desired_command.rows() == 5) & (desired_command.cols() == 1))
         {
             TX_torques[11] = desired_command(0);
             TX_torques[12] = desired_command(1);

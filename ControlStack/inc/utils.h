@@ -17,6 +17,7 @@
 // #include "../inc/MPC.h"
 
 #define PORT 8080
+#define TUBE_PORT 8081
 
 using namespace Eigen;
 using namespace Hopper_t;
@@ -30,13 +31,13 @@ void hi(int num);
 
 struct Parameters {
     scalar_t dt;
-    scalar_t MPC_dt_flight;
-    scalar_t MPC_dt_ground;
-    scalar_t MPC_dt_replan;
+    // scalar_t MPC_dt_flight;
+    // scalar_t MPC_dt_ground;
+    // scalar_t MPC_dt_replan;
     scalar_t roll_offset;
     scalar_t pitch_offset;
     scalar_t yaw_drift;
-    std::string model_name;
+    // std::string model_name;
     scalar_t v_max;
     scalar_t a_max;
     scalar_t dt_replan;
@@ -46,6 +47,7 @@ struct Parameters {
 };
 
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
+void setupTubeSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
 void setupGains(const std::string filepath, Parameters &p); // MPC::MPC_Params &mpc_p, 
 

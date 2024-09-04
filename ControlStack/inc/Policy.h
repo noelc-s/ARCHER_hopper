@@ -24,6 +24,11 @@ public:
       scalar_t ky_p;
       scalar_t kx_d;
       scalar_t ky_d;
+      scalar_t kx_f;
+      scalar_t ky_f;
+      scalar_t p_clip;
+      scalar_t v_clip;
+      scalar_t vd_clip;
       scalar_t angle_max;
       scalar_t pitch_d_offset;
       scalar_t roll_d_offset;

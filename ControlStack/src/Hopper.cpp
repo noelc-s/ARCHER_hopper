@@ -69,7 +69,7 @@ Hopper::Hopper(const std::string yamlFile)
     springStiffness = config["SpringStiffness"].as<scalar_t>();
 
     quat_actuator = quat_t(0.8806, 0.3646, -0.2795, 0.1160);
-    multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
+    // multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
 
     state_.q.resize(11);
     state_.v.resize(10);
