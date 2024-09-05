@@ -89,7 +89,6 @@ scalar_t reset;
 
 
 
-
 // // 4 torques, 7 terminal s SE(3) state, 2 command, 2*5 solution horizon COM xy pos
 // scalar_t TX_torques[4 + 7 + 2 + 2 * 5] = {};
 //  // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel

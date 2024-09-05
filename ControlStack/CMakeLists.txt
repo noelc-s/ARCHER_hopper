@@ -121,5 +121,12 @@ target_link_libraries(hopper_sim PUBLIC yaml-cpp)
 target_link_libraries(hopper_sim PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim PUBLIC ${MUJOCO_PATH})
 
+add_executable(hopper_sim_hardware src/SimVisHardware.cpp)
+target_link_libraries(hopper_sim_hardware PUBLIC Eigen3::Eigen)
+target_link_libraries(hopper_sim_hardware PUBLIC glfw)
+target_link_libraries(hopper_sim_hardware PUBLIC yaml-cpp)
+target_link_libraries(hopper_sim_hardware PUBLIC ${MUJOCO_LIB})
+target_link_directories(hopper_sim_hardware PUBLIC ${MUJOCO_PATH})
+
 target_link_libraries(hopper_ctrl box_position_subscriber)
 target_link_libraries(hopper_ctrl_hardware box_position_subscriber)

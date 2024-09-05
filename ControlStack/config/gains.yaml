@@ -1,7 +1,7 @@
 # Gains associated with the low-level controller
 # For the reaction wheeels multiplying orientation error and angular rate
 Orientation:
-  Kp: [ -90,-90,-90 ]
+  Kp: [ -90,-90,-40 ]
   Kd: [ -6,-6,-6]
 # For the leg multiplying deflection error and velocity
 Leg:

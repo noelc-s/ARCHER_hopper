@@ -45,9 +45,9 @@ int main(int argc, char **argv)
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    // std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-    std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    // std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     vector_t EC;
     vector_t path_command;
     path_command.resize(5);
-    int index = 2;
+    int index = 1;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -80,9 +80,6 @@ int main(int argc, char **argv)
     planned_command.setZero();
 
     std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
-
-    vector_t prev_planned_command(4 * planner.planner->mpc_->mpc_params_.N);
-    prev_planned_command.setZero();
 
     for (;;)
     {
@@ -189,7 +186,7 @@ int main(int argc, char **argv)
         O.obstacles = obstacles;
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
-        path_command << planned_command.segment(4 * index,4), 0;
+        path_command << planned_command.segment(4 * index,4), desired_command(4);
         sol << planned_command;
 
         // print at 40 Hz

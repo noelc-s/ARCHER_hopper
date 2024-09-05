@@ -5,11 +5,12 @@ use_planner: true
 MPC:
   N: 15
   dt: 0.5
-  SQP_iters: 2
-  stateScaling: [1, 1, 10, 10]
-  inputScaling: [10, 10]
+  SQP_iters: 1
+  stateScaling: [1, 1, 1, 1]
+  inputScaling: [.1, .1]
   terminalScaling: 10
   tau_max: 5
+  vel_max: 0.2
   use_previous_reference: true
 
 Planner:

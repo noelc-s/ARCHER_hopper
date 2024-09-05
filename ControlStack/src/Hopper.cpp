@@ -139,6 +139,9 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     quat_a << quat_a_.w(), quat_a_.x(), quat_a_.y(), quat_a_.z();
 
     vector_3t delta_quat;
+    // if (quat_d_.coeffs().transpose().array().isNaN().any()) {
+    //     quat_d_.setIdentity();
+    // }
     quat_t e = quat_d_.inverse() * state_.quat;
     manif::SO3Tangent<scalar_t> xi;
     auto e_ = manif::SO3<scalar_t>(e);

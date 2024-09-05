@@ -55,6 +55,8 @@ struct HardwareParameters
   int optiTrackSetting;
   std::string rom_type;
   int horizon;
+  scalar_t zed_x_offset;
+  scalar_t zed_y_offset;
 } p;
 
 std::mutex state_mtx;
@@ -70,6 +72,25 @@ scalar_t alpha; // filtering alpha
 matrix_t A_kf(6, 6);
 matrix_t B_kf(6, 4);
 bool contact = false;
+
+void MujocoVis(std::condition_variable &cv, Hopper::State &state, scalar_t* TX_torques,  scalar_t *RX_state, int size) {
+  // Socket Stuff for Mujoco vis
+  int server_fd;
+  int new_socket;
+  // int valread;
+  struct sockaddr_in address;
+  int opt_socket = 1;
+  int addrlen;
+
+  std::cout << "Waiting for MuJoCo visualizer" << std::endl;
+  setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
+
+  while(1) {
+    auto ret = read(new_socket, RX_state, sizeof(RX_state));  // Correct size for RX_state (static array)
+    send(new_socket, TX_torques, size * sizeof(scalar_t), 0);  // Send the entire TX_torques array
+  }
+
+}
 
 void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
@@ -186,6 +207,8 @@ void setupGainsHardware(const std::string filepath)
   p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
   p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
   p.horizon = config["RL"]["horizon"].as<scalar_t>();
+  p.zed_x_offset = config["zed_x_offset"].as<scalar_t>();
+  p.zed_y_offset = config["zed_y_offset"].as<scalar_t>();
   alpha = config["filter_alpha"].as<scalar_t>();
 }
 

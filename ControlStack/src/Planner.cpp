@@ -48,7 +48,7 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
 
         std::vector<int> optimalInd;
         std::vector<vector_t> optimalPath;
-        planner->findPath(starting_loc, ending_loc, optimalInd, optimalPath);
+        planner->findPath(O.obstacles, starting_loc, ending_loc, optimalInd, optimalPath);
         plannerTiming.findPath = timer.time();
 
         vector_t sol;
@@ -56,7 +56,8 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         plannerTiming.refinement = timer.time();
         {
             std::lock_guard<std::mutex> lock(m);
-            planned_command << sol.segment(0, 4 * planner->mpc_->mpc_params_.N);
+            if (!(sol.segment(0, 4 * planner->mpc_->mpc_params_.N).array().isNaN().any()))
+                planned_command << sol.segment(0, 4 * planner->mpc_->mpc_params_.N);
         }
 
         cutTimingWindow.push_back(plannerTiming.cut);
@@ -77,7 +78,7 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         stdTiming.findPath = compute_stddev(pathTimingWindow, meanTiming.findPath);
         stdTiming.refinement = compute_stddev(mpcTimingWindow, meanTiming.refinement);
         if (planner->params_.log_edges) {
-            printf("Exiting because obstacle size is: %d", O.obstacles.size());
+            printf("Exiting because obstacle size is: %ld", O.obstacles.size());
             exit(0);
         }
     }

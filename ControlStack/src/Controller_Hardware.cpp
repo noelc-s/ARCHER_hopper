@@ -3,7 +3,6 @@
 // Driver code
 int main(int argc, char **argv)
 {
-
   ESPstate.setZero();
   fileHandle.open(dataLog);
   fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3" << std::endl;
@@ -68,7 +67,7 @@ int main(int argc, char **argv)
   vector_t EC;
   vector_t path_command;
   path_command.resize(5);
-  int index = 4;
+  int index = 1;
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -78,6 +77,10 @@ int main(int argc, char **argv)
   
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
 
+  int size = 11 + 2 + 8 * 10 + 2 * planner.planner->mpc_->mpc_params_.N;
+  scalar_t* TX_torques = new scalar_t[size]();  // Dynamically allocate array
+  scalar_t RX_state[1] = {0.0};
+  std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
 
   quat_des.setIdentity();
   omega_des.setZero();
@@ -139,28 +142,29 @@ int main(int argc, char **argv)
         quat_optitrack.normalize();
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
             OptiState.x, OptiState.y, OptiState.z,
-            // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), // uncomment if you want optitrack as orientation
-            ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
+            quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
+            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
             OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
       hopper->updateState(state);
       contact = hopper->state_.contact;
-      quat_t IMU_quat = hopper->state_.quat;
+      // quat_t IMU_quat = hopper->state_.quat;
 
-      // Measure the initial absolute yaw (from optitrack)
-      static scalar_t initial_yaw = extract_yaw(quat_optitrack);
-      static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
+      // // Measure the initial absolute yaw (from optitrack)
+      // static scalar_t initial_yaw = extract_yaw(quat_optitrack);
+      // static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
 
-      // Remove the measured yaw to put us back in the global frame
-      scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
-      scalar_t optitrack_yaw = extract_yaw(quat_optitrack);
-      quat_t measured_yaw_quat = Policy::Euler2Quaternion(0, 0, measured_yaw);
-      quat_t optitrack_yaw_quat = Policy::Euler2Quaternion(0, 0, optitrack_yaw);
-      quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
-      hopper->state_.quat = yaw_corrected;
+      // // Remove the measured yaw to put us back in the global frame
+      // scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
+      // scalar_t optitrack_yaw = extract_yaw(quat_optitrack);
+      // quat_t measured_yaw_quat = Policy::Euler2Quaternion(0, 0, measured_yaw);
+      // quat_t optitrack_yaw_quat = Policy::Euler2Quaternion(0, 0, optitrack_yaw);
+      // quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
+      // hopper->state_.quat = yaw_corrected;
 
+      hopper->state_.quat = quat_optitrack;
       // Add roll pitch offset to body frame
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
       hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
@@ -187,9 +191,13 @@ int main(int argc, char **argv)
           obst.setZero();
           if (i < boxes.size())
           {
-              for (size_t j = 0; j < 8; j++)
+              for (size_t j = 0; j < 8; j+=2)
               {
-                  obst[j] = boxes[i + j];
+                  obst[j] = boxes[i + j] + p.zed_x_offset;
+              }
+              for (size_t j = 1; j < 8; j+=2)
+              {
+                  obst[j] = boxes[i + j] + p.zed_y_offset;
               }
               obs.v << obst[0], obst[1],
                   obst[2], obst[3],
@@ -247,18 +255,40 @@ int main(int argc, char **argv)
         }
 
         // Add initial yaw to desired signal
-        quat_des = plus(quat_des, initial_yaw_quat);
+        // quat_des = plus(quat_des, initial_yaw_quat);
         omega_des = policy.DesiredOmega();
       }
       // TODO: this is just doing spindown. make this nice.
       u_des = policy.DesiredInputs(hopper->state_.wheel_vel, hopper->state_.contact);
 
       hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
+      for (int i = 0; i < 11; i++)
+      {
+          TX_torques[i] = hopper->state_.q[i];
+      }
+      TX_torques[11] = desired_command(0);
+      TX_torques[12] = desired_command(1);
+      for (int i = 0; i < obstacle_pos_zed.size(); i++)
+        {
+          TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
+          TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
+          TX_torques[15 + i * 8] = obstacle_pos_zed[i][2];
+          TX_torques[16 + i * 8] = obstacle_pos_zed[i][3];
+          TX_torques[17 + i * 8] = obstacle_pos_zed[i][4];
+          TX_torques[18 + i * 8] = obstacle_pos_zed[i][5];
+          TX_torques[19 + i * 8] = obstacle_pos_zed[i][6];
+          TX_torques[20 + i * 8] = obstacle_pos_zed[i][7];
+      }
+      for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+      {
+          TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
+          TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
+      }
 
-      e = quat_des.inverse() * hopper->state_.quat;
-      auto e_ = manif::SO3<scalar_t>(e);
-      xi = e_.log();
-      error << xi.coeffs();
+      // e = quat_des.inverse() * hopper->state_.quat;
+      // auto e_ = manif::SO3<scalar_t>(e);
+      // xi = e_.log();
+      // error << xi.coeffs();
 
       {
         std::lock_guard<std::mutex> lck(des_state_mtx);
