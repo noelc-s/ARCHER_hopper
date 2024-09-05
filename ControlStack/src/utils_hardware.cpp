@@ -55,6 +55,8 @@ struct HardwareParameters
   int optiTrackSetting;
   std::string rom_type;
   int horizon;
+  scalar_t dt_replan;
+  scalar_t yaw_drift;
 } p;
 
 std::mutex state_mtx;
@@ -98,8 +100,8 @@ void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
   static const scalar_t g = 9.81;
 
   // else
-  OptiState.x = msg->pose.position.x - state_init(0);
-  OptiState.y = msg->pose.position.y - state_init(1);
+  OptiState.x = msg->pose.position.x;
+  OptiState.y = msg->pose.position.y;
   OptiState.z = msg->pose.position.z + p.frameOffset + p.markerOffset;
   OptiState.q_w = msg->pose.orientation.w;
   OptiState.q_x = msg->pose.orientation.x;
@@ -174,13 +176,18 @@ void setupGainsHardware(const std::string filepath)
       p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
       p.leg_kp, p.leg_kd;
   p.model_name = config["RL"]["model_name"].as<std::string>();
-  p.rom_type = config["RL"]["rom_type"].as<std::string>();
-  p.v_max = config["RL"]["v_max"].as<scalar_t>();
-  p.a_max = config["RL"]["a_max"].as<scalar_t>();
   p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
   p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
-  p.horizon = config["RL"]["horizon"].as<scalar_t>();
   alpha = config["filter_alpha"].as<scalar_t>();
+
+  p.roll_offset = config["roll_offset"].as<scalar_t>();
+  p.pitch_offset = config["pitch_offset"].as<scalar_t>();
+  p.yaw_drift = config["Simulator"]["yaw_drift"].as<scalar_t>();
+  p.rom_type = config["MPC"]["rom"]["cls"].as<std::string>();
+  p.v_max = config["MPC"]["rom"]["v_max"].as<scalar_t>();
+  p.a_max = config["MPC"]["rom"]["a_max"].as<scalar_t>();
+  p.dt_replan = config["MPC"]["rom"]["dt"].as<scalar_t>();
+  p.horizon = config["MPC"]["N"].as<scalar_t>();
 }
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)

@@ -20,6 +20,10 @@ Simulator:
   w0: [0,0,0]
   pauseBeforeStart: 0 # in seconds
   speed: 1
+  yaw_drift: 1     # drift in rad / s
+  obsx: [1.0918, 1.0479]
+  obsy: [-0.3972, 0.398]
+  obsr: [0.375, 0.375]
 
 Debug:
   predHorizon: 1
@@ -27,7 +31,19 @@ Debug:
   stopIndex: 600000
 
 MPC:
-  N: 20
+  prob_str: complex
+  N: 25         # nodes of MPC horizons
+  Q: 10         # state cost
+  Qf: 10
+  Qw: 0
+  R: 1          # input cost
+  Rnom: 0.1     # input cost for nominal problem 
+  Rv_first: 10    # cost on rate of change of input
+  Rv_second: 10   # cost on second order rate of change of input
+  t_wall: 0.1   # time limit for nlp solve
+  dk: 1         # number of rom steps to take between mpc solves
+  w_max: 1
+  max_iter: 200
   stateScaling: [10,10,0,10,10,10,0,0,0,0, # pos
                  1,1,0,.01,.01,.01,0,0,0,0]   # vel
   inputScaling: [.001,.001,.001,.001]
@@ -51,20 +67,26 @@ MPC:
   circle_freq: 10
   max_vel: 1
 
+  rom:
+    cls: single_int_planner
+    dt: 0.1
+    v_max: 0.2
+    a_max: 0.2
 RaibertHeuristic:
-  # kx_p: -0.                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  # ky_p: 0.                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  # kx_d: -0.                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  # ky_d: 0.                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.3                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.2               # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.2                # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.4               # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.4                # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 0.1                # feed forward gain for velocity tracking (x-direction)
+  ky_f: -0.1               # feed forward gain for velocity tracking (y-direction)
+  pos_clip: 0.5
+  vel_clip: 1.
+  v_des_clip: 0.2
   angle_max: 1.0
-  yaw_damping: 0.004 
+  yaw_damping: 0.0035 
 
-pitch_offset: 0.
-roll_offset: 0.
+roll_offset: -0.004
+pitch_offset: 0.014
 
 Policy:
   dt_lowlevel: 0.001

@@ -35,6 +35,10 @@ int main(int argc, char **argv)
   {
     command = std::make_unique<V3Command>();
   }
+  else if (p.rom_type == "single_int_planner")
+  {
+    command = std::make_unique<SingleIntTube>(p.horizon, p.dt_replan, p.v_max);
+  }
   else
   {
     throw std::runtime_error("RoM type unrecognized");
@@ -51,7 +55,7 @@ int main(int argc, char **argv)
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
   // Thread for updating reduced order model
-  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
   desired_command = command->getCommand();
 
   quat_des.setIdentity();
@@ -113,8 +117,8 @@ int main(int argc, char **argv)
         quat_optitrack.normalize();
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
             OptiState.x, OptiState.y, OptiState.z,
-            // quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), // uncomment if you want optitrack as orientation
-            ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
+            quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
+            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
             OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2);
@@ -122,18 +126,6 @@ int main(int argc, char **argv)
       hopper->updateState(state);
       contact = hopper->state_.contact;
       quat_t IMU_quat = hopper->state_.quat;
-
-      // Measure the initial absolute yaw (from optitrack)
-      static scalar_t initial_yaw = extract_yaw(quat_optitrack);
-      static quat_t initial_yaw_quat = Policy::Euler2Quaternion(0, 0, initial_yaw);
-
-      // Remove the measured yaw to put us back in the global frame
-      scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
-      scalar_t optitrack_yaw = extract_yaw(quat_optitrack);
-      quat_t measured_yaw_quat = Policy::Euler2Quaternion(0, 0, measured_yaw);
-      quat_t optitrack_yaw_quat = Policy::Euler2Quaternion(0, 0, optitrack_yaw);
-      quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
-      hopper->state_.quat = yaw_corrected;
 
       // Add roll pitch offset to body frame
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
@@ -145,8 +137,6 @@ int main(int argc, char **argv)
         desired_command = command->getCommand();
         quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
 
-        // Add initial yaw to desired signal
-        quat_des = plus(quat_des, initial_yaw_quat);
         omega_des = policy.DesiredOmega();
       }
       // TODO: this is just doing spindown. make this nice.
