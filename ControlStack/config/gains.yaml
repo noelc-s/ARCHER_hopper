@@ -23,7 +23,7 @@ Simulator:
   # obsx: [0.4706, 1.096, 1.725]
   # obsy: [-0.391, 0.1917, -0.330]
   obsx: [1.0918, 1.0479]
-  obsy: [-0.3972, 0.398]
+  obsy: [-0.4172, 0.418]
   obsr: [0.375, 0.375]
 
   # Perturbation Forces
@@ -48,25 +48,25 @@ MPC:
   dk: 1         # number of rom steps to take between mpc solves
   w_max: 1
   max_iter: 200
-  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/4hez6ius
+  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/2tzuqtqc
 
   rom:
     cls: single_int_planner
     dt: 0.1
-    v_max: 0.2
+    v_max: 0.3
     a_max: 0.2
 
 RaibertHeuristic:
-  kx_p: -0.2               # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.25               # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.25                # p gain for placing foot to manipulate the forward velocity (y-direction)
   kx_d: -0.4               # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.4                # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_f: 0.1                # feed forward gain for velocity tracking (x-direction)
-  ky_f: -0.1               # feed forward gain for velocity tracking (y-direction)
+  kx_f: 0.25                # feed forward gain for velocity tracking (x-direction)
+  ky_f: -0.25               # feed forward gain for velocity tracking (y-direction)
   pos_clip: 0.5
   vel_clip: 1.
-  v_des_clip: 0.2
-  angle_max: 1.0
+  v_des_clip: 0.3
+  angle_max: 0.4
   yaw_damping: 0.0035 
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator

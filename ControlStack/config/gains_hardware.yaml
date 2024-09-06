@@ -21,8 +21,8 @@ Simulator:
   pauseBeforeStart: 0 # in seconds
   speed: 1
   yaw_drift: 1     # drift in rad / s
-  obsx: [1.0918, 1.0479]
-  obsy: [-0.3972, 0.398]
+  obsx: [1.064, 1.071]
+  obsy: [0.402, -0.400]
   obsr: [0.375, 0.375]
 
 Debug:
@@ -77,15 +77,15 @@ RaibertHeuristic:
   ky_p: 0.2                # p gain for placing foot to manipulate the forward velocity (y-direction)
   kx_d: -0.4               # d gain for placing foot to manipulate the forward velocity (x-direction)
   ky_d: 0.4                # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_f: 0.1                # feed forward gain for velocity tracking (x-direction)
-  ky_f: -0.1               # feed forward gain for velocity tracking (y-direction)
+  kx_f: 0.2                # feed forward gain for velocity tracking (x-direction)
+  ky_f: -0.2               # feed forward gain for velocity tracking (y-direction)
   pos_clip: 0.5
   vel_clip: 1.
-  v_des_clip: 0.2
-  angle_max: 1.0
+  v_des_clip: 0.3
+  angle_max: 0.4
   yaw_damping: 0.0035 
 
-roll_offset: -0.004
+roll_offset: 0.001
 pitch_offset: 0.014
 
 Policy:

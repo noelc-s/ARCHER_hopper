@@ -455,7 +455,7 @@ int main(int argc, const char **argv) {
         cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
         for (int i = 0; i < obs_r.size(); i++){
-            const double size[3] = {obs_r[i], 0.25, 0.25};
+            const double size[3] = {obs_r[i] - 0.125, 0.25, 0.25};
             const double pos[3] = {obs_x[i], obs_y[i], 0.25};
             const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
             const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
