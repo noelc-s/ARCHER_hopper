@@ -46,9 +46,9 @@ int main(int argc, char **argv)
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
-  // std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
-  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  // std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -77,7 +77,9 @@ int main(int argc, char **argv)
   
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
 
-  int size = 11 + 2 + 8 * 10 + 2 * planner.planner->mpc_->mpc_params_.N;
+  const int max_num_obstacles = 20;
+
+  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N;
   scalar_t* TX_torques = new scalar_t[size]();  // Dynamically allocate array
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
@@ -185,7 +187,7 @@ int main(int argc, char **argv)
           0, 1, 1, 0,
           0, 0, 1, 1;
       std::vector<float> boxes = getBoxPositions();
-      for (size_t i = 0; i < 10 * 8; i += 8) // 10 obstacles max
+      for (size_t i = 0; i < max_num_obstacles * 8; i += 8) // max_num_obstacles obstacles max
       {
           vector_t obst(8);
           obst.setZero();
