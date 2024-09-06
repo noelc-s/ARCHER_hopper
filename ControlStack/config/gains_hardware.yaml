@@ -85,7 +85,7 @@ RaibertHeuristic:
   angle_max: 0.4
   yaw_damping: 0.0035 
 
-roll_offset: 0.001
+roll_offset: -0.004
 pitch_offset: 0.014
 
 Policy:

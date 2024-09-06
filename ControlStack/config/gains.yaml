@@ -22,9 +22,9 @@ Simulator:
   # obsr: [0.375, 0.375, 0.375]
   # obsx: [0.4706, 1.096, 1.725]
   # obsy: [-0.391, 0.1917, -0.330]
-  obsx: [1.0918, 1.0479]
-  obsy: [-0.4172, 0.418]
-  obsr: [0.375, 0.375]
+  obsx: [1.438, 0.863, 0.577]
+  obsy: [-0.24, 0.383, -0.4]
+  obsr: [0.355, 0.355, 0.355]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
@@ -48,12 +48,13 @@ MPC:
   dk: 1         # number of rom steps to take between mpc solves
   w_max: 1
   max_iter: 200
-  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/2tzuqtqc
+  # nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/2tzuqtqc
+  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/yhwtziw1
 
   rom:
     cls: single_int_planner
     dt: 0.1
-    v_max: 0.3
+    v_max: 0.2
     a_max: 0.2
 
 RaibertHeuristic:
@@ -65,7 +66,7 @@ RaibertHeuristic:
   ky_f: -0.25               # feed forward gain for velocity tracking (y-direction)
   pos_clip: 0.5
   vel_clip: 1.
-  v_des_clip: 0.3
+  v_des_clip: 0.2
   angle_max: 0.4
   yaw_damping: 0.0035 
 
