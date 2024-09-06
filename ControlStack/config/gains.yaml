@@ -84,5 +84,10 @@ RL:
   model_name: ..
   horizon: 1
   dt_replan : 0.02
-  v_max: 0.3
+  v_max: 2.0
   a_max: 1.0
+
+Obst:
+  radius: 0.4
+  x: -0.869
+  y: -0.011

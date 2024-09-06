@@ -271,6 +271,10 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
 
+    scalar_t o_r = config["Obst"]["radius"].as<scalar_t>();
+    scalar_t o_x = config["Obst"]["x"].as<scalar_t>();
+    scalar_t o_y = config["Obst"]["y"].as<scalar_t>();
+
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
     d->qpos[1] = p0[1];
@@ -448,6 +452,15 @@ int main(int argc, const char **argv) {
         cam.lookat[0] = d->qpos[0];
         cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+
+        const double size[3] = {o_r, 0.25, 0.25};
+        const double pos[3] = {o_x, o_y, 0.25};
+        const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
+        const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
+
+        mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CYLINDER, size, pos, rot, box_color);
+            scn.ngeom++;
+
         mjr_render(viewport, &scn, &con);
 
         // swap OpenGL buffers (blocking call due to v-sync)

@@ -75,6 +75,10 @@ void setupGains(const std::string filepath, MPC_Params &mpc_p, Parameters &p) {
     p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
     p.horizon = config["RL"]["horizon"].as<scalar_t>();
 
+    p.o_r = config["Obst"]["radius"].as<scalar_t>();
+    p.o_x = config["Obst"]["x"].as<scalar_t>();
+    p.o_y = config["Obst"]["y"].as<scalar_t>();
+
 
     mpc_p.N = config["MPC"]["N"].as<int>();
     mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();

@@ -1,41 +1,8 @@
 #include "../inc/Controller.h"
 
-#include "../inc/reduced_order_safety_filter.h"
-
 // Driver code
 int main()
 {
-
-    // Params associated with CBF controller
-    double alpha = 1.0;
-    double epsilon = 20.0;
-    double sigma = 100.0;
-
-    // Params associated with desired controller: kd(x) = -Kp*(x - xd)
-    double Kp = 1.0;
-    Eigen::Vector2d xd(0.0, 0.0);
-
-    // Params associated with obstacle: h(x) = norm(x - xo)^2 - ro^2
-    double ro = 0.4;
-    Eigen::Vector2d xo(-1.0, 1.0);
-
-    // Params for maximum reduced-order input (clamp all controllers at umax)
-    double umax = 1.0;
-
-    // Construct a ReducedOrderSafetyFilter
-    ReducedOrderSafetyFilter safety_filter;
-
-    // Fill up params
-    safety_filter.alpha = alpha;
-    safety_filter.epsilon = epsilon;
-    safety_filter.Kp = Kp;
-    safety_filter.ro = ro;
-    safety_filter.sigma = sigma;
-    safety_filter.umax = umax;
-    safety_filter.xd = xd;
-    safety_filter.xo = xo;
-
-    safe_command.resize(5,1);
 
     setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
     setupGains(gainYamlPath, mpc_p, p); // mpc_p,
@@ -60,6 +27,10 @@ int main()
     {
         command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max);
     }
+    else if (p.rom_type == "safe_single_int")
+    {
+        command = std::make_unique<SafeSingleInt>(p.horizon, p.dt_replan, p.v_max, p.o_r, p.o_x, p.o_y);
+    }
     else if (p.rom_type == "double_int")
     {
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
@@ -83,7 +54,7 @@ int main()
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
-    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
     desired_command = command->getCommand();
 
     for (;;)

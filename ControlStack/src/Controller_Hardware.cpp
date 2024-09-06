@@ -27,6 +27,10 @@ int main(int argc, char **argv)
   {
     command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max);
   }
+  else if (p.rom_type == "safe_single_int")
+  {
+      command = std::make_unique<SafeSingleInt>(p.horizon, p.dt_replan, p.v_max, p.o_r, p.o_x, p.o_y);
+  }
   else if (p.rom_type == "double_int")
   {
     command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_policy, p.v_max, p.a_max);
@@ -42,16 +46,16 @@ int main(int argc, char **argv)
   // Instantiate a new policy.
   // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
   // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-  // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
+  ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
   // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
-  RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
+  // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
   std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
   // Thread for updating reduced order model
-  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
   desired_command = command->getCommand();
 
   quat_des.setIdentity();

@@ -78,7 +78,7 @@ endif()
 
 if(HARDWARE)
     message(STATUS "Hardware is building")
-    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/reduced_order_safety_filter.cpp)
     target_link_libraries(hopper_ctrl_hardware yaml-cpp)
     target_link_libraries(hopper_ctrl_hardware Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})

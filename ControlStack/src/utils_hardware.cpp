@@ -55,6 +55,8 @@ struct HardwareParameters
   int optiTrackSetting;
   std::string rom_type;
   int horizon;
+  double o_r, o_x, o_y;
+  scalar_t dt_replan;
 } p;
 
 std::mutex state_mtx;
@@ -178,7 +180,12 @@ void setupGainsHardware(const std::string filepath)
   p.a_max = config["RL"]["a_max"].as<scalar_t>();
   p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
   p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
-  p.horizon = config["RL"]["horizon"].as<scalar_t>();
+  p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
+  p.horizon = config["RL"]["horizon"].as<int>();
+
+  p.o_r = config["Obst"]["radius"].as<scalar_t>();
+  p.o_x = config["Obst"]["x"].as<scalar_t>();
+  p.o_y = config["Obst"]["y"].as<scalar_t>();
   alpha = config["filter_alpha"].as<scalar_t>();
 }
 
