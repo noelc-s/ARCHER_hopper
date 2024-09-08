@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    // std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
@@ -185,11 +185,21 @@ int main(int argc, char **argv)
 
             obstacle_pos_zed.push_back(obst);
         }
-        O.obstacles = obstacles;
+        // O.obstacles = obstacles;
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
-        path_command << planned_command.segment(4 * index,4), desired_command(4);
+
+        vector_t x1_x2(8);
+        x1_x2 << planned_command.segment(4 * index,8);
+        matrix_t mul = planner.planner->Bez_*x1_x2;
+        matrix_t controlPoints = Eigen::Map<matrix_t>(mul.data(),4,4).transpose();
+        scalar_t bez_t = state(0) - t_planner_last;
+
+
+        // path_command << planned_command.segment(4 * index,4), desired_command(4);
+        path_command << planner.planner->B->b(bez_t, controlPoints).transpose(), desired_command(4);
         sol << planned_command;
+        t_planner_last = state(0);
 
         // print at 40 Hz
         if (PRINT_TIMING == false)
@@ -203,9 +213,6 @@ int main(int argc, char **argv)
                 t_print_last = state(0);
             }
         }
-
-
-        t_planner_last = state(0);
 
         if (dt_elapsed > p.dt)
         {

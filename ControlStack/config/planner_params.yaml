@@ -3,7 +3,7 @@ num_traj: 0
 use_planner: true
 
 MPC:
-  N: 15
+  N: 20
   dt: 0.5
   SQP_iters: 2
   stateScaling: [1, 1, 1, 1]
@@ -11,9 +11,11 @@ MPC:
   terminalScaling: 10
   tau_max: 5
   vel_max: 0.2
+  path_length_cost: 5
   use_previous_reference: true
 
 Planner:
+  bez_dt: 0.5
   buffer: 0.1
   num_points: 4000
   x_bounds: [-3, 3, -1.5, 1.5] # min_x, max_x, min_y, max_y
