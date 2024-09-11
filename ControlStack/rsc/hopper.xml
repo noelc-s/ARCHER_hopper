@@ -65,7 +65,7 @@
         </body>
 
         <body name="target" pos="0 0 0" >
-		<geom type="ellipsoid" size=".05 .05 .01" contype="0" conaffinity="0" rgba = "0.8588    0.3176    0.3176  1.00"/>
+		<geom type="ellipsoid" size=".05 .05 .01" contype="0" conaffinity="0" rgba = "0.3176    0.3176    0.8588  1.00"/>
 		<joint type="slide" axis = "1 0 0"/>
 		<joint type="slide" axis = "0 1 0"/>
 	</body>

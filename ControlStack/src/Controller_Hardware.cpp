@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3" << std::endl;
+  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
   // Give ROS some time to initialize
   std::this_thread::sleep_for(std::chrono::seconds(2));
 
-  vector_t planned_command;
+  vector_t planned_command, graph_sol;
   vector_t IC;
   vector_t EC;
   vector_t path_command;
@@ -71,16 +71,18 @@ int main(int argc, char **argv)
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
+  graph_sol.resize(4 * planner.planner->mpc_->mpc_params_.N);
   IC.setZero();
   EC.setZero();
   planned_command.setZero();
-  
-  std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+  graph_sol.setZero();
+
+  std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
 
   const int max_num_obstacles = 20;
 
-  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N;
-  scalar_t* TX_torques = new scalar_t[size]();  // Dynamically allocate array
+  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N;
+  scalar_t *TX_torques = new scalar_t[size](); // Dynamically allocate array
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
 
@@ -189,71 +191,76 @@ int main(int argc, char **argv)
       std::vector<float> boxes = getBoxPositions();
       for (size_t i = 0; i < max_num_obstacles * 8; i += 8) // max_num_obstacles obstacles max
       {
-          vector_t obst(8);
-          obst.setZero();
-          if (i < boxes.size())
+        vector_t obst(8);
+        obst.setZero();
+        if (i < boxes.size())
+        {
+          for (size_t j = 0; j < 8; j += 2)
           {
-              for (size_t j = 0; j < 8; j+=2)
-              {
-                  obst[j] = boxes[i + j] + p.zed_x_offset;
-              }
-              for (size_t j = 1; j < 8; j+=2)
-              {
-                  obst[j] = boxes[i + j] + p.zed_y_offset;
-              }
-              obs.v << obst[0], obst[1],
-                  obst[2], obst[3],
-                  obst[4], obst[5],
-                  obst[6], obst[7];
-
-              std::vector<Eigen::Vector2d> edgeVectors(4);
-              std::vector<Eigen::Vector2d> normals(4);
-
-              // Compute edge vectors
-              // 0,1
-              // 2,3
-              // 4,5
-              // 6,7
-              edgeVectors[0] = Eigen::Vector2d(obst[6] - obst[0], obst[7] - obst[1]);
-              edgeVectors[1] = Eigen::Vector2d(obst[0] - obst[2], obst[1] - obst[3]);
-              edgeVectors[2] = Eigen::Vector2d(obst[2] - obst[4], obst[3] - obst[5]);
-              edgeVectors[3] = Eigen::Vector2d(obst[4] - obst[6], obst[5] - obst[7]);
-              edgeVectors[0].normalize();
-              edgeVectors[1].normalize();
-              edgeVectors[2].normalize();
-              edgeVectors[3].normalize();
-
-              // Construct A and b
-              vector_t tmp(4);
-              tmp.setZero();
-              for (int i = 0; i < 4; ++i)
-              {
-                  obs.A.row(i) << -edgeVectors[i].transpose(), 0, 0;
-                  obs.b(i) = -edgeVectors[i].transpose().dot(Eigen::Vector2d(obst[2 * i], obst[2 * i + 1]));
-              }
-              obstacles.push_back(obs);
-          } else {
-              obs.v.setZero();
-              obs.A.setZero();
-              obs.b << -1,-1,-1,-1;
+            obst[j] = boxes[i + j] + p.zed_x_offset;
           }
+          for (size_t j = 1; j < 8; j += 2)
+          {
+            obst[j] = boxes[i + j] + p.zed_y_offset;
+          }
+          obs.v << obst[0], obst[1],
+              obst[2], obst[3],
+              obst[4], obst[5],
+              obst[6], obst[7];
 
-          obstacle_pos_zed.push_back(obst);
+          std::vector<Eigen::Vector2d> edgeVectors(4);
+          std::vector<Eigen::Vector2d> normals(4);
+
+          // Compute edge vectors
+          // 0,1
+          // 2,3
+          // 4,5
+          // 6,7
+          edgeVectors[0] = Eigen::Vector2d(obst[6] - obst[0], obst[7] - obst[1]);
+          edgeVectors[1] = Eigen::Vector2d(obst[0] - obst[2], obst[1] - obst[3]);
+          edgeVectors[2] = Eigen::Vector2d(obst[2] - obst[4], obst[3] - obst[5]);
+          edgeVectors[3] = Eigen::Vector2d(obst[4] - obst[6], obst[5] - obst[7]);
+          edgeVectors[0].normalize();
+          edgeVectors[1].normalize();
+          edgeVectors[2].normalize();
+          edgeVectors[3].normalize();
+
+          // Construct A and b
+          vector_t tmp(4);
+          tmp.setZero();
+          for (int i = 0; i < 4; ++i)
+          {
+            obs.A.row(i) << -edgeVectors[i].transpose(), 0, 0;
+            obs.b(i) = -edgeVectors[i].transpose().dot(Eigen::Vector2d(obst[2 * i], obst[2 * i + 1]));
+          }
+          obstacles.push_back(obs);
+        }
+        else
+        {
+          obs.v.setZero();
+          obs.A.setZero();
+          obs.b << -1, -1, -1, -1;
+        }
+
+        obstacle_pos_zed.push_back(obst);
       }
       O.obstacles = obstacles;
       IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
       EC << desired_command(0), desired_command(1), 0, 0;
-      path_command << planned_command.segment(4 * index,4), 0;
+      path_command << planned_command.segment(4 * index, 4), 0;
       sol << planned_command;
 
       if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_policy).count() * 1e-9 > p.dt_policy)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
-        if (planner.planner->params_.use_planner) {
+        if (planner.planner->params_.use_planner)
+        {
           quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
-        } else {
-          quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);          
+        }
+        else
+        {
+          quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
         }
 
         // Add initial yaw to desired signal
@@ -266,25 +273,30 @@ int main(int argc, char **argv)
       hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
       for (int i = 0; i < 11; i++)
       {
-          TX_torques[i] = hopper->state_.q[i];
+        TX_torques[i] = hopper->state_.q[i];
       }
       TX_torques[11] = desired_command(0);
       TX_torques[12] = desired_command(1);
       for (int i = 0; i < obstacle_pos_zed.size(); i++)
-        {
-          TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
-          TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
-          TX_torques[15 + i * 8] = obstacle_pos_zed[i][2];
-          TX_torques[16 + i * 8] = obstacle_pos_zed[i][3];
-          TX_torques[17 + i * 8] = obstacle_pos_zed[i][4];
-          TX_torques[18 + i * 8] = obstacle_pos_zed[i][5];
-          TX_torques[19 + i * 8] = obstacle_pos_zed[i][6];
-          TX_torques[20 + i * 8] = obstacle_pos_zed[i][7];
+      {
+        TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
+        TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
+        TX_torques[15 + i * 8] = obstacle_pos_zed[i][2];
+        TX_torques[16 + i * 8] = obstacle_pos_zed[i][3];
+        TX_torques[17 + i * 8] = obstacle_pos_zed[i][4];
+        TX_torques[18 + i * 8] = obstacle_pos_zed[i][5];
+        TX_torques[19 + i * 8] = obstacle_pos_zed[i][6];
+        TX_torques[20 + i * 8] = obstacle_pos_zed[i][7];
       }
       for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
       {
-          TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
-          TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
+        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
+        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
+      }
+      for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+      {
+        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
+        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
       }
 
       // e = quat_des.inverse() * hopper->state_.quat;
@@ -319,21 +331,27 @@ int main(int argc, char **argv)
       // Log data
       if (fileWrite)
       {
+        // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
+        // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         fileHandle << state[0] << "," << hopper->state_.contact
-                   // << "," << 1
                    << "," << hopper->state_.pos.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_pos
                    << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_vel
-                   // << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
                    << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
-                   // << "," << error.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << "," << sol.transpose().format(CSVFormat)
-                   << std::endl;
+                   << "," << desired_command.transpose().format(CSVFormat)
+                   << "," << graph_sol.transpose().format(CSVFormat)
+                   << "," << sol.transpose().format(CSVFormat);
+        for (auto o : obstacles)
+        {
+          fileHandle << "," << o.v.col(0).transpose().format(CSVFormat);
+          fileHandle << "," << o.v.col(1).transpose().format(CSVFormat);
+        }
+        fileHandle << std::endl;
       }
     }
   }

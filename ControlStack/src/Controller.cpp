@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 
     // Data Logging
     fileHandle.open(dataLog);
-    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,rom_x,rom_y" << std::endl;
+    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
     fileHandleDebug.open(predictionLog);
     fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
@@ -64,24 +64,26 @@ int main(int argc, char **argv)
     const int max_num_obstacles = 20;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
-    scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N] = {};
+    scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N] = {};
     // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
     scalar_t RX_state[20] = {};
 
-    vector_t planned_command;
+    vector_t planned_command, graph_sol;
     vector_t IC;
     vector_t EC;
     vector_t path_command;
     path_command.resize(5);
-    int index = 1;
+    int index = 5;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
+    graph_sol.resize(4 * planner.planner->mpc_->mpc_params_.N);
     IC.setZero();
     EC.setZero();
     planned_command.setZero();
+    graph_sol.setZero();
 
-    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
 
     for (;;)
     {
@@ -122,6 +124,7 @@ int main(int argc, char **argv)
 
         // Obstacle positions are in local frame of hopper
         vector_t sol(planned_command.size());
+        sol.setZero();
         std::vector<vector_t> obstacle_pos_zed;
         std::vector<Obstacle> obstacles;
         Obstacle obs;
@@ -185,7 +188,7 @@ int main(int argc, char **argv)
 
             obstacle_pos_zed.push_back(obst);
         }
-        // O.obstacles = obstacles;
+        O.obstacles = obstacles;
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
 
@@ -242,20 +245,26 @@ int main(int argc, char **argv)
         // Log data
         if (fileWrite)
         {
+            // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
+                            // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
             fileHandle << state[0] << "," << hopper->state_.contact
-                       // << "," << 1
                        << "," << hopper->state_.pos.transpose().format(CSVFormat)
                        << "," << hopper->state_.leg_pos
                        << "," << hopper->state_.vel.transpose().format(CSVFormat)
                        << "," << hopper->state_.leg_vel
-                       // << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                        << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
                        << "," << quat_des.coeffs().transpose().format(CSVFormat)
                        << "," << hopper->state_.omega.transpose().format(CSVFormat)
                        << "," << hopper->torque.transpose().format(CSVFormat)
-                       // << "," << error.transpose().format(CSVFormat)
                        << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                       << "," << command->getCommand().row(0).format(CSVFormat) << std::endl;
+                       << "," << desired_command.transpose().format(CSVFormat)
+                       << "," << graph_sol.transpose().format(CSVFormat)
+                       << "," << sol.transpose().format(CSVFormat);
+            for (auto o : obstacles) {
+                fileHandle << "," << o.v.col(0).transpose().format(CSVFormat);
+                fileHandle << "," << o.v.col(1).transpose().format(CSVFormat);
+            }   
+            fileHandle << std::endl;
         }
 
         for (int i = 0; i < 4; i++)
@@ -295,6 +304,12 @@ int main(int argc, char **argv)
         {
             TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
             TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
+        }
+
+        for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+        {
+            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2*planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
+            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2*planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

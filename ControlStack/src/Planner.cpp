@@ -29,7 +29,7 @@ double compute_stddev(const std::deque<double>& window, double mean) {
     return std::sqrt(variance / window.size());
 }
 
-void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, int &index, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
+void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, vector_t &graph_sol, int &index, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
 {
     Timer timer(false);
     std::ofstream graph_file = open_log_file("../stored_graph.m");
@@ -52,7 +52,7 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         plannerTiming.findPath = timer.time();
 
         vector_t sol;
-        planner->refineWithMPC(sol, O, optimalInd, optimalPath, starting_loc, ending_loc);
+        planner->refineWithMPC(graph_sol, sol, O, optimalInd, optimalPath, starting_loc, ending_loc);
         plannerTiming.refinement = timer.time();
         {
             std::lock_guard<std::mutex> lock(m);

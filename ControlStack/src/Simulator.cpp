@@ -278,7 +278,7 @@ int main(int argc, const char **argv) {
     const int max_num_obstacles = 20;
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * N] = {0};
+    scalar_t RX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * N + 2 * N] = {0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -465,7 +465,7 @@ int main(int argc, const char **argv) {
 
         static double zero3[3] = {0};
         static double zero9[9] = {0};
-        float color[4] = {0.8588,0.3176,0.3176, 1.0};
+        float color[4] = { 0.3020,0.3490,0.8392, 1.0};
         for (int i = 0; i < N-1; i++) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
             mjv_makeConnector(
@@ -474,12 +474,21 @@ int main(int argc, const char **argv) {
             scn.ngeom += 1;
         }
 
+        float graphcolor[4] = {0.1725,0.8706,0.8588, 1.0};
+        for (int i = 0; i < N-1; i++) {
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, graphcolor);
+            mjv_makeConnector(
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 
+                    RX_torques[13+8*max_num_obstacles+2*N+2*i],RX_torques[13+8*max_num_obstacles+2*N+2*i+1],0,RX_torques[13+8*max_num_obstacles+2*N+2+2*i],RX_torques[13+8*max_num_obstacles+2*N+2+2*i+1],0);
+            scn.ngeom += 1;
+        }
+
         // d->qpos[body_offset+2] = RX_torques[13:20];
         for (int o = 0; o < max_num_obstacles-1; o++) {
             scalar_t corner[8];
             memcpy(corner, RX_torques + 13+8*o, 8*sizeof(scalar_t));
 
-            float box_color[4] = {0.235,0.478,0.870, 1.0};
+            float box_color[4] = {0.8392,0.3490,0.3490, 1.0};
             // Compute the centroid (average of all corners)
             double pos[3] = {
                 (corner[0] + corner[2] + corner[4] + corner[6]) / 4.0,  // x-coordinate
