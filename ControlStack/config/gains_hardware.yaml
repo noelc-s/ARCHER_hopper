@@ -1,10 +1,6 @@
 Orientation:
-        # Kp: [ -90.,-90.,-40. ]
-        # Kd: [ -6.,-6.,-5. ]
-        Kp: [ -15.,-15.,-15. ]
-        Kd: [ -3.,-3.,-3. ]
-        #Kp: [ 0,0,0 ]
-        #Kd: [ 0,0,0 ]
+        Kp: [ -90.,-90.,-90. ]
+        Kd: [ -6.,-6.,-6.]
 Leg:
         Kp: .5
         Kd: .005
@@ -21,9 +17,9 @@ Simulator:
   pauseBeforeStart: 0 # in seconds
   speed: 1
   yaw_drift: 1     # drift in rad / s
-  obsx: [1.064, 1.071]
-  obsy: [0.402, -0.400]
-  obsr: [0.375, 0.375]
+  obsx: [0.432, 1.183, 1.782]
+  obsy: [0.227, -0.186, 0.451]
+  obsr: [0.375, 0.375, 0.375]
 
 Debug:
   predHorizon: 1
@@ -73,20 +69,21 @@ MPC:
     v_max: 0.2
     a_max: 0.2
 RaibertHeuristic:
-  kx_p: -0.2               # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.4               # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.4                # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_f: 0.2                # feed forward gain for velocity tracking (x-direction)
-  ky_f: -0.2               # feed forward gain for velocity tracking (y-direction)
+  kx_p: -0.1               # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3               # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 0.21                # feed forward gain for velocity tracking (x-direction)
+  ky_f: -0.21               # feed forward gain for velocity tracking (y-direction)
   pos_clip: 0.5
   vel_clip: 1.
-  v_des_clip: 0.3
+  v_des_clip: 0.2
   angle_max: 0.4
   yaw_damping: 0.0035 
 
-roll_offset: -0.004
-pitch_offset: 0.014
+
+roll_offset: 0.005
+pitch_offset: 0.019
 
 Policy:
   dt_lowlevel: 0.001

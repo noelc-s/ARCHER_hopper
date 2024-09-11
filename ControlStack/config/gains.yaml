@@ -22,9 +22,9 @@ Simulator:
   # obsr: [0.375, 0.375, 0.375]
   # obsx: [0.4706, 1.096, 1.725]
   # obsy: [-0.391, 0.1917, -0.330]
-  obsx: [1.438, 0.863, 0.577]
-  obsy: [-0.24, 0.383, -0.4]
-  obsr: [0.355, 0.355, 0.355]
+  obsx: [0.432, 1.183, 1.782]
+  obsy: [0.227, -0.186, 0.451]
+  obsr: [0.375, 0.375, 0.375]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
@@ -49,7 +49,7 @@ MPC:
   w_max: 1
   max_iter: 200
   # nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/2tzuqtqc
-  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/yhwtziw1
+  nn_path: coleonguard-Georgia Institute of Technology/Deep_Tube_Training/gfwosj8d
 
   rom:
     cls: single_int_planner
@@ -58,12 +58,12 @@ MPC:
     a_max: 0.2
 
 RaibertHeuristic:
-  kx_p: -0.25               # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.25                # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.4               # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.4                # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_f: 0.25                # feed forward gain for velocity tracking (x-direction)
-  ky_f: -0.25               # feed forward gain for velocity tracking (y-direction)
+  kx_p: -0.1               # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3               # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 0.1                # feed forward gain for velocity tracking (x-direction)
+  ky_f: -0.1               # feed forward gain for velocity tracking (y-direction)
   pos_clip: 0.5
   vel_clip: 1.
   v_des_clip: 0.2
