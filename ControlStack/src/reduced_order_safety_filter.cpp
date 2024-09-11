@@ -218,3 +218,23 @@ Eigen::Vector2d ReducedOrderSafetyFilter::get_input(const Eigen::Vector2d &x) {
 
   return u;
 }
+
+/*
+Compute value of CBF at current state
+
+Arguments:
+- Eigen::Vector2d &x (current state of reduced-order model)
+
+Returns:
+- double h_val (value of CBF at current state)
+*/
+double ReducedOrderSafetyFilter::h(const Eigen::Vector2d &x) {
+
+  // Initialize input vector
+  float barrier_value;
+
+  // Compute barrier value for obstacle
+  barrier_value = pow(x(0) - xo(0), 2) + pow(x(1) - xo(1), 2) - pow(ro, 2);
+
+  return barrier_value;
+}

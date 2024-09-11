@@ -68,7 +68,14 @@
 		<geom type="ellipsoid" size=".05 .05 .01" contype="0" conaffinity="0" rgba = "0.8588    0.3176    0.3176  1.00"/>
 		<joint type="slide" axis = "1 0 0"/>
 		<joint type="slide" axis = "0 1 0"/>
-	</body>
+        </body>
+
+        <body name="target2" pos="0 0 0" >
+		<geom type="ellipsoid" size=".05 .05 .01" contype="0" conaffinity="0" rgba = "0.3176    0.3176    0.8588  1.00"/>
+		<joint type="slide" axis = "1 0 0"/>
+		<joint type="slide" axis = "0 1 0"/>
+        </body>
+	
 	<!--
 	<body name="trampoline" pos="0 0 0.2" zaxis="0 0 1">
 		<geom type="box" size=".2 .2 0.02" rgba=".9 .9 .9 1"/>

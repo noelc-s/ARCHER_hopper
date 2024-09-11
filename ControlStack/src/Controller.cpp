@@ -54,7 +54,13 @@ int main()
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
-    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+    vector_t des_vel, safe_vel;
+    des_vel.resize(2);
+    safe_vel.resize(2);
+    des_vel.setZero();
+    safe_vel.setZero();
+    scalar_t safe_h = 0;
+    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(des_vel), std::ref(safe_vel), std::ref(safe_h), std::ref(cv), std::ref(m), std::ref(hopper->state_));
     desired_command = command->getCommand();
 
     for (;;)
@@ -119,14 +125,17 @@ int main()
                        << "," << hopper->state_.leg_pos
                        << "," << hopper->state_.vel.transpose().format(CSVFormat)
                        << "," << hopper->state_.leg_vel
-                       // << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
                        << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
                        << "," << quat_des.coeffs().transpose().format(CSVFormat)
                        << "," << hopper->state_.omega.transpose().format(CSVFormat)
                        << "," << hopper->torque.transpose().format(CSVFormat)
-                       // << "," << error.transpose().format(CSVFormat)
                        << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                       << "," << command->getCommand().row(0).format(CSVFormat) << std::endl;
+                       << "," << des_vel.transpose().format(CSVFormat)
+                       << "," << safe_vel.transpose().format(CSVFormat)
+                       << "," << p.v_max * readUserInput.joystick_command(0)
+                       << "," << p.v_max * readUserInput.joystick_command(1)
+                       << "," << safe_h
+                       << std::endl;
         }
 
         for (int i = 0; i < 4; i++)
@@ -134,21 +143,19 @@ int main()
             TX_torques[i] = hopper->torque[i];
         }
 
-        for (int i = 4; i < 23; i++)
-        {
-            TX_torques[i] = 0;
-        }
-
         if ((desired_command.rows() == 5) & (desired_command.cols() == 1))
         {
-            TX_torques[11] = desired_command(0);
-            TX_torques[12] = desired_command(1);
+            TX_torques[4] = desired_command(0);
+            TX_torques[5] = desired_command(1);
         }
         else
         {
-            TX_torques[11] = desired_command(desired_command.rows() - 1, 0);
-            TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
+            TX_torques[4] = desired_command(desired_command.rows() - 1, 0);
+            TX_torques[5] = desired_command(desired_command.rows() - 1, 1);
         }
+
+        TX_torques[6] = p.v_max * readUserInput.joystick_command(0);
+        TX_torques[7] = p.v_max * readUserInput.joystick_command(1);
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));
         // quat_term = Quaternion<scalar_t>(x_term(6), x_term(3), x_term(4), x_term(5));

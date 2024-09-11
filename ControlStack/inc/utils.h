@@ -43,7 +43,7 @@ struct Parameters {
     int horizon;
     std::string rom_type;
     int stop_index; 
-    double o_r, o_x, o_y;
+    std::vector<double> o_r, o_x, o_y;
 };
 
 struct MPC_Params {

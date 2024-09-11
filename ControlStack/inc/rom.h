@@ -13,7 +13,7 @@ using namespace Hopper_t;
 class Command{
 public: 
     virtual ~Command() {};
-    virtual void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state) = 0;
+    virtual void update(UserInput *userInput, std::atomic<bool> &running, vector_t& des_vel, vector_t& safe_vel, scalar_t& safe_h, std::condition_variable &cv, std::mutex &m, Hopper::State &state) = 0;
     virtual matrix_t getCommand() = 0;
     virtual int getHorizon() const = 0;
     virtual int getStateDim() const = 0;
@@ -25,7 +25,7 @@ public:
     int getHorizon() const override { return 1; }
     int getStateDim() const override { return 3; }
     vector_t command;
-    void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    void update(UserInput *userInput, std::atomic<bool> &running, vector_t& des_vel, vector_t& safe_vel, scalar_t& safe_h, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
     matrix_t getCommand() {return command;};
 };
 
@@ -39,13 +39,13 @@ public:
     int getInputDim() const { return 2; }
     const double dt;
     const double v_max;
-    void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    void update(UserInput *userInput, std::atomic<bool> &running, vector_t& des_vel, vector_t& safe_vel, scalar_t& safe_h, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
     matrix_t getCommand() {return command.transpose();};
 };
 
 class SafeSingleInt : public Command {
 public: 
-    SafeSingleInt(const int horizon, const double dt, const double v_max, const double o_r, const double o_x, const double o_y);
+    SafeSingleInt(const int horizon, const double dt, const double v_max, const std::vector<double> o_r, const std::vector<double> o_x, const std::vector<double> o_y);
     matrix_t command;
     const int horizon;
     int getHorizon() const override { return horizon; }
@@ -53,11 +53,14 @@ public:
     int getInputDim() const { return 2; }
     const double dt;
     const double v_max;
+    std::vector<double> r0;
+    std::vector<double> x0;
+    std::vector<double> y0;
 
     // Construct a ReducedOrderSafetyFilter
     ReducedOrderSafetyFilter safety_filter;
 
-    void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    void update(UserInput *userInput, std::atomic<bool> &running, vector_t& des_vel, vector_t& safe_vel, scalar_t& safe_h, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
     matrix_t getCommand() {return command.transpose();};
 };
 
@@ -71,7 +74,7 @@ public:
     const double dt;
     const double v_max;
     const double a_max;
-    void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    void update(UserInput *userInput, std::atomic<bool> &running, vector_t& des_vel, vector_t& safe_vel, scalar_t& safe_h, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
     matrix_t getCommand() {return command.transpose();};
 };
 #endif

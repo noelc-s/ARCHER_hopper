@@ -237,7 +237,7 @@ int main(int argc, const char **argv) {
     int valread;
     struct sockaddr_in serv_addr;
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
+    scalar_t RX_torques[8] = {0.0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -271,9 +271,9 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
 
-    scalar_t o_r = config["Obst"]["radius"].as<scalar_t>();
-    scalar_t o_x = config["Obst"]["x"].as<scalar_t>();
-    scalar_t o_y = config["Obst"]["y"].as<scalar_t>();
+    std::vector<scalar_t> o_r = config["Obst"]["radius"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> o_x = config["Obst"]["x"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> o_y = config["Obst"]["y"].as<std::vector<scalar_t>>();
 
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
@@ -423,8 +423,10 @@ int main(int argc, const char **argv) {
 	static int body_offset = 11;
 	static int vel_offset = 10;
 
-	d->qpos[body_offset+0] = RX_torques[11];
-	d->qpos[body_offset+1] = RX_torques[12];
+	d->qpos[body_offset+0] = RX_torques[4];
+	d->qpos[body_offset+1] = RX_torques[5];
+    d->qpos[body_offset+2] = RX_torques[6];
+	d->qpos[body_offset+3] = RX_torques[7];
 	//d->qpos[body_offset+2] = RX_torques[13];
 	//d->qpos[25] = RX_torques[14];
 	//d->qpos[26] = RX_torques[15];
@@ -453,13 +455,17 @@ int main(int argc, const char **argv) {
         cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
 
-        const double size[3] = {o_r, 0.25, 0.25};
-        const double pos[3] = {o_x, o_y, 0.25};
-        const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
-        const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
+        for (int i = 0; i < o_r.size(); i++) {
+            const double size[3] = {o_r[i], 0.25, 0.25};
+            const double pos[3] = {o_x[i], o_y[i], 0.25};
+            const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
+            const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
 
-        mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CYLINDER, size, pos, rot, box_color);
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CYLINDER, size, pos, rot, box_color);
             scn.ngeom++;
+        }
+        
+        
 
         mjr_render(viewport, &scn, &con);
 

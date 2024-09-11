@@ -55,7 +55,7 @@ struct HardwareParameters
   int optiTrackSetting;
   std::string rom_type;
   int horizon;
-  double o_r, o_x, o_y;
+  std::vector<double> o_r, o_x, o_y;
   scalar_t dt_replan;
 } p;
 
@@ -183,9 +183,9 @@ void setupGainsHardware(const std::string filepath)
   p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
   p.horizon = config["RL"]["horizon"].as<int>();
 
-  p.o_r = config["Obst"]["radius"].as<scalar_t>();
-  p.o_x = config["Obst"]["x"].as<scalar_t>();
-  p.o_y = config["Obst"]["y"].as<scalar_t>();
+  p.o_r = config["Obst"]["radius"].as<std::vector<scalar_t>>();
+  p.o_x = config["Obst"]["x"].as<std::vector<scalar_t>>();
+  p.o_y = config["Obst"]["y"].as<std::vector<scalar_t>>();
   alpha = config["filter_alpha"].as<scalar_t>();
 }
 

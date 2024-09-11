@@ -54,8 +54,13 @@ int main(int argc, char **argv)
   std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
 
-  // Thread for updating reduced order model
-  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+  vector_t des_vel, safe_vel;
+  des_vel.resize(2);
+  safe_vel.resize(2);
+  des_vel.setZero();
+  safe_vel.setZero();
+  scalar_t safe_h = 0;
+  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(des_vel), std::ref(safe_vel), std::ref(safe_h), std::ref(cv), std::ref(m), std::ref(hopper->state_));
   desired_command = command->getCommand();
 
   quat_des.setIdentity();
@@ -191,19 +196,20 @@ int main(int argc, char **argv)
       if (fileWrite)
       {
         fileHandle << state[0] << "," << hopper->state_.contact
-                   // << "," << 1
-                   << "," << hopper->state_.pos.transpose().format(CSVFormat)
-                   << "," << hopper->state_.leg_pos
-                   << "," << hopper->state_.vel.transpose().format(CSVFormat)
-                   << "," << hopper->state_.leg_vel
-                   // << "," << IMU_quat.coeffs().transpose().format(CSVFormat)
-                   << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
-                   << "," << quat_des.coeffs().transpose().format(CSVFormat)
-                   << "," << hopper->state_.omega.transpose().format(CSVFormat)
-                   << "," << hopper->torque.transpose().format(CSVFormat)
-                   // << "," << error.transpose().format(CSVFormat)
-                   << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << std::endl;
+                       << "," << hopper->state_.pos.transpose().format(CSVFormat)
+                       << "," << hopper->state_.leg_pos
+                       << "," << hopper->state_.vel.transpose().format(CSVFormat)
+                       << "," << hopper->state_.leg_vel
+                       << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
+                       << "," << quat_des.coeffs().transpose().format(CSVFormat)
+                       << "," << hopper->state_.omega.transpose().format(CSVFormat)
+                       << "," << hopper->torque.transpose().format(CSVFormat)
+                       << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
+                       << "," << command->getCommand().row(0).format(CSVFormat)
+                       << "," << des_vel.transpose().format(CSVFormat)
+                       << "," << safe_vel.transpose().format(CSVFormat)
+                       << "," << safe_h
+                       << std::endl;
       }
     }
   }

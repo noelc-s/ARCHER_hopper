@@ -23,6 +23,8 @@ public:
 
   // Function to compute control
   Eigen::Vector2d get_input(const Eigen::Vector2d &x);
+  // Function to compute barrier value
+  double h(const Eigen::Vector2d &x);
 };
 
 #endif // REDUCED_ORDER_SAFETY_FILTER
