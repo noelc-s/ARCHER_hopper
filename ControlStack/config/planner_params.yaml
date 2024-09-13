@@ -6,9 +6,9 @@ MPC:
   N: 100 # careful, the graph length can only be this long (just for storing)
   dt: 0.05
   SQP_iters: 3
-  stateScaling: [1, 1, 1, 1]
+  stateScaling: [1, 1, 5, 5]
   inputScaling: [.1, .1]
-  terminalScaling: 10
+  terminalScaling: 100
   tau_max: 5
   vel_max: 0.2
   path_length_cost: 500
@@ -17,7 +17,11 @@ MPC:
 Planner:
   bez_dt: 0.5
   buffer: 0.08
-  num_points: 4000
   x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy
   log_edges: false
+  use_zed: false
+  use_random_grid: false
+  num_points: 2000
+  # use_random_grid: true
+  # num_points: 4000

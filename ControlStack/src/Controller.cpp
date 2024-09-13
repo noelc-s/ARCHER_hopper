@@ -188,7 +188,24 @@ int main(int argc, char **argv)
 
             obstacle_pos_zed.push_back(obst);
         }
-        O.obstacles = obstacles;
+        if (planner.planner->params_.use_zed) {
+            O.obstacles = obstacles;
+        } else {
+            obstacle_pos_zed.clear();
+            for (int i = 0; i < max_num_obstacles; i++) {
+                vector_t v(8);
+                if (i < O.obstacles.size())
+                    v <<  O.obstacles[i].v(0,0), O.obstacles[i].v(0,1), O.obstacles[i].v(1,0), O.obstacles[i].v(1,1),
+                        O.obstacles[i].v(2,0), O.obstacles[i].v(2,1), O.obstacles[i].v(3,0), O.obstacles[i].v(3,1);
+                else 
+                    v <<  O.obstacles[O.obstacles.size()-1].v(0,0), O.obstacles[O.obstacles.size()-1].v(0,1), O.obstacles[O.obstacles.size()-1].v(1,0), O.obstacles[O.obstacles.size()-1].v(1,1),
+                        O.obstacles[O.obstacles.size()-1].v(2,0), O.obstacles[O.obstacles.size()-1].v(2,1), O.obstacles[O.obstacles.size()-1].v(3,0), O.obstacles[O.obstacles.size()-1].v(3,1);
+                obstacle_pos_zed.push_back(v);
+            }
+        }
+        
+
+
         IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
         EC << desired_command(0), desired_command(1), 0, 0;
 
@@ -288,7 +305,7 @@ int main(int argc, char **argv)
             TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
         }
 
-        for (int i = 0; i < obstacle_pos_zed.size(); i++)
+        for (int i = 0; i < max_num_obstacles; i++)
         {
             TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
             TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
@@ -302,14 +319,14 @@ int main(int argc, char **argv)
 
         for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
         {
-            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
-            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
+            TX_torques[13 + 8 * max_num_obstacles + 2 * i] = sol[4 * i];
+            TX_torques[13 + 8 * max_num_obstacles + 2 * i + 1] = sol[4 * i + 1];
         }
 
         for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
         {
-            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2*planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
-            TX_torques[13 + 8 * obstacle_pos_zed.size() + 2*planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
+            TX_torques[13 + 8 * max_num_obstacles + 2*planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
+            TX_torques[13 + 8 * max_num_obstacles + 2*planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
         }
 
         // x_term << MPC::local2global(MPC::xik_to_qk(sol.segment(opt.nx * (opt.p.N - 1), 20), q0_local));

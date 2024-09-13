@@ -42,7 +42,6 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
 
     std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
                 planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
-
     sleep(1);
 
     while (running)
