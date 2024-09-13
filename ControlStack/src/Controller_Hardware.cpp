@@ -67,7 +67,7 @@ int main(int argc, char **argv)
   vector_t EC;
   vector_t path_command;
   path_command.resize(5);
-  int index = 1;
+  int index = 4;
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);

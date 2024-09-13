@@ -101,19 +101,19 @@ path_plot = [];
 mpc_plot = [];
 start_v = [];
 end_v = [];
-axis([-1 2 -1.5 1.5])
-axis square
+axis([-3 3 -1.5 1.5])
+axis equal
 mpc_N = result.MPC.N;
 x_ind = 1:mpc_N*4;
 u_ind = (mpc_N*4+1):(mpc_N*4+(mpc_N-1)*2);
 
-for obs = 1:length(Obstacle_A)
-    nom = lcon2vert(Obstacle_A{obs}(:,1:2), Obstacle_b{obs});
-    inds = convhull(nom);
-    nom = nom(inds,:)';
-    Obstacle = [nom(1,:) + Obs{1}(obs,1); nom(2,:) + Obs{1}(obs,2)];
-    O_p(obs) = patch(Obstacle(1,:),Obstacle(2,:),'r','facealpha',0.1);
-end
+% for obs = 1:length(Obstacle_A)
+%     nom = lcon2vert(Obstacle_A{obs}(:,1:2), Obstacle_b{obs});
+%     inds = convhull(nom);
+%     nom = nom(inds,:)';
+%     Obstacle = [nom(1,:) + Obs{1}(obs,1); nom(2,:) + Obs{1}(obs,2)];
+%     O_p(obs) = patch(Obstacle(1,:),Obstacle(2,:),'r','facealpha',0.1);
+% end
 
 % while(1)
 for path_ind = 1:size(Path,2)

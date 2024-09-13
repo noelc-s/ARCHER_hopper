@@ -36,19 +36,28 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
     std::ofstream output_file = open_log_file("../output.m");
     log(planner->points, graph_file, "Points");
     log(planner->edges, graph_file, "EdgeControlPoints");
+
+    std::condition_variable cv2;
+    std::mutex m2;
+
+    std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
+                planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
+
+    sleep(1);
+
     while (running)
     {
         timer.start();
-        if (planner->params_.log_edges) {
-            planner->cutGraph(O, output_file);
-        } else {
-            planner->cutGraph(O);
-        }
-        plannerTiming.cut = timer.time();
+        // if (planner->params_.log_edges) {
+        //     planner->cutGraph(O, output_file, cv2, m);
+        // } else {
+        //     planner->cutGraph(O, cv2, m);
+        // }
+        // plannerTiming.cut = timer.time();
 
         std::vector<int> optimalInd;
         std::vector<vector_t> optimalPath;
-        planner->findPath(O.obstacles, starting_loc, ending_loc, optimalInd, optimalPath);
+        planner->findPath(O.obstacles, starting_loc, ending_loc, optimalInd, optimalPath, cv2, m2);
         plannerTiming.findPath = timer.time();
 
         vector_t sol;
