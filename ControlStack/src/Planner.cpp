@@ -40,19 +40,19 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
     std::condition_variable cv2;
     std::mutex m2;
 
-    std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
-                planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
-    sleep(1);
+    // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
+    //             planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
+    // sleep(1);
 
     while (running)
     {
         timer.start();
-        // if (planner->params_.log_edges) {
-        //     planner->cutGraph(O, output_file, cv2, m);
-        // } else {
-        //     planner->cutGraph(O, cv2, m);
-        // }
-        // plannerTiming.cut = timer.time();
+        if (planner->params_.log_edges) {
+            planner->cutGraph(O, output_file, cv2, m);
+        } else {
+            planner->cutGraph(O, cv2, m);
+        }
+        plannerTiming.cut = timer.time();
 
         std::vector<int> optimalInd;
         std::vector<vector_t> optimalPath;
@@ -86,7 +86,7 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         stdTiming.findPath = compute_stddev(pathTimingWindow, meanTiming.findPath);
         stdTiming.refinement = compute_stddev(mpcTimingWindow, meanTiming.refinement);
         if (planner->params_.log_edges) {
-            printf("Exiting because obstacle size is: %ld", O.obstacles.size());
+            printf("Successfully logged edges.");
             exit(0);
         }
     }

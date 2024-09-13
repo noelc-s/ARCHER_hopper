@@ -275,7 +275,7 @@ int main(int argc, const char **argv) {
     config = YAML::LoadFile("../config/planner_params.yaml");
     int N = config["MPC"]["N"].as<int>();
 
-    const int max_num_obstacles = 20;
+    const int max_num_obstacles = 901;
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * N + 2 * N] = {0};
@@ -484,7 +484,7 @@ int main(int argc, const char **argv) {
         }
 
         // d->qpos[body_offset+2] = RX_torques[13:20];
-        for (int o = 0; o < max_num_obstacles-1; o++) {
+        for (int o = 0; o < max_num_obstacles; o++) {
             scalar_t corner[8];
             memcpy(corner, RX_torques + 13+8*o, 8*sizeof(scalar_t));
 

@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     // Give ROS some time to initialize
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    const int max_num_obstacles = 20;
+    const int max_num_obstacles = 901;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
     scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N] = {};
