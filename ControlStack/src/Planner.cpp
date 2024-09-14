@@ -40,8 +40,8 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
     std::condition_variable cv2;
     std::mutex m2;
 
-    // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
-    //             planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
+    // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, double&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
+    //             planner.get(), std::ref(O), std::ref(output_file), std::ref(plannerTiming.cut), std::ref(cv2), std::ref(m2));
     // sleep(1);
 
     while (running)

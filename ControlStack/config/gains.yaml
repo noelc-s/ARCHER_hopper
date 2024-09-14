@@ -11,7 +11,7 @@ LowLevel:
   dt: 0.001
 
 Simulator:
-  p0: [-3.8,-3.8,0.5]         # initial position [x,y,z]
+  p0: [0,0,0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
@@ -78,8 +78,8 @@ RL:
   # rom_type: double_int
   # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
-  rom_type: single_int
-  # rom_type: position
+  # rom_type: single_int
+  rom_type: position
   model_name: ..
   horizon: 10
   dt_replan : 0.02

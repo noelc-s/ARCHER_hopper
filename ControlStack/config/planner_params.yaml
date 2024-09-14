@@ -6,7 +6,7 @@ MPC:
   N: 50
   dt: 0.1
   SQP_iters: 1
-  stateRefScaling: [0, 0, 0, 0]
+  stateRefScaling: [1, 1, 1, 1]
   stateGoalScaling: [1, 1, 1, 1]
   path_length_cost: [10, 10, 100, 100]
   terminalScaling: [1, 1, 1, 1]
@@ -17,14 +17,14 @@ MPC:
 Planner:
   bez_dt: 0.5
   buffer: 0.05
-  x_bounds: [-4,4,-4,4] # min_x, max_x, min_y, max_y
+  x_bounds: [-2.1, 2.1, -1.5, 1.5] # min_x, max_x, min_y, max_y
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy
   log_edges: false
-  use_zed: false
-  use_random_grid: false
-  num_points: 5000
+  use_zed: true
+  use_random_grid: true
+  num_points: 3600
   max_graph_sol_length: 200
   # use_random_grid: true
   # num_points: 4000

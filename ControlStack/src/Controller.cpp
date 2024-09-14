@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     const int max_num_obstacles = 900;
-    const int max_graph_sol_length = 200;
+    const int max_graph_sol_length = planner.planner->params_.max_graph_sol_length;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
     scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length] = {};
@@ -294,10 +294,10 @@ int main(int argc, char **argv)
             TX_torques[i] = hopper->torque[i];
         }
 
-        for (int i = 4; i < 23; i++)
-        {
-            TX_torques[i] = 0;
-        }
+        // for (int i = 4; i < 23; i++)
+        // {
+        //     TX_torques[i] = 0;
+        // }
 
         if ((desired_command.rows() == 5) & (desired_command.cols() == 1))
         {

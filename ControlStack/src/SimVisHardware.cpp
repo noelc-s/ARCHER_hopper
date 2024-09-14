@@ -273,9 +273,9 @@ int main(int argc, const char **argv)
 
     config = YAML::LoadFile("../config/planner_params.yaml");
     int N = config["MPC"]["N"].as<int>();
+    int max_graph_sol_length = config["Planner"]["max_graph_sol_length"].as<int>();
 
     const int max_num_obstacles = 20;
-    const int max_graph_sol_length = 200;
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[11 + 2 + 8 * max_num_obstacles + 2 * N + 2 * max_graph_sol_length] = {0};
@@ -414,7 +414,7 @@ int main(int argc, const char **argv)
             scalar_t corner[8];
             memcpy(corner, RX_torques + 13 + 8 * o, 8 * sizeof(scalar_t));
 
-            float box_color[4] = {0.235, 0.478, 0.870, 1.0};
+            float box_color[4] = {0.8392,0.3490,0.3490, 1.0};
             // Compute the centroid (average of all corners)
             double pos[3] = {
                 (corner[0] + corner[2] + corner[4] + corner[6]) / 4.0, // x-coordinate

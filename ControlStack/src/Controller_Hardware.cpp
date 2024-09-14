@@ -63,7 +63,7 @@ int main(int argc, char **argv)
   std::this_thread::sleep_for(std::chrono::seconds(2));
 
   const int max_num_obstacles = 20;
-  const int max_graph_sol_length = 200;
+  const int max_graph_sol_length = planner.planner->params_.max_graph_sol_length;
 
   vector_t planned_command, graph_sol;
   vector_t IC;
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(planner_initialized), std::ref(cv), std::ref(m));
 
-  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N;
+  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length;
   scalar_t *TX_torques = new scalar_t[size](); // Dynamically allocate array
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
@@ -135,6 +135,22 @@ int main(int argc, char **argv)
   t_lowlevel = tstart;
   t_policy = tstart;
 
+  // Obstacle positions are in local frame of hopper
+  vector_t sol(planned_command.size());
+  std::vector<vector_t> obstacle_pos_zed;
+  std::vector<Obstacle> obstacles;
+  Obstacle obs;
+  obs.center.resize(2);
+  obs.center.setZero();
+  obs.v.resize(4, 2);
+  obs.A.resize(4, 4);
+  obs.b.resize(4);
+  obs.Adjacency.resize(4, 4);
+  obs.Adjacency << 1, 0, 0, 1,
+      1, 1, 0, 0,
+      0, 1, 1, 0,
+      0, 0, 1, 1;
+
   while (ros::ok())
   {
     ros::spinOnce();
@@ -176,22 +192,9 @@ int main(int argc, char **argv)
       quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
       hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
 
-      // Obstacle positions are in local frame of hopper
-      vector_t sol(planned_command.size());
-      std::vector<vector_t> obstacle_pos_zed;
-      std::vector<Obstacle> obstacles;
-      Obstacle obs;
-      obs.center.resize(2);
-      obs.center.setZero();
-      obs.v.resize(4, 2);
-      obs.A.resize(4, 4);
-      obs.b.resize(4);
-      obs.Adjacency.resize(4, 4);
-      obs.Adjacency << 1, 0, 0, 1,
-          1, 1, 0, 0,
-          0, 1, 1, 0,
-          0, 0, 1, 1;
       std::vector<float> boxes = getBoxPositions();
+      obstacles.clear();
+      obstacle_pos_zed.clear();
       for (size_t i = 0; i < max_num_obstacles * 8; i += 8) // max_num_obstacles obstacles max
       {
         vector_t obst(8);
@@ -302,10 +305,10 @@ int main(int argc, char **argv)
         TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
       }
 
-      // e = quat_des.inverse() * hopper->state_.quat;
-      // auto e_ = manif::SO3<scalar_t>(e);
-      // xi = e_.log();
-      // error << xi.coeffs();
+      e = quat_des.inverse() * hopper->state_.quat;
+      auto e_ = manif::SO3<scalar_t>(e);
+      xi = e_.log();
+      error << xi.coeffs();
 
       {
         std::lock_guard<std::mutex> lck(des_state_mtx);
@@ -346,10 +349,10 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << "," << desired_command.transpose().format(CSVFormat)
+                   << "," << desired_command.col(0).transpose().format(CSVFormat)
                    << "," << graph_sol.transpose().format(CSVFormat)
                    << "," << sol.transpose().format(CSVFormat);
-        for (auto o : obstacles)
+        for (auto o : O.obstacles)
         {
           fileHandle << "," << o.v.col(0).transpose().format(CSVFormat);
           fileHandle << "," << o.v.col(1).transpose().format(CSVFormat);
