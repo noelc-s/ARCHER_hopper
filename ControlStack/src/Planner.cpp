@@ -50,7 +50,7 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
         // if (planner->params_.log_edges) {
         //     planner->cutGraph(O, output_file, cv2, m);
         // } else {
-        //     planner->cutGraph(O,  cv2, m);
+        //     planner->cutGraph(O, cv2, m);
         // }
         // plannerTiming.cut = timer.time();
 

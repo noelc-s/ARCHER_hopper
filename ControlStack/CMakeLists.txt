@@ -130,3 +130,6 @@ target_link_directories(hopper_sim_hardware PUBLIC ${MUJOCO_PATH})
 
 target_link_libraries(hopper_ctrl box_position_subscriber)
 target_link_libraries(hopper_ctrl_hardware box_position_subscriber)
+
+add_executable(maze src/mainMazeGen.cpp)
+target_link_libraries(maze PUBLIC Eigen3::Eigen)

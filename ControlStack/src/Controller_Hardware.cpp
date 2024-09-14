@@ -24,7 +24,7 @@ int main(int argc, char **argv)
   std::unique_ptr<Command> command;
   if (p.rom_type == "single_int")
   {
-    command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max);
+    command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max, 0, 0);
   }
   else if (p.rom_type == "double_int")
   {

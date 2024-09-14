@@ -68,6 +68,9 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     p.roll_offset = config["roll_offset"].as<scalar_t>();
     p.pitch_offset = config["pitch_offset"].as<scalar_t>();
     p.yaw_drift = config["Simulator"]["yaw_drift"].as<scalar_t>();
+    std::vector<scalar_t> tmp = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
+    p.x0 = tmp[0];
+    p.y0 = tmp[1];
     p.model_name = config["RL"]["model_name"].as<std::string>();
     p.rom_type = config["RL"]["rom_type"].as<std::string>();
     p.v_max = config["RL"]["v_max"].as<scalar_t>();
@@ -80,7 +83,7 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     mpc_p.N = config["MPC"]["N"].as<int>();
     mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
     mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();
-    std::vector<scalar_t> tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
+    tmp = config["MPC"]["stateScaling"].as<std::vector<scalar_t>>();
     mpc_p.dt_flight= config["MPC"]["dt_flight"].as<scalar_t>();
     mpc_p.dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
     mpc_p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();

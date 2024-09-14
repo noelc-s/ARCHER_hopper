@@ -44,6 +44,7 @@ struct Parameters {
     int horizon;
     std::string rom_type;
     int stop_index; 
+    scalar_t x0, y0;
 };
 
 struct MPC_Parameters {

@@ -27,7 +27,7 @@ public:
 
 class SingleIntCommand : public Command {
 public: 
-    SingleIntCommand(const int horizon, const double dt, const double v_max);
+    SingleIntCommand(const int horizon, const double dt, const double v_max, const scalar_t x0, const scalar_t y0);
     matrix_t command;
     const int horizon;
     int getHorizon() const override { return horizon; }

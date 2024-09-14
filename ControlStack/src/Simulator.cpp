@@ -275,7 +275,7 @@ int main(int argc, const char **argv) {
     config = YAML::LoadFile("../config/planner_params.yaml");
     int N = config["MPC"]["N"].as<int>();
 
-    const int max_num_obstacles = 901;
+    const int max_num_obstacles = 900;
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
     scalar_t RX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * N + 2 * N] = {0};

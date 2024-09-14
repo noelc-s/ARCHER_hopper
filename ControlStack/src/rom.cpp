@@ -18,10 +18,15 @@ void V5Command::update(UserInput *userInput, std::atomic<bool> &running, std::co
     }
 }
 
-SingleIntCommand::SingleIntCommand(const int horizon, const double dt, const double v_max) : horizon(horizon), dt(dt), v_max(v_max)
+SingleIntCommand::SingleIntCommand(const int horizon, const double dt, const double v_max, const scalar_t x0, const scalar_t y0) : horizon(horizon), dt(dt), v_max(v_max)
 {
     command.resize(getHorizon(), getStateDim() + getInputDim() + 1);
     command.setZero();
+    for (int i = 0; i < command.rows(); i++) {
+        command(i,0) = x0;
+        command(i,1) = y0;
+    }
+    
 }
 
 void SingleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)

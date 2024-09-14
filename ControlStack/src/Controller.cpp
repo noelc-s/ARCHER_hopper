@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     std::unique_ptr<Command> command;
     if (p.rom_type == "single_int")
     {
-        command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max);
+        command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
     }
     else if (p.rom_type == "double_int")
     {
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     // Give ROS some time to initialize
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    const int max_num_obstacles = 901;
+    const int max_num_obstacles = 900;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
     scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N] = {};
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
     vector_t EC;
     vector_t path_command;
     path_command.resize(5);
-    int index = 5;
+    int index = 1;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -84,6 +84,8 @@ int main(int argc, char **argv)
     graph_sol.setZero();
 
     std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+
+    // sleep(10);
 
     for (;;)
     {
@@ -243,7 +245,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+                quat_des = policy.DesiredQuaternion(hopper->state_, desired_command.col(0));
             }
             // Add initial yaw to desired signal
             quat_des = plus(quat_des, initial_yaw_quat);
