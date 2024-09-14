@@ -62,6 +62,9 @@ int main(int argc, char **argv)
   // Give ROS some time to initialize
   std::this_thread::sleep_for(std::chrono::seconds(2));
 
+  const int max_num_obstacles = 20;
+  const int max_graph_sol_length = 200;
+
   vector_t planned_command, graph_sol;
   vector_t IC;
   vector_t EC;
@@ -71,15 +74,13 @@ int main(int argc, char **argv)
   IC.resize(4);
   EC.resize(4);
   planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
-  graph_sol.resize(4 * planner.planner->mpc_->mpc_params_.N);
+  graph_sol.resize(4 * max_graph_sol_length);
   IC.setZero();
   EC.setZero();
   planned_command.setZero();
   graph_sol.setZero();
 
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
-
-  const int max_num_obstacles = 20;
 
   int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N;
   scalar_t *TX_torques = new scalar_t[size](); // Dynamically allocate array
@@ -293,7 +294,7 @@ int main(int argc, char **argv)
         TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
         TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
       }
-      for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+      for (int i = 0; i < max_graph_sol_length; i++)
       {
         TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
         TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];

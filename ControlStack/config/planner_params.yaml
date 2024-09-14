@@ -16,7 +16,7 @@ MPC:
 
 Planner:
   bez_dt: 0.5
-  buffer: 0.02
+  buffer: 0.05
   x_bounds: [-4,4,-4,4] # min_x, max_x, min_y, max_y
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y

@@ -275,9 +275,10 @@ int main(int argc, const char **argv)
     int N = config["MPC"]["N"].as<int>();
 
     const int max_num_obstacles = 20;
+    const int max_graph_sol_length = 200;
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[11 + 2 + 8 * max_num_obstacles + 2 * N + 2 * N] = {0};
+    scalar_t RX_torques[11 + 2 + 8 * max_num_obstacles + 2 * N + 2 * max_graph_sol_length] = {0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[1] = {1.0};
 
@@ -399,7 +400,7 @@ int main(int argc, const char **argv)
         }
 
         float graphcolor[4] = {0.1725,0.8706,0.8588, 1.0};
-        for (int i = 0; i < N-1; i++) {
+        for (int i = 0; i < max_graph_sol_length-1; i++) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, graphcolor);
             mjv_makeConnector(
                     &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 

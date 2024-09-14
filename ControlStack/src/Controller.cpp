@@ -62,9 +62,10 @@ int main(int argc, char **argv)
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     const int max_num_obstacles = 900;
+    const int max_graph_sol_length = 200;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
-    scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N] = {};
+    scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length] = {};
     // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
     scalar_t RX_state[20] = {};
 
@@ -77,7 +78,7 @@ int main(int argc, char **argv)
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
-    graph_sol.resize(4 * planner.planner->mpc_->mpc_params_.N);
+    graph_sol.resize(4 * max_graph_sol_length);
     IC.setZero();
     EC.setZero();
     planned_command.setZero();
@@ -325,7 +326,7 @@ int main(int argc, char **argv)
             TX_torques[13 + 8 * max_num_obstacles + 2 * i + 1] = sol[4 * i + 1];
         }
 
-        for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
+        for (int i = 0; i < max_graph_sol_length; i++)
         {
             TX_torques[13 + 8 * max_num_obstacles + 2*planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
             TX_torques[13 + 8 * max_num_obstacles + 2*planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
