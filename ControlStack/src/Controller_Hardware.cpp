@@ -80,7 +80,9 @@ int main(int argc, char **argv)
   planned_command.setZero();
   graph_sol.setZero();
 
-  std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+  bool planner_initialized = false;
+
+  std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(planner_initialized), std::ref(cv), std::ref(m));
 
   int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * planner.planner->mpc_->mpc_params_.N;
   scalar_t *TX_torques = new scalar_t[size](); // Dynamically allocate array

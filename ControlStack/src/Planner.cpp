@@ -29,7 +29,7 @@ double compute_stddev(const std::deque<double>& window, double mean) {
     return std::sqrt(variance / window.size());
 }
 
-void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, vector_t &graph_sol, int &index, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
+void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, vector_t &graph_sol, int &index, std::atomic<bool> &running, bool &planner_initialized, std::condition_variable &cv, std::mutex &m)
 {
     Timer timer(false);
     std::ofstream graph_file = open_log_file("../stored_graph.m");
@@ -40,19 +40,19 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
     std::condition_variable cv2;
     std::mutex m2;
 
-    std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
-                planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
-    sleep(1);
+    // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
+    //             planner.get(), std::ref(O), std::ref(output_file), std::ref(cv2), std::ref(m2));
+    // sleep(1);
 
     while (running)
     {
         timer.start();
-        // if (planner->params_.log_edges) {
-        //     planner->cutGraph(O, output_file, cv2, m);
-        // } else {
-        //     planner->cutGraph(O, cv2, m);
-        // }
-        // plannerTiming.cut = timer.time();
+        if (planner->params_.log_edges) {
+            planner->cutGraph(O, output_file, cv2, m);
+        } else {
+            planner->cutGraph(O, cv2, m);
+        }
+        plannerTiming.cut = timer.time();
 
         std::vector<int> optimalInd;
         std::vector<vector_t> optimalPath;
@@ -89,5 +89,6 @@ void Planner::update(ObstacleCollector &O, vector_t &starting_loc, vector_t &end
             printf("Successfully logged edges.");
             exit(0);
         }
+        planner_initialized = true;
     }
 }

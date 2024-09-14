@@ -84,7 +84,9 @@ int main(int argc, char **argv)
     planned_command.setZero();
     graph_sol.setZero();
 
-    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(cv), std::ref(m));
+    bool planner_initialized = false;
+
+    std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(planner_initialized), std::ref(cv), std::ref(m));
 
     // sleep(10);
 
@@ -240,7 +242,7 @@ int main(int argc, char **argv)
         if (dt_elapsed > p.dt)
         {
             desired_command = command->getCommand();
-            if (planner.planner->params_.use_planner)
+            if (planner.planner->params_.use_planner & planner_initialized)
             {
                 quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
             }
@@ -277,10 +279,10 @@ int main(int argc, char **argv)
                        << "," << hopper->state_.omega.transpose().format(CSVFormat)
                        << "," << hopper->torque.transpose().format(CSVFormat)
                        << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                       << "," << desired_command.transpose().format(CSVFormat)
+                       << "," << desired_command.col(0).transpose().format(CSVFormat)
                        << "," << graph_sol.transpose().format(CSVFormat)
                        << "," << sol.transpose().format(CSVFormat);
-            for (auto o : obstacles) {
+            for (auto o : O.obstacles) {
                 fileHandle << "," << o.v.col(0).transpose().format(CSVFormat);
                 fileHandle << "," << o.v.col(1).transpose().format(CSVFormat);
             }   

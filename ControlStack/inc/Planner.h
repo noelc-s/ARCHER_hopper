@@ -21,7 +21,7 @@ public:
 
     std::unique_ptr<PathPlanner> planner;
 
-    void update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, vector_t &graph_sol, int &index, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
+    void update(ObstacleCollector &O, vector_t &starting_loc, vector_t &ending_loc, vector_t &planned_command, vector_t &graph_sol, int &index, std::atomic<bool> &running, bool &planner_initialized, std::condition_variable &cv, std::mutex &m);
 
     std::deque<double> cutTimingWindow;
     std::deque<double> pathTimingWindow;
