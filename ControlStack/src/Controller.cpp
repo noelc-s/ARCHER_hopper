@@ -301,8 +301,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            TX_torques[11] = desired_command(desired_command.rows() - 1, 0);
-            TX_torques[12] = desired_command(desired_command.rows() - 1, 1);
+            TX_torques[11] = desired_command(0, desired_command.rows() - 1);
+            TX_torques[12] = desired_command(1, desired_command.rows() - 1);
         }
 
         for (int i = 0; i < max_num_obstacles; i++)
