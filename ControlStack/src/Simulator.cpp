@@ -458,8 +458,8 @@ int main(int argc, const char **argv) {
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
         // update scene and render
-        cam.lookat[0] = d->qpos[0];
-        cam.lookat[1] = d->qpos[1];
+        // cam.lookat[0] = d->qpos[0];
+        // cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
 
 

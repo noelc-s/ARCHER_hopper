@@ -16,16 +16,16 @@ MPC:
 
 Planner:
   bez_dt: 0.5
-  buffer: 0.08
-  x_bounds: [-2.1, 2.1, -1.4, 1.2] # min_x, max_x, min_y, max_y
+  buffer: 0.05
+  x_bounds: [-6, 6, -4, 4] # min_x, max_x, min_y, max_y
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy
   log_edges: false
-  use_zed: true
-  use_random_grid: true
-  num_points: 3600
-  max_graph_sol_length: 200
-  max_num_obstacles: 20
+  use_zed: false
+  use_random_grid: false
+  num_points: 7000
+  max_graph_sol_length: 900
+  max_num_obstacles: 900
   # use_random_grid: true
   # num_points: 4000

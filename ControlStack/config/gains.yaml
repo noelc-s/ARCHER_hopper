@@ -11,7 +11,7 @@ LowLevel:
   dt: 0.001
 
 Simulator:
-  p0: [0,0,0.5]         # initial position [x,y,z]
+  p0: [-5.8,-3.8 ,0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]

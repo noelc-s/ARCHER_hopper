@@ -31,7 +31,7 @@ int main(int argc, char **argv)
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
     }
     else if (p.rom_type == "position") {
-        command = std::make_unique<V5Command>();
+        command = std::make_unique<V5Command>(p.x0, p.y0);
     }
     else
     {

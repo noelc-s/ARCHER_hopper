@@ -32,7 +32,7 @@ int main(int argc, char **argv)
   }
   else if (p.rom_type == "position")
   {
-    command = std::make_unique<V5Command>();
+    command = std::make_unique<V5Command>(0, 0);
   }
   else
   {

@@ -1,7 +1,7 @@
 #include "../inc/rom.h"
 #include <thread>
 
-V5Command::V5Command()
+V5Command::V5Command(const scalar_t x0, const scalar_t y0) : x0_(x0), y0_(y0)
 {
     command.resize(5);
     command.setZero();
@@ -13,7 +13,7 @@ void V5Command::update(UserInput *userInput, std::atomic<bool> &running, std::co
     {
         {
             std::lock_guard<std::mutex> lock(m);
-            command << userInput->joystick_command.segment(0, 2),0,0, userInput->joystick_command(2);
+            command << x0_ + userInput->joystick_command(0), y0_ + userInput->joystick_command(1),0,0, userInput->joystick_command(2);
         }
     }
 }

@@ -17,9 +17,10 @@ public:
 
 class V5Command : public Command{
 public: 
-    V5Command();
+    V5Command(const scalar_t x0, const scalar_t y0);
     int getHorizon() const override { return 1; }
     int getStateDim() const override { return 3; }
+    const scalar_t x0_, y0_;
     vector_t command;
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
     matrix_t getCommand() {return command;};
