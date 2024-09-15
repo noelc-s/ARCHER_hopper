@@ -62,7 +62,7 @@ int main(int argc, char **argv)
   // Give ROS some time to initialize
   std::this_thread::sleep_for(std::chrono::seconds(2));
 
-  const int max_num_obstacles = 20;
+  const int max_num_obstacles = planner.planner->params_.max_num_obstacles;
   const int max_graph_sol_length = planner.planner->params_.max_graph_sol_length;
 
   vector_t planned_command, graph_sol;
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
   std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(planner_initialized), std::ref(cv), std::ref(m));
 
   int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length;
-  scalar_t *TX_torques = new scalar_t[size](); // Dynamically allocate array
+  float *TX_torques = new float[size](); // Dynamically allocate array
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
 

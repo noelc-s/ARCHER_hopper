@@ -73,7 +73,7 @@ matrix_t A_kf(6, 6);
 matrix_t B_kf(6, 4);
 bool contact = false;
 
-void MujocoVis(std::condition_variable &cv, Hopper::State &state, scalar_t* TX_torques,  scalar_t *RX_state, int size) {
+void MujocoVis(std::condition_variable &cv, Hopper::State &state, float* TX_torques,  scalar_t *RX_state, int size) {
   // Socket Stuff for Mujoco vis
   int server_fd;
   int new_socket;
@@ -87,7 +87,7 @@ void MujocoVis(std::condition_variable &cv, Hopper::State &state, scalar_t* TX_t
 
   while(1) {
     auto ret = read(new_socket, RX_state, sizeof(RX_state));  // Correct size for RX_state (static array)
-    send(new_socket, TX_torques, size * sizeof(scalar_t), 0);  // Send the entire TX_torques array
+    send(new_socket, TX_torques, size * sizeof(float), 0);  // Send the entire TX_torques array
   }
 
 }

@@ -274,11 +274,10 @@ int main(int argc, const char **argv)
     config = YAML::LoadFile("../config/planner_params.yaml");
     int N = config["MPC"]["N"].as<int>();
     int max_graph_sol_length = config["Planner"]["max_graph_sol_length"].as<int>();
-
-    const int max_num_obstacles = 20;
+    int max_num_obstacles = config["Planner"]["max_num_obstacles"].as<int>();
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[11 + 2 + 8 * max_num_obstacles + 2 * N + 2 * max_graph_sol_length] = {0};
+    float RX_torques[11 + 2 + 8 * max_num_obstacles + 2 * N + 2 * max_graph_sol_length] = {0};
     // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
     scalar_t TX_state[1] = {1.0};
 
@@ -411,8 +410,8 @@ int main(int argc, const char **argv)
         // d->qpos[body_offset+2] = RX_torques[13:20];
         for (int o = 0; o < max_num_obstacles - 1; o++)
         {
-            scalar_t corner[8];
-            memcpy(corner, RX_torques + 13 + 8 * o, 8 * sizeof(scalar_t));
+            float corner[8];
+            memcpy(corner, RX_torques + 13 + 8 * o, 8 * sizeof(float));
 
             float box_color[4] = {0.8392,0.3490,0.3490, 1.0};
             // Compute the centroid (average of all corners)

@@ -61,11 +61,11 @@ int main(int argc, char **argv)
     // Give ROS some time to initialize
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    const int max_num_obstacles = 900;
+    const int max_num_obstacles = planner.planner->params_.max_num_obstacles;
     const int max_graph_sol_length = planner.planner->params_.max_graph_sol_length;
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
-    scalar_t TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length] = {};
+    float TX_torques[4 + 7 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length] = {};
     // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
     scalar_t RX_state[20] = {};
 
