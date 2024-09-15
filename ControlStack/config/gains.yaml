@@ -22,9 +22,9 @@ Simulator:
   # obsr: [0.375, 0.375, 0.375]
   # obsx: [0.4706, 1.096, 1.725]
   # obsy: [-0.391, 0.1917, -0.330]
-  obsx: [0.432, 1.183, 1.782]
-  obsy: [0.227, -0.186, 0.451]
-  obsr: [0.375, 0.375, 0.375]
+  obsx: [1, 1]
+  obsy: [0.41, -0.41]
+  obsr: [0.375, 0.375]
 
   # Perturbation Forces
   pert_force_x: [0, 0, 0, 0]    # perturbation force in X direction at below times
