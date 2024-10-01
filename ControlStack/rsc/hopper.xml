@@ -13,7 +13,7 @@
         <mesh name='wheel'  scale='0.001 0.001 0.001' file='wheel_reduced.stl'/>
         <mesh name='foot'   scale='0.001 0.001 0.001' file='foot.stl'/>
         <texture type='skybox' builtin='gradient' width='128' height='128' rgb1='0.4 0.6 0.8' rgb2='0 0 0'/>
-        <texture name='plane' type='2d' builtin='checker' rgb1='0.9 0.9 0.9' rgb2='0.7 0.7 0.7' width='512' height='512'/>
+        <texture name='plane' type='2d' builtin='checker' rgb1='0.9 0.9 0.9' rgb2='0.9 0.9 0.9' width='512' height='512'/>
         <material name='plane' reflectance='0.0' texture='plane' texrepeat='1 1' texuniform='true'/>
     </asset>
 

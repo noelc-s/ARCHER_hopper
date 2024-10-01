@@ -45,10 +45,7 @@ int main(int argc, char **argv)
   // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
-  // Thread for user input
-  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
-  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  scalar_t current_time = 0;
 
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -57,6 +54,11 @@ int main(int argc, char **argv)
   ObstacleCollector O = ObstacleCollector();
   Planner planner(O);
   std::cout << "Number of Edges: " << planner.planner->edges.size() << std::endl;
+
+  // Thread for user input
+  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
+  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(O), std::ref(cv), std::ref(m));
 
   startRosNode(argc, argv);
   // Give ROS some time to initialize

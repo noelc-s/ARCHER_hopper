@@ -14,6 +14,8 @@
 #include "../inc/Types.h"
 #include <thread>
 
+#include "obstacle.h"
+
 using namespace Hopper_t;
 
 class UserInput{
@@ -56,7 +58,7 @@ public:
     void getKeyboardInput(vector_2t &offsets,
                           scalar_t &dist, std::condition_variable & cv, std::mutex & m);
     void cornerTraversal(vector_2t &offsets,
-                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
+                          scalar_t &dist, ObstacleCollector &O, std::condition_variable & cv, std::mutex & m);
     void resetKeyboardInput();
 };
 

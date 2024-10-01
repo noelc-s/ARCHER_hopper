@@ -33,7 +33,7 @@ using namespace Hopper_t;
 
 const std::string gainYamlPath = "../config/gains.yaml";
 
-bool fileWrite = true;
+bool fileWrite = false;
 std::string dataLog = "../data/data.csv";
 std::string predictionLog = "../data/prediction.csv";
 std::ofstream fileHandle;

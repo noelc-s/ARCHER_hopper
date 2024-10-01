@@ -206,25 +206,31 @@ void UserInput::resetKeyboardInput()
 }
 
 void UserInput::cornerTraversal(vector_2t &offsets,
-                          scalar_t &dist, std::condition_variable &cv, std::mutex &m)
+                          scalar_t &dist, ObstacleCollector &O, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
 
     std::chrono::seconds timeout(50000);
-    scalar_t sign = 1;
+
+    ObstacleCollector O_new;
+    bool start = false;
 
     while (1)
     {
+        
         std::future<vector_3t> future = std::async(keyboardInput);
 
         if (future.wait_for(timeout) == std::future_status::ready)
-            // joystick_command(0) = -0.3 -sign*1.6;
-            // joystick_command(1) = 0;
+
             joystick_command(0) = 11.6;
             joystick_command(1) = 7.6;
+            if (start) {
+                O_new = ObstacleCollector();
+                O.obstacles = O_new.obstacles;
+            }
+            start = true;
             joystick_command(2) = 0;
-            sign *= -1;
     }
 }
 

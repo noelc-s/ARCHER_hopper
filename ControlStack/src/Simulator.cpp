@@ -469,7 +469,7 @@ int main(int argc, const char **argv) {
         for (int i = 0; i < N-1; i++) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, color);
             mjv_makeConnector(
-                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .03, 
                     RX_torques[13+8*max_num_obstacles+2*i],RX_torques[13+8*max_num_obstacles+2*i+1],0,RX_torques[13+8*max_num_obstacles+2+2*i],RX_torques[13+8*max_num_obstacles+2+2*i+1],0);
             scn.ngeom += 1;
         }
@@ -478,7 +478,7 @@ int main(int argc, const char **argv) {
         for (int i = 0; i < max_graph_sol_length-1; i++) {
             mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CAPSULE, zero3, zero3, zero9, graphcolor);
             mjv_makeConnector(
-                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .01, 
+                    &scn.geoms[scn.ngeom], mjGEOM_CAPSULE, .03, 
                     RX_torques[13+8*max_num_obstacles+2*N+2*i],RX_torques[13+8*max_num_obstacles+2*N+2*i+1],0,RX_torques[13+8*max_num_obstacles+2*N+2+2*i],RX_torques[13+8*max_num_obstacles+2*N+2+2*i+1],0);
             scn.ngeom += 1;
         }

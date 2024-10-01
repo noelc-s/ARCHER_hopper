@@ -1,5 +1,4 @@
 #include "../inc/Controller.h"
-
 // Driver code
 int main(int argc, char **argv)
 {
@@ -44,10 +43,7 @@ int main(int argc, char **argv)
     // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
-    // Thread for user input
-    std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-    // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-    std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    scalar_t current_time = 0;
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -56,6 +52,11 @@ int main(int argc, char **argv)
     ObstacleCollector O = ObstacleCollector();
     Planner planner(O);
     std::cout << "Number of Edges: " << planner.planner->edges.size() << std::endl;
+
+    // Thread for user input
+    std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(O), std::ref(cv), std::ref(m));
 
     startRosNode(argc, argv);
     // Give ROS some time to initialize
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
     vector_t EC;
     vector_t path_command;
     path_command.resize(5);
-    int index = 1;
+    int index = 6;
     IC.resize(4);
     EC.resize(4);
     planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
@@ -99,6 +100,7 @@ int main(int argc, char **argv)
         dt_elapsed = state(0) - t_last;
         dt_planner_elapsed = state(0) - t_planner_last;
         dt_print_elapsed = state(0) - t_print_last;
+        current_time = state(0);
 
         hopper->updateState(state);
 
