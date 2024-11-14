@@ -27,10 +27,6 @@
 #include "../src/utils_hardware.cpp"
 #include "../inc/rom.h"
 
-#include "../inc/Planner.h"
-
-#include "../inc/ros_subscriber.hpp"
-
 using namespace Eigen;
 using namespace Hopper_t;
 
