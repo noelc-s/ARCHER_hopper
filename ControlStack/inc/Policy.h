@@ -7,8 +7,9 @@
 #include "yaml-cpp/yaml.h"
 #include <math.h>
 
-#include "../inc/Hopper.h"
-// #include "../inc/MPC.h"
+#include "Hopper.h"
+#include "utils.h"
+#include "MPC.h"
 #include <onnxruntime_cxx_api.h>
 #include <numeric>
 
@@ -36,18 +37,7 @@ public:
     } params;
 
     void loadParams(std::string filepath, Params& params);   
-    
-    /*! @brief  evaluate the forward dynamics
-    *  @param [in] roll  roll angle of the body frame wrt the world frame
-    *  @param [in] pitch  pitch angle of the body frame wrt the world frame
-    *  @param [in] yaw  yaw angle of the body frame wrt the world frame
-    *  @param [out] quaternion  quaternion representation of the orientation
-    */
-    static quat_t Euler2Quaternion(scalar_t roll, scalar_t pitch, scalar_t yaw) {
-        return AngleAxisd(roll, Vector3d::UnitX())
-                    * AngleAxisd(pitch, Vector3d::UnitY())
-                    * AngleAxisd(yaw, Vector3d::UnitZ());
-    }
+
 
     static vector_3t Quaternion2Euler(const quat_t& q);
     
@@ -105,22 +95,22 @@ public:
     size_t outputTensorSize;    
 };
 
-// class MPCPolicy : public Policy {
-// public:
-//     MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc);
+class MPCPolicy : public Policy {
+public:
+    MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc);
 
-//     std::shared_ptr<Hopper> hopper;
-//     std::shared_ptr<MPC> mpc_;
-//     vector_t q0, q0_local;
-//     vector_t sol, sol_g;
-//     matrix_t x_pred, u_pred;
-//     scalar_t dt_elapsed_MPC, t_last_MPC;
+    std::shared_ptr<Hopper> hopper;
+    std::shared_ptr<MPC> mpc_;
+    vector_t q0, q0_local;
+    vector_t sol, sol_g;
+    matrix_t x_pred, u_pred;
+    scalar_t dt_elapsed_MPC, t_last_MPC;
     
 
-//     quat_t DesiredQuaternion(Hopper::State state, vector_3t command);
-//     vector_3t DesiredOmega();
-//     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
-// };
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
+    vector_3t DesiredOmega();
+    vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+};
 
 class RLPolicy : public Policy {
 public:

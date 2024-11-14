@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 
       hopper->state_.quat = quat_optitrack;
       // Add roll pitch offset to body frame
-      quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
+      quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
       hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
 
       if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_policy).count() * 1e-9 > p.dt_policy)

@@ -223,77 +223,83 @@ vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const boo
     return u_des;
 }
 
-// MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc) : hopper(std::move(hopper)), mpc_(std::move(mpc)) {
-//     loadParams(yamlPath, params);
-//     q0.resize(21);
-//     q0_local.resize(21);
-//     x_pred.resize(21,2);
-//     u_pred.resize(4,1);
-//     sol.resize(mpc_->nx * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
-//     sol_g.resize((mpc_->nx + 1) * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
-//     q0.setZero();
-//     q0_local.setZero();
-//     sol.setZero();
-//     sol_g.setZero();
-//     x_pred.setZero();
-//     u_pred.setZero();
-//     t_last_MPC = -1;
-//     dt_elapsed_MPC = 0;
-// }
+MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc) : hopper(std::move(hopper)), mpc_(std::move(mpc)) {
+    loadParams(yamlPath, params);
+    q0.resize(21);
+    q0_local.resize(21);
+    x_pred.resize(21,2);
+    u_pred.resize(4,1);
+    sol.resize(mpc_->nx * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
+    sol_g.resize((mpc_->nx + 1) * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
+    q0.setZero();
+    q0_local.setZero();
+    sol.setZero();
+    sol_g.setZero();
+    x_pred.setZero();
+    u_pred.setZero();
+    t_last_MPC = -1;
+    dt_elapsed_MPC = 0;
+}
 
-// quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
-// {
-//     bool contact = state.contact;
-//     scalar_t x_a = state.pos[0];
-//     scalar_t y_a = state.pos[1];
-//     scalar_t xd_a = state.vel[0];
-//     scalar_t yd_a = state.vel[1];
+quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
+{
+    bool contact = state.contact;
+    scalar_t x_a = state.pos[0];
+    scalar_t y_a = state.pos[1];
+    scalar_t xd_a = state.vel[0];
+    scalar_t yd_a = state.vel[1];
 
-//     q0 << state.q, state.v;
-//     q0_local = MPC::global2local(q0);
-//     dt_elapsed_MPC = state.t - t_last_MPC;
-//     bool replan = dt_elapsed_MPC >= mpc_->p.MPC_dt_replan;
-//     vector_2t command_interp;
-//     command_interp << command.segment(0,2);
-//     if (replan)
-//     {
-//         mpc_->solve(*hopper, sol, command, command_interp);
-//         for (int i = 0; i < mpc_->p.N; i++)
-//         {
-//             sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));
-//         }
-//         sol_g.segment((mpc_->nx + 1) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1)) << sol.segment((mpc_->nx) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1));
-//         x_pred << MPC::local2global(MPC::xik_to_qk(sol.segment(0, 20), q0_local)), MPC::local2global(MPC::xik_to_qk(sol.segment(20, 20), q0_local));
-//         u_pred << sol.segment(mpc_->p.N * mpc_->nx, 4);
-//         t_last_MPC = state.t;
-//     }
+    q0 << state.q, state.v;
+    q0_local = global2local(q0);
+    dt_elapsed_MPC = state.t - t_last_MPC;
+    bool replan = dt_elapsed_MPC >= mpc_->p.MPC_dt_replan;
+    vector_3t command_;
+    command_ << command(0), command(1), 0;
+    vector_2t command_interp;
+    command_interp << command(0), command(1);
+    if (replan)
+    {
+        mpc_->solve(*hopper, sol, command_, command_interp);
+        for (int i = 0; i < mpc_->p.N; i++)
+        {
+            sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << local2global(xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));
+        }
+        sol_g.segment((mpc_->nx + 1) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1)) << sol.segment((mpc_->nx) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1));
+        x_pred << local2global(xik_to_qk(sol.segment(0, 20), q0_local)), local2global(xik_to_qk(sol.segment(20, 20), q0_local));
+        u_pred << sol.segment(mpc_->p.N * mpc_->nx, 4);
+        t_last_MPC = state.t;
+    }
 
-//     // Compute continuous time solution to discrete time problem.
-//     // vector_t x_des(21);
-//     // hopper.css2dss(mpc_->Ac.block(0,0,mpc_->nx,mpc_->nx),mpc_->Bc.block(0,0,mpc_->nx,mpc_->nu),mpc_->Cc.block(0,0,mpc_->nx,1),state(0)-t_last_MPC,mpc_->Ad_,mpc_->Bd_,mpc_->Cd_);
-//     // x_des << MPC::local2global(MPC::Exp(mpc_->Ad_*sol.segment(0,20) + mpc_->Bd_*u_pred + mpc_->Cd_));
-//     // quat_des = Quaternion<scalar_t>(x_des(6), x_des(3), x_des(4), x_des(5));
-//     // omega_des << x_des(14), x_des(15),x_des(16);
+    // Compute continuous time solution to discrete time problem.
+    // vector_t x_des(21);
+    // hopper.css2dss(mpc_->Ac.block(0,0,mpc_->nx,mpc_->nx),mpc_->Bc.block(0,0,mpc_->nx,mpc_->nu),mpc_->Cc.block(0,0,mpc_->nx,1),state(0)-t_last_MPC,mpc_->Ad_,mpc_->Bd_,mpc_->Cd_);
+    // x_des << MPC::local2global(MPC::Exp(mpc_->Ad_*sol.segment(0,20) + mpc_->Bd_*u_pred + mpc_->Cd_));
+    // quat_des = Quaternion<scalar_t>(x_des(6), x_des(3), x_des(4), x_des(5));
+    // omega_des << x_des(14), x_des(15),x_des(16);
 
-//     // Simply set the next waypoint as the setpoint of the low level.
-//     quat_t quat_des;
-//     quat_des = Quaternion<scalar_t>(x_pred(6, 1), x_pred(3, 1), x_pred(4, 1), x_pred(5, 1));
-//     return quat_des;
-// }
+    // Simply set the next waypoint as the setpoint of the low level.
+    quat_t quat_des;
+    quat_des = Quaternion<scalar_t>(x_pred(6, 1), x_pred(3, 1), x_pred(4, 1), x_pred(5, 1));
+    return quat_des;
+}
 
-// vector_3t MPCPolicy::DesiredOmega()
-// {
-//     vector_3t omega;
-//     omega << x_pred(14, 1), x_pred(15, 1), x_pred(16, 1);
-//     return omega;
-// }
+vector_3t MPCPolicy::DesiredOmega()
+{
+    vector_3t omega;
+    omega << x_pred(14, 1), x_pred(15, 1), x_pred(16, 1);
+    return omega;
+}
 
-// vector_4t MPCPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
-// {
-//     vector_4t inputs;
-//     inputs = u_pred;
-//     return inputs;
-// }
+vector_4t MPCPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
+{
+    vector_4t inputs;
+    inputs = u_pred;
+    vector_3t desired_wheel_vel(0, 0,0);
+    if (contact) {
+        inputs.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
+    }
+    return inputs;
+}
 
 
 RLPolicy::RLPolicy(std::string model_name, const std::string yamlPath)

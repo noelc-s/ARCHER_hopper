@@ -2,15 +2,17 @@
 #define MPC_H
 
 #include <Eigen/Dense>
-#include "OsqpEigen/OsqpEigen.h"
+#include "osqp++.h"
 #include <iostream>
 #include "Types.h"
 #include "yaml-cpp/yaml.h"
 #include "Hopper.h"
 #include <manif/manif.h>
+#include "utils.h"
 
 using namespace Hopper_t;
 using namespace Eigen;
+using namespace osqp;
 
 class MPC {
 public:
@@ -27,7 +29,10 @@ public:
     Eigen::SparseMatrix<double,ColMajor> H;
     vector_t f, full_ref;
 
-    OsqpEigen::Solver solver;
+    OsqpSolver solver;
+    OsqpInstance instance;
+    OsqpSettings settings;
+
 
     // Parameters for the MPC program
     MPC_Parameters p;
@@ -45,46 +50,48 @@ public:
 	d_bar.resize(p.N-1,1);
 	elapsed_time.resize(p.N,1);
 
-        nvar = nx*p.N+nu*(p.N-1);
+    nvar = nx*p.N+nu*(p.N-1);
 
-        Ac.resize(nx,nx*(p.N-1));
-        Bc.resize(nx,nu*(p.N-1));
-        Cc.resize(nx,p.N-1);
-        Ad.resize(nx,nx*(p.N-1));
-        Bd.resize(nx,nu*(p.N-1));
-        Cd.resize(nx,p.N-1);
-        Ac_.resize(nx,nx);
-        Bc_.resize(nx,nu);
-        Cc_.resize(nx,1);
-        Ad_.resize(nx,nx);
-        Bd_.resize(nx,nu);
-        Cd_.resize(nx,1);
+    Ac.resize(nx,nx*(p.N-1));
+    Bc.resize(nx,nu*(p.N-1));
+    Cc.resize(nx,p.N-1);
+    Ad.resize(nx,nx*(p.N-1));
+    Bd.resize(nx,nu*(p.N-1));
+    Cd.resize(nx,p.N-1);
+    Ac_.resize(nx,nx);
+    Bc_.resize(nx,nu);
+    Cc_.resize(nx,1);
+    Ad_.resize(nx,nx);
+    Bd_.resize(nx,nu);
+    Cd_.resize(nx,1);
 
-        dynamics_A.resize(nx*p.N+(p.N-1)*4,(nx*p.N+nu*(p.N-1)));
-        SparseIdentity.resize(nx*p.N+(p.N-1)*4,(nx*p.N+nu*(p.N-1)));
-        dynamics_b_lb.resize(nx*p.N+(p.N-1)*4);
-        dynamics_b_ub.resize(nx*p.N+(p.N-1)*4);
+    dynamics_A.resize(nx*p.N+(p.N-1)*4,(nx*p.N+nu*(p.N-1)));
+    SparseIdentity.resize(nx*p.N+(p.N-1)*4,(nx*p.N+nu*(p.N-1)));
+    dynamics_b_lb.resize(nx*p.N+(p.N-1)*4);
+    dynamics_b_ub.resize(nx*p.N+(p.N-1)*4);
 
 	f.resize(nx*p.N + nu*(p.N-1));
 	full_ref.resize(nx*p.N + nu*(p.N-1));
 	H.resize(nx*p.N + nu*(p.N-1),nx*p.N + nu*(p.N-1));
 
-        solver.settings()->setWarmStart(true);
-	solver.settings()->setVerbosity(false);
-	//solver.settings()->setAbsoluteTolerance(1e-9);
-        solver.data()->setNumberOfVariables(nx*p.N + nu*(p.N-1));
-	solver.data()->setNumberOfConstraints(nx*p.N+(p.N-1)*4);
+    settings.verbose = false;
+    settings.polish = true;
+    settings.warm_start = true;
+    settings.max_iter = 50;
 
-        reset();
-        buildCost();
+    reset();
+    buildCost();
 	buildDynamicEquality();
-	solver.data()->setHessianMatrix(H);
-        solver.data()->setGradient(f);
-        solver.data()->setLinearConstraintsMatrix(dynamics_A);
-        solver.data()->setLowerBound(dynamics_b_lb);
-        solver.data()->setUpperBound(dynamics_b_ub);
-	// instantiate the solver
-        solver.initSolver();
+    instance.objective_matrix = H;
+    instance.objective_vector.resize(nvar);
+    instance.objective_vector << f;
+    instance.constraint_matrix = dynamics_A;
+    instance.lower_bounds.resize(dynamics_b_lb.size());
+    instance.upper_bounds.resize(dynamics_b_ub.size());
+    instance.lower_bounds << dynamics_b_lb;
+    instance.upper_bounds << dynamics_b_ub;
+    // instantiate the solver
+    auto status = solver.Init(instance, settings);
     }
 
     /*! @brief Estimate the time to impact of the hopper
@@ -95,47 +102,6 @@ public:
     * @param[out] xi Lie Algebra elements
     */
     static scalar_t time2impact(vector_t x, scalar_t heightOffset);
-
-    /*! @brief Take the state and apply the log of the orientation to get elements of the Lie Algebra
-    * @param[in] x Lie Group elements
-    * @param[out] xi Lie Algebra elements
-    */
-    static vector_t Log(vector_t x);
-
-    /*! @brief Take elements of the Lie Algebra and Exp them to the Lie Group
-    * @param[in] xi Lie Algebra elements
-    * @param[out] x Lie Group elements
-    */
-    static vector_t Exp(vector_t xi);
-
-    /*! @brief apply q0_inverse and then perform Log
-    * @param[in] qk the Lie Group element
-    * @param[in] q0 the base point
-    * @param[out] xik the Lie Algebra element
-    */
-    static vector_t qk_to_xik(vector_t qk, vector_t q0);
-
-    /*! @brief apply q0 and then perform Exp
-    *
-    * @param[in] xik the Lie Algebra element
-    * @param[in] q0 the base point
-    * @param[out] qk the Lie Group element
-    */
-    static vector_t xik_to_qk(vector_t xik, vector_t q0);
-
-    /*! @brief Convert local frame to the global frame
-    *
-    * @param[in] x_l the local frame coordinate
-    * @param[out] x_g the global frame coordinate
-    */
-    static vector_t local2global(vector_t x_l);
-
-    /*! @brief Convert global frame to the local frame
-    *
-    * @param[in] x_g the global frame coordinate
-    * @param[out] x_l the local frame coordinate
-    */
-    static vector_t global2local(vector_t x_g);
 
     /*! @brief Apply the discrete time dynamics to predict where the system will be in on dt time step
     *

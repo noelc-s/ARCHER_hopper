@@ -169,13 +169,14 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     for (int iter = 0; iter < p.SQP_iter; iter++) {
       LinearizeDynamics(hopper, x_bar, u_bar, d_bar, x0_local, elapsed_time);
       updateDynamicEquality(s0);
-      solver.updateGradient(f);
-      solver.updateLinearConstraintsMatrix(dynamics_A);
-      solver.updateBounds(dynamics_b_lb, dynamics_b_ub);
+      auto status = solver.SetObjectiveVector(f);
+      status = solver.UpdateConstraintMatrix(dynamics_A);
+      status = solver.SetBounds(dynamics_b_lb, dynamics_b_ub);
+
 
       // solve the QP problem
-      solver.solve();
-      sol = solver.getSolution();
+      solver.Solve();
+      sol = solver.primal_solution();
       if (iter < p.SQP_iter-1) {
         u_bar.block(0,0,nu,1) << sol.segment(p.N*nx,nu);
         for (int i = 1; i < p.N-1; i++){
@@ -196,92 +197,6 @@ scalar_t MPC::time2impact(vector_t x, scalar_t heightOffset) {
 	return t;
 }
 
-vector_t MPC::Log(vector_t x) {
-  vector_t g_frak(20);
-  quat_t quat(x(6), x(3), x(4), x(5));
-  auto quat_ = manif::SO3<scalar_t>(quat);
-  manif::SO3Tangent<scalar_t> xi = quat_.log();
-  g_frak << x.segment(0,3),xi.coeffs(),x.segment(7,4),x.segment(11,10);
-  return g_frak;
-}
-
-vector_t MPC::Exp(vector_t xi) {
-  vector_t g(21);
-  manif::SO3Tangent<scalar_t> xi_;
-  xi_ << xi(3),xi(4),xi(5);
-  quat_t quat = xi_.exp().quat();
-  g << xi.segment(0,3), quat.coeffs(), xi.segment(6,14);
-  return g;
-}
-
-vector_t MPC::qk_to_xik(vector_t qk, vector_t q0) {
-  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
-  quat_t quatk(qk(6), qk(3), qk(4), qk(5));
-
-  vector_t tmp(21);
-  tmp << qk.segment(0,3), (quat0.inverse()*quatk).coeffs(), qk.segment(7,14);
-  vector_t xik(20);
-  xik = Log(tmp);
-  return xik;
-}
-
-vector_t MPC::xik_to_qk(vector_t xik, vector_t q0) {
-  vector_t tmp(21);
-  tmp = Exp(xik);
-  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
-  quat_t quatk(tmp(6), tmp(3), tmp(4), tmp(5));
-  vector_t qk(21);
-  qk << tmp.segment(0,3), (quat0*quatk).coeffs(), tmp.segment(7,14);
-  //qk << tmp.segment(0,3), (quatk).coeffs(), tmp.segment(7,14);
-  return qk;
-}
-
-vector_t MPC::global2local(vector_t x_g) {
-	vector_t q(11);
-	vector_t v(10);
-	vector_t q_local(11);
-	vector_t v_local(10);
-	vector_t x_l(21);
-
-	q << x_g.head(11);
-	v << x_g.tail(10);
-        quat_t quat(q(6), q(3), q(4), q(5));
-        auto quat_ = manif::SO3<scalar_t>(quat);
-        matrix_3t Rq = Hopper::quat2Rot(quat);
-        q_local << quat.inverse()._transformVector(q.segment(0,3)), quat.coeffs(),q.segment(7,4);
-        v_local << quat.inverse()._transformVector(v.segment(0,3)), quat.inverse()._transformVector(v.segment(3,3)),v.segment(6,4);
-	// Both of these below formulations are wrong but are left as posterity
-	// Murray Notes
-	//v_local << quat.inverse()._transformVector(v.segment(0,3)) - quat.inverse()._transformVector(Hopper::cross(q.segment(0,3))*v.segment(3,3)), quat.inverse()._transformVector(v.segment(3,3)),v.segment(6,4);
-	// Hacky right trivialization instead of left, needed to transform the omega instead
-        //v_local << quat.inverse()._transformVector(v.segment(0,3)) + quat.inverse()._transformVector(Hopper::cross(q_local.segment(0,3))*v.segment(3,3)), v.segment(3,7);
-	x_l << q_local, v_local;
-        return x_l;
-}
-
-vector_t MPC::local2global(vector_t x_l) {
-	vector_t q(11);
-	vector_t v(10);
-	vector_t q_global(11);
-	vector_t v_global(10);
-	vector_t x_g(21);
-
-	q << x_l.head(11);
-	v << x_l.tail(10);
-	vector_3t w = v.segment(3,3);
-	vector_3t p = q.segment(0,3);
-        quat_t quat(q(6), q(3), q(4), q(5));
-        matrix_3t Rq = Hopper::quat2Rot(quat);
-        q_global << quat._transformVector(q.segment(0,3)), quat.coeffs(), q.segment(7,4);
-        v_global << quat._transformVector(v.segment(0,3)), quat._transformVector(v.segment(3,3)),v.segment(6,4);
-	// Both of these below formulations are wrong but are left as posterity
-        // Murray notes:
-	//v_global << quat._transformVector(v.segment(0,3)) + Hopper::cross(q_global.segment(0,3))*quat._transformVector(w), quat._transformVector(w),v.segment(6,4);
-	// Hacky right trivialization instead of left, needed to transform the omega instead
-        //v_global << quat._transformVector(v.segment(0,3)) - quat._transformVector(Hopper::cross(p)*w), quat._transformVector(w), v.segment(6,4);
-	x_g << q_global, v_global;
-        return x_g;
-}
 
 vector_t MPC::oneStepPredict(Hopper hopper, const vector_t xi, const vector_t tau,
                 const float dt, const domain d, const vector_t q0) {

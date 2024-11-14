@@ -23,6 +23,7 @@
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
 #include "../inc/rom.h"
+#include "../inc/MPC.h"
 
 
 using namespace Eigen;
