@@ -70,7 +70,7 @@ struct MPC_Parameters {
 
 void setupSocket(int &server_fd, int &new_socket, struct sockaddr_in &address, int opt_socket, int &addrlen);
 
-void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p); // MPC::MPC_Parameters &mpc_p, 
+void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p);
 
 vector_3t Quaternion2Euler(const quat_t &q);
 

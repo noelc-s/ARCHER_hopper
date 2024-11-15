@@ -2,7 +2,7 @@
 #define MPC_H
 
 #include <Eigen/Dense>
-#include "osqp++.h"
+// #include "osqp+/+.h"
 #include <iostream>
 #include "Types.h"
 #include "yaml-cpp/yaml.h"
