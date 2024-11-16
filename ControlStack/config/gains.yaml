@@ -11,7 +11,7 @@ LowLevel:
   dt: 0.001
 
 Simulator:
-  p0: [0, 0, 0.5]         # initial position [x,y,z]
+  p0: [-3, -5, 0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
   rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
@@ -24,42 +24,46 @@ Simulator:
   pert_start: [2000, 5000, 11000,14000] # start time for force [milliseconds]
   pert_end: [2700, 5700, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
-  yaw_drift: 1     # drift in rad / s
-  
-MPC:
-  N: 20                                                 # nodes of MPC horizon
-  stateScaling: [20,20,0,8,8,0,0,0,0,0,                 # cost function scaling on state
-                 2.5,2.5,0,.03,.03,.00,0,0,0,0]         # cost function scaling on vel
-  inputScaling: [.01,.01,.01,.01]                       # cost function scaling on input
-  discountFactor: 1                                     # scale each future node by gamma^k
-  terminalScaling: 1                                    # scaling of terminal state
-  dt_flight: 0.01                                       # dt of flight phase [s]
-  dt_ground: 0.001                                      # dt of ground phase [s]
-  dt_replan: 0.01                                       # dt to run MPC at
-  SQP_iter: 2                                           # number of SQP iterations
-  tau_max: 15                                          # maximum control input
-  f_max: 0                                              # maximum force applied to foot
-  groundDuration: 0.07                                  # duration of ground phase
-  heightOffset: 0.35                                    # offset from torso frame (center of flywheels) to uncompressed foot
-  time_between_contacts: 0.3                            # approximate time between contact events
-  multiplier_on_deltaf: 0 # not so unreasonable, as constraints are soft in Mujoco
-  hop_height: 0.5
-  circle_amp: -1
-  circle_freq: 20
-  max_vel: 5
+  yaw_drift: 0     # drift in rad / s
 
 RaibertHeuristic:
-  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_f: 0.7                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
-  ky_f: 0.7              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
+  # kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  # ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  # kx_d: -0.4                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  # ky_d: 0.4                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  # kx_f: 0.5                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
+  # ky_f: 0.5              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
+  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                                             # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 0.5                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
+  ky_f: 0.5              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
   pos_clip: 0.5
   vel_clip: 1
-  v_des_clip: 0.2
-  angle_max: 1.0
-  yaw_damping: 0.0035 
+  v_des_clip: 0.3
+  angle_max: 0.6
+  yaw_damping: 0.0035
+
+PredCBF:
+  horizon: 5
+  dt: 0.01
+  alpha: 20
+  rho: 1
+  smooth_barrier: False
+  epsilon: 0
+  iters: 1
+  K: 0.5
+  tol: 0.001
+  k_r: 1
+  v_max: 0.3
+  # v_max: 10
+  pred_dt: 0.3
+  rs: [0.5, 0.5]
+  cxs: [-0.5, -2]
+  cys: [-2, -3]
+  zd: [0, 0]
+  use_delta: true
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
@@ -68,22 +72,5 @@ pitch_offset: -0.00
 
 Policy:
   dt_policy: 0.02
-
-RL:
-  obs_scales:
-    lin_vel : 0.5
-    ang_vel : 0.25
-    dof_vel : 0.01
-    z_pos : 1.0
-  # rom_type: double_int
-  # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
-  # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
-  # rom_type: single_int
-  rom_type: position
-  model_name: ..
-  horizon: 10
-  dt_replan : 0.02
-  v_max: 1.0
-  a_max: 1.0
 
 dt_planner: 0.2

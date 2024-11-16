@@ -39,14 +39,12 @@ Hopper::Hopper(const std::string yamlFile)
     std::vector<scalar_t> orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
     gains.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
     gains.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
-
     gains.orientation_kp << orientation_kp[0], orientation_kp[1], orientation_kp[2];
     gains.orientation_kd << orientation_kd[0], orientation_kd[1], orientation_kd[2];
 
     springStiffness = config["SpringStiffness"].as<scalar_t>();
-
     quat_actuator = quat_t(0.8806, 0.3646, -0.2795, 0.1160);
-    multiplier_on_deltaf = config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
+    multiplier_on_deltaf = 0; // config["MPC"]["multiplier_on_deltaf"].as<scalar_t>();
 
     state_.q.resize(11);
     state_.v.resize(10);

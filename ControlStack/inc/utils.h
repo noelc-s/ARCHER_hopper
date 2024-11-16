@@ -30,21 +30,33 @@ void hi(int num);
 
 struct Parameters {
     scalar_t dt;
-    scalar_t MPC_dt_flight;
-    scalar_t MPC_dt_ground;
-    scalar_t MPC_dt_replan;
     scalar_t roll_offset;
     scalar_t pitch_offset;
     scalar_t yaw_drift;
-    std::string model_name;
+
+    scalar_t x0, y0;
+    std::string rom_type;
+
+    scalar_t horizon;
+    scalar_t alpha;
+    scalar_t rho;
+    bool smooth_barrier;
+    scalar_t epsilon;
+    int iters;
+    scalar_t K;
+    scalar_t tol;
+    bool use_delta;
+    scalar_t k_r;
     scalar_t v_max;
     scalar_t a_max;
-    scalar_t dt_replan;
+    scalar_t pred_dt;
+    std::vector<scalar_t> rs;
+    std::vector<scalar_t> cxs;
+    std::vector<scalar_t> cys;
+    vector_2t zd;
     scalar_t dt_planner;
-    int horizon;
-    std::string rom_type;
-    int stop_index; 
-    scalar_t x0, y0;
+    int stop_index;
+    scalar_t dt_replan;
 };
 
 struct MPC_Parameters {

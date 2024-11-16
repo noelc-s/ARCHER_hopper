@@ -8,7 +8,7 @@ void Policy::loadParams(const std::string filepath, Params &params)
 {
     YAML::Node config = YAML::LoadFile(filepath);
 
-    scalar_t stance_time = config["MPC"]["groundDuration"].as<scalar_t>();
+    // scalar_t stance_time = config["MPC"]["groundDuration"].as<scalar_t>();
     params.kx_p = config["RaibertHeuristic"]["kx_p"].as<scalar_t>();
     params.ky_p = config["RaibertHeuristic"]["ky_p"].as<scalar_t>();
     params.kx_d = config["RaibertHeuristic"]["kx_d"].as<scalar_t>();
@@ -59,8 +59,8 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     bool contact = state.contact;
     scalar_t x_a = state.pos[0];
     scalar_t y_a = state.pos[1];
-    scalar_t xd_a = state.vel[0];
-    scalar_t yd_a = state.vel[1];
+    scalar_t xd_a = std::min(std::max(state.vel[0], -params.v_clip), params.v_clip);
+    scalar_t yd_a = std::min(std::max(state.vel[1], -params.v_clip), params.v_clip);
 
     // if (contact) {
     //     xd_a = 0;
@@ -70,17 +70,17 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     // }
 
     // position error
-    scalar_t del_x = x_a - command(0);
-    scalar_t del_y = y_a - command(1);
+    scalar_t del_x = std::min(std::max(x_a - command(0), -params.p_clip), params.p_clip);
+    scalar_t del_y = std::min(std::max(y_a - command(1), -params.p_clip), params.p_clip);
     scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
     scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
     scalar_t yaw_des = command(4);
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
-    pitch_d = std::max(pitch_d, -params.angle_max);
-    scalar_t roll_d = std::min(params.ky_p * del_y + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
-    roll_d = std::max(roll_d, -params.angle_max);
+    scalar_t pitch_d = params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx);
+    pitch_d = std::min(std::max(pitch_d, -params.angle_max), params.angle_max);
+    scalar_t roll_d = params.ky_p * del_y + params.ky_d * (yd_a + params.ky_f * des_vy);
+    roll_d = std::min(std::max(roll_d, -params.angle_max), params.angle_max);
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
     yaw_des_rolling += params.yaw_damping * (yaw_des);

@@ -78,6 +78,8 @@ add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/P
 target_link_libraries(hopper_ctrl yaml-cpp)
 target_link_libraries(hopper_ctrl Eigen3::Eigen)
 target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
+target_link_libraries(hopper_ctrl ${MUJOCO_LIB})
+target_link_directories(hopper_ctrl PUBLIC ${MUJOCO_PATH})
 
 if(MPC)
     add_library(MPC SHARED

@@ -61,9 +61,6 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     // Read gain yaml
     YAML::Node config = YAML::LoadFile(filepath);
     p.dt = config["LowLevel"]["dt"].as<scalar_t>();
-    p.MPC_dt_ground = config["MPC"]["dt_ground"].as<scalar_t>();
-    p.MPC_dt_flight = config["MPC"]["dt_flight"].as<scalar_t>();
-    p.MPC_dt_replan = config["MPC"]["dt_replan"].as<scalar_t>();
 
     p.roll_offset = config["roll_offset"].as<scalar_t>();
     p.pitch_offset = config["pitch_offset"].as<scalar_t>();
@@ -71,14 +68,27 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     std::vector<scalar_t> tmp = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
     p.x0 = tmp[0];
     p.y0 = tmp[1];
-    p.model_name = config["RL"]["model_name"].as<std::string>();
-    p.rom_type = config["RL"]["rom_type"].as<std::string>();
-    p.v_max = config["RL"]["v_max"].as<scalar_t>();
-    p.a_max = config["RL"]["a_max"].as<scalar_t>();
-    p.dt_replan = config["RL"]["dt_replan"].as<scalar_t>();
-    p.horizon = config["RL"]["horizon"].as<scalar_t>();
+    p.rom_type = "pred_cbf";
+    
+    p.horizon = config["PredCBF"]["horizon"].as<scalar_t>();
+    p.alpha = config["PredCBF"]["alpha"].as<scalar_t>();
+    p.rho = config["PredCBF"]["rho"].as<scalar_t>();
+    p.smooth_barrier = config["PredCBF"]["smooth_barrier"].as<bool>();
+    p.epsilon = config["PredCBF"]["epsilon"].as<scalar_t>(); 
+    p.k_r = config["PredCBF"]["k_r"].as<scalar_t>();   
+    p.v_max = config["PredCBF"]["v_max"].as<scalar_t>();
+    p.pred_dt = config["PredCBF"]["pred_dt"].as<scalar_t>();
+    p.dt_replan = config["PredCBF"]["dt"].as<scalar_t>();
+    p.iters = config["PredCBF"]["iters"].as<int>();
+    p.K = config["PredCBF"]["K"].as<scalar_t>();
+    p.tol = config["PredCBF"]["tol"].as<scalar_t>();
+    p.use_delta = config["PredCBF"]["use_delta"].as<bool>();
+    p.rs = config["PredCBF"]["rs"].as<std::vector<scalar_t>>();
+    p.cxs = config["PredCBF"]["cxs"].as<std::vector<scalar_t>>();
+    p.cys = config["PredCBF"]["cys"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> zd = config["PredCBF"]["zd"].as<std::vector<scalar_t>>();
+    p.zd << zd[0], zd[1];
     p.dt_planner = config["dt_planner"].as<scalar_t>();
-
 
     // mpc_p.N = config["MPC"]["N"].as<int>();
     // mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();

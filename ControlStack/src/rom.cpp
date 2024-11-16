@@ -7,7 +7,7 @@ V5Command::V5Command(const scalar_t x0, const scalar_t y0) : x0_(x0), y0_(y0)
     command.setZero();
 }
 
-void V5Command::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
+void V5Command::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
 {
     while (running)
     {
@@ -29,7 +29,7 @@ SingleIntCommand::SingleIntCommand(const int horizon, const double dt, const dou
     
 }
 
-void SingleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
+void SingleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
 {
     // TODO: update dynamics
     while (running)
@@ -60,7 +60,7 @@ DoubleIntCommand::DoubleIntCommand(const int horizon, const double dt, const dou
     command.setZero();
 }
 
-void DoubleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m)
+void DoubleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
 {
     while (running)
     {
@@ -85,4 +85,164 @@ void DoubleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, 
             std::this_thread::sleep_for(sleep_duration);
         }
     }
+}
+
+PredCBFCommand::PredCBFCommand(
+    const double horizon, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
+    const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
+    const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
+) : horizon_(horizon), dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), iters_(iters), K_(K), tol_(tol), use_delta_(use_delta),
+    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
+{
+    // Resize the command
+    command_.resize(5, 1);
+    command_.setZero();
+    delta_ = 0;
+
+    char path[] = "../rsc/";
+    // char xmlfile[] = "hopper.xml";
+char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
+    char xmlpath[100] = {};
+    char datapath[100] = {};
+
+    strcat(xmlpath, path);
+    strcat(xmlpath, xmlfile);
+
+    strcat(datapath, path);
+
+
+    // load and compile model
+    char error[1000] = "Could not load binary model";
+    m_ = mj_loadXML(xmlpath, 0, error, 1000);
+    if (!m_) {
+        mju_error_s("Load model error: %s", error);
+    }
+    // make data
+    d_ = mj_makeData(m_);
+
+    // Process the size of obstacle arrays
+    assert(cxs_.size() == num_obs_ && cys_.size() == num_obs_);
+}
+
+void PredCBFCommand::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
+{
+    // TODO: update dynamics
+    while (running)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        {
+            std::lock_guard<std::mutex> lock(m);
+
+            vector_2t v = predictiveSafetyFilter(state);
+
+            // Compute command to send to hopper for tracking
+            vector_2t z;
+            z << state.pos[0], state.pos[1];
+            command_.block<2, 1>(0, 0) = z + v * pred_dt_;
+            command_.block<2, 1>(2, 0) = v;
+            command_(4, 0) = userInput->joystick_command(2);
+            // std::cout << "\nz: "<<  z << "\nv: " << v << "\ndt: " << pred_dt_ << "\ncommand: " << command_ << std::endl;
+
+        }
+        // std::cout << command(0, 0) << ',' << command(0, 1) << std::endl;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::chrono::milliseconds sleep_duration(static_cast<int>((dt_ - elapsed.count()) * 1000));
+        if (sleep_duration.count() > 0)
+        {
+            std::this_thread::sleep_for(sleep_duration);
+        }
+    }
+}
+
+vector_3t PredCBFCommand::h_Dh(vector_2t z) {
+    double h = 0;
+    vector_2t dh;
+    dh.setZero();
+    double dh_denom = 0;
+    for (int i = 0; i < num_obs_; i++) {
+        double r = rs_[i];
+        vector_2t c;
+        c << cxs_[i], cys_[i];
+        double d = (z - c).norm() - r;
+        if (smooth_barrier_) {
+            double exp_d = std::exp(-rho_ * d);
+            h += exp_d;
+            dh += (z - c) / (z  - c).norm() * exp_d;
+            dh_denom += exp_d;
+        } else if (d < h || i == 0) {
+            h = d;
+            dh = (z - c) / (z - c).norm();
+        }
+    }
+    if (smooth_barrier_) {
+        h = -1 / rho_ * std::log(h);
+        dh = dh / dh_denom;
+    }
+    return vector_3t(h, dh(0), dh(1));
+}
+
+vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
+    // return vd;
+    // Loop over iterations of the algorithm
+    double prev_delta = delta_;
+    bool converged = false;
+    for (int i = 0; i < iters_; i++) {
+        // Roll out planner/tracker
+        double h_bar = robustifiedRollout(state);
+
+        // Update robustness term based on barrier violation
+        delta_ = std::max(0., delta_ - K_ * h_bar);
+
+        // Check for convergence
+        if (abs(delta_ - prev_delta) < tol_) {
+            converged = true;
+            // std::cout << "Pred CBF Converged...     Delta: " << delta_ << std::endl;
+            break;
+        }
+        prev_delta = delta_;  // Update previous delta for checking convergence
+    }
+    if (!converged) {
+        // std::cout << "Pred CBF NOT Converged!!! Delta: " << delta_ << std::endl;
+    }
+    // Apply safety filter with robustness term
+    vector_2t z;
+    z << state.pos[0], state.pos[1];
+    return robustifiedSafetyFilter(z, vd(z));
+}
+
+double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
+    return 0.;
+}
+
+vector_2t PredCBFCommand::robustifiedSafetyFilter(vector_2t z, vector_2t vd) {
+    // Compute h and its jacobian at z
+    vector_3t h_dh = h_Dh(z);
+    double h = h_dh(0);
+    vector_2t Dh = h_dh.segment<2>(1);
+
+    // Create compact notation for safety filter
+    vector_2t b = Dh;                 // Lgh, but gz is identity for single int
+    double a;
+    if (use_delta_) {
+        a = -alpha_ * h + delta_;  // -alpha * h - Lfh + delta, but f is zero for single int
+    } else {
+        a = -alpha_ * h;
+    }
+        
+
+    // std::cout << "\n\na: " << a << "\nb: " << b << std::endl;
+
+    vector_2t v;
+    // Implement safety filter
+    if (b.dot(vd) >= a) {
+        v = vd;
+    } else {
+        v = vd + b / (b.dot(b)) * (a - b.dot(vd));
+    }
+    return v;
+}
+
+vector_2t PredCBFCommand::vd(vector_2t z) {
+    return (-k_r_ * (z - zd_)).cwiseMax(-v_max_).cwiseMin(v_max_);
 }

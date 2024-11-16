@@ -1,6 +1,6 @@
-#include<stdlib.h>
+#include <stdlib.h>
 #include <iostream>
-#include<stdbool.h> //for bool
+#include <stdbool.h> //for bool
 
 #include "mujoco.h"
 #include "GLFW/glfw3.h"
@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include<netinet/in.h>
-#include<unistd.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 #include "../inc/Types.h"
 #include "yaml-cpp/yaml.h"
@@ -32,7 +32,8 @@ IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
 //simulation end time
 char path[] = "../rsc/";
-char xmlfile[] = "hopper.xml";
+// char xmlfile[] = "hopper.xml";
+char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
 
 // MuJoCo data structures
 mjModel *m = NULL;                  // MuJoCo model
@@ -216,7 +217,7 @@ int main(int argc, const char **argv) {
     glfwSetMouseButtonCallback(window, mouse_button);
     glfwSetScrollCallback(window, scroll);
 
-    double arr_view[] = {89.608063, -11.588379, 2, 0.000000, 0.000000,
+    double arr_view[] = {89.608063, -11.588379, 5, -1.5, -2.5,
                          0.500000}; //view the left side (for ll, lh, left_side)
     cam.azimuth = arr_view[0];
     cam.elevation = arr_view[1];
@@ -272,10 +273,14 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
 
+    std::vector<scalar_t> obs_x = config["PredCBF"]["cxs"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> obs_y = config["PredCBF"]["cys"].as<std::vector<scalar_t>>();
+    std::vector<scalar_t> obs_r = config["PredCBF"]["rs"].as<std::vector<scalar_t>>();
+
     config = YAML::LoadFile("../config/planner_params.yaml");
-    int N = config["MPC"]["N"].as<int>();
-    int max_graph_sol_length = config["Planner"]["max_graph_sol_length"].as<int>();
-    int max_num_obstacles = config["Planner"]["max_num_obstacles"].as<int>();
+    // int N = config["MPC"]["N"].as<int>();
+    // int max_graph_sol_length = config["Planner"]["max_graph_sol_length"].as<int>();
+    // int max_num_obstacles = config["Planner"]["max_num_obstacles"].as<int>();
 
     // [receive - RX] Torques and horizon states: TODO: Fill in
     float RX_torques[4 + 7 + 2] = {0};
@@ -461,6 +466,17 @@ int main(int argc, const char **argv) {
         // cam.lookat[0] = d->qpos[0];
         // cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+        for (int i = 0; i < obs_r.size(); i++){
+            const double size[3] = {obs_r[i] - 0.125, 0.25, 0.25};
+            const double pos[3] = {obs_x[i], obs_y[i], 0.25};
+            const double rot[9] = {1.0, 0., 0., 0., 1.0, 0., 0., 0., 1.0};
+            const float box_color[4] = {50. / 255., 88. / 255., 168. / 255., 1.0};
+
+            // std::cout << obs_r[i] << ',' << obs_x[i] << ',' << obs_y[i] << std::endl;
+
+            mjv_initGeom(&scn.geoms[scn.ngeom], mjGEOM_CYLINDER, size, pos, rot, box_color);
+            scn.ngeom++;
+        }
 
         mjr_render(viewport, &scn, &con);
 

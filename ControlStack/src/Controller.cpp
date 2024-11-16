@@ -10,9 +10,10 @@ int main(int argc, char **argv)
 
     // Data Logging
     fileHandle.open(dataLog);
-    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
-    fileHandleDebug.open(predictionLog);
-    fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
+    // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
+    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cmdx,cmdy,cmdvx,cmdvy,cmdyaw,h,Jh1,Jh2,vdx,vdy,vx,vy" << std::endl;
+    // fileHandleDebug.open(predictionLog);
+    // fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
     // Initialize
     offsets << p.roll_offset, p.pitch_offset;
@@ -21,22 +22,35 @@ int main(int argc, char **argv)
     x_term.setZero();
     ind = 1;
 
-    std::unique_ptr<Command> command;
-    if (p.rom_type == "single_int")
-    {
-        command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
-    }
-    else if (p.rom_type == "double_int")
-    {
-        command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
-    }
-    else if (p.rom_type == "position") {
-        command = std::make_unique<V5Command>(p.x0, p.y0);
-    }
-    else
-    {
-        throw std::runtime_error("RoM type unrecognized");
-    }
+    // std::unique_ptr<Command> command;
+    // if (p.rom_type == "single_int")
+    // {
+    //     command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
+    // }
+    // else if (p.rom_type == "pred_cbf")
+    // {
+    //     command = std::make_unique<PredCBFCommand>(
+    //         p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+    //         p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.rs, p.cxs, p.cys, p.zd
+    //     );
+    // }
+    // else if (p.rom_type == "double_int")
+    // {
+    //     command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
+    // }
+    // else if (p.rom_type == "position") {
+    //     command = std::make_unique<V5Command>(p.x0, p.y0);
+    // }
+    // else
+    // {
+    //     throw std::runtime_error("RoM type unrecognized");
+    // }
+
+    std::unique_ptr<PredCBFCommand> command;
+    command = std::make_unique<PredCBFCommand>(
+            p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+            p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.rs, p.cxs, p.cys, p.zd
+        );
     // Instantiate a new policy.
     // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
@@ -46,12 +60,12 @@ int main(int argc, char **argv)
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
-    std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    // std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-    std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
-    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+    std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
     desired_command = command->getCommand();
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
@@ -72,6 +86,7 @@ int main(int argc, char **argv)
         dt_print_elapsed = state(0) - t_print_last;
 
         hopper->updateState(state);
+
 
         ///////     SIMULATING DRIFT /////////////////
         scalar_t yaw_drift = state(0) * p.yaw_drift;
@@ -109,6 +124,7 @@ int main(int argc, char **argv)
             t_last = state(0);
         }
 
+        // std::cout << quat_des << std::endl;
         hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
 
         e = quat_des.inverse() * hopper->state_.quat;
@@ -119,6 +135,9 @@ int main(int argc, char **argv)
         // Log data
         if (fileWrite)
         {
+            vector_2t z;
+            z <<  hopper->state_.pos[0], hopper->state_.pos[1];
+            vector_2t vd = command->vd(z);
             // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
                             // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
             fileHandle << state[0] << "," << hopper->state_.contact
@@ -131,7 +150,10 @@ int main(int argc, char **argv)
                        << "," << hopper->state_.omega.transpose().format(CSVFormat)
                        << "," << hopper->torque.transpose().format(CSVFormat)
                        << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                       << "," << desired_command.col(0).transpose().format(CSVFormat);
+                       << "," << desired_command.col(0).transpose().format(CSVFormat)
+                       << "," << command->h_Dh(z).transpose().format(CSVFormat)
+                       << "," << vd.transpose().format(CSVFormat)
+                       << "," << command->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat);
             fileHandle << std::endl;
         }
 
