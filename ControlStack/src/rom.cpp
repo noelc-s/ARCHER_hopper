@@ -92,8 +92,9 @@ PredCBFCommand::PredCBFCommand(
     const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
     const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
 ) : horizon_(horizon), dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), iters_(iters), K_(K), tol_(tol), use_delta_(use_delta),
-    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
+    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size()) //, raibert_policy_(gainYamlPath)
 {
+    std::cout << "here start" << std::endl;
     // Resize the command
     command_.resize(5, 1);
     command_.setZero();
@@ -101,7 +102,7 @@ PredCBFCommand::PredCBFCommand(
 
     char path[] = "../rsc/";
     // char xmlfile[] = "hopper.xml";
-char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
+    char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
     char xmlpath[100] = {};
     char datapath[100] = {};
 
@@ -119,6 +120,11 @@ char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
     }
     // make data
     d_ = mj_makeData(m_);
+
+    // Initialize Hopper and Raibert
+    std::cout << "here1" << std::endl;
+    hopper_ = std::shared_ptr<Hopper>(new Hopper(gainYamlPath));
+    std::cout << "here2" << std::endl;
 
     // Process the size of obstacle arrays
     assert(cxs_.size() == num_obs_ && cys_.size() == num_obs_);
@@ -212,7 +218,126 @@ vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
 }
 
 double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
-    return 0.;
+    auto start = std::chrono::high_resolution_clock::now();
+    static quat_t initial_yaw_quat = Euler2Quaternion(0, 0, extract_yaw(state.quat));
+    // Set up the initial condition
+    d_->qpos[0] = state.pos[0];    // x
+    d_->qpos[1] = state.pos[1];    // y
+    d_->qpos[2] = state.pos[2];    // z
+    d_->qpos[3] = state.quat.x();  // qx
+    d_->qpos[4] = state.quat.y();  // qy
+    d_->qpos[5] = state.quat.z();  // qz
+    d_->qpos[6] = state.quat.w();  // qw
+    d_->qpos[10] = state.leg_pos;  // foot pos, note we don't care about 7-9, flywheel positions.
+
+    d_->qvel[0] = state.vel[0];    // vx
+    d_->qvel[1] = state.vel[1];    // vy
+    d_->qvel[2] = state.vel[2];    // vz
+    d_->qvel[3] = state.omega[0];  // wx
+    d_->qvel[4] = state.omega[1];  // wy
+    d_->qvel[5] = state.omega[2];  // wz
+    d_->qvel[9] = state.leg_vel;   // foot vel
+    d_->qvel[6] = state.wheel_vel[0];   // foot vel
+    d_->qvel[7] = state.wheel_vel[1];   // foot vel
+    d_->qvel[8] = state.wheel_vel[2];   // foot vel
+
+    vector_2t z, v;
+    vector_t command;
+    vector_3t h_dh;
+    command.resize(5, 1);
+    command.setZero();
+    vector_3t omega_des;
+    omega_des.setZero();
+    vector_t u_des(4);
+    u_des.setZero();
+
+    vector_t tmp_state;
+    tmp_state.resize(20);
+    tmp_state.setZero();
+    quat_t quat_des;
+
+    double h_bar = INFINITY;
+    double num_steps = horizon_ / m_->opt.timestep;
+    for (int k = 0; k < num_steps; k++) {
+        // Parse current state
+        int ind = 0;
+        tmp_state(0) = d_->time;
+        ind++;
+        for (int i = 0; i < 3; i++) {
+            tmp_state(ind) = d_->qpos[i];
+            ind++;
+        }
+        for (int i = 0; i < 4; i++) {
+            tmp_state(ind) = d_->qpos[i + 3];
+            ind++;
+        }
+        for (int i = 0; i < 6; i++) {
+            tmp_state(ind) = d_->qvel[i];
+            ind++;
+        }
+        // Threshold for registering contact
+        scalar_t contact_threshold = -0.003;
+        tmp_state(ind) = (d_->contact[0].dist < contact_threshold);
+        ind++;
+        tmp_state(ind) = d_->qpos[10];
+        ind++;
+        tmp_state(ind) = d_->qvel[9];
+        ind++;
+        tmp_state(ind) = d_->qvel[6];
+        ind++;
+        tmp_state(ind) = d_->qvel[7];
+        ind++;
+        tmp_state(ind) = d_->qvel[8];
+
+        hopper_->updateState(tmp_state);
+
+        // Update safety violation
+        z << d_->qpos[0], d_->qpos[1];
+        h_dh = h_Dh(z);
+        if (h_dh(0) < h_bar) {
+            h_bar = h_dh(0);
+        }
+        
+        // Get robustified RoM action
+        v = robustifiedSafetyFilter(z, vd(z));
+        command_.block<2, 1>(0, 0) = z + v * pred_dt_;
+        command_.block<2, 1>(2, 0) = v;
+
+        // Compute desired quaternion TODO add raibert policy
+        quat_des = raibert_policy_.DesiredQuaternion(hopper_->state_, command);
+        quat_des = plus(quat_des, initial_yaw_quat);
+        omega_des = raibert_policy_.DesiredOmega();
+        u_des = raibert_policy_.DesiredInputs(hopper_->state_.wheel_vel, hopper_->state_.contact);
+        hopper_->computeTorque(quat_des, omega_des, 0.1, u_des);
+
+        // Update torques
+        vector_3t g_x(1,1,1);
+        if (d_->qvel[6] > 500) {
+            g_x[0] = std::max(-100*(d_->qvel[6]-600),0.);
+        } else if (d_->qvel[6] < -500) {
+            g_x[0] = std::max(100*(d_->qvel[6]+600),0.);
+        }
+        if (d_->qvel[7] > 500) {
+            g_x[1] = std::max(-100*(d_->qvel[7]-600),0.);
+        } else if (d_->qvel[7] < -500) {
+            g_x[1] = std::max(100*(d_->qvel[7]+600),0.);
+        }
+        if (d_->qvel[8] > 500) {
+            g_x[2] = std::max(-100*(d_->qvel[8]-600),0.);
+        } else if (d_->qvel[8] < -500) {
+            g_x[2] = std::max(100*(d_->qvel[8]+600),0.);
+        }
+        d_->ctrl[0] = hopper_->torque[0];
+        for (int i = 0; i < 3; i++) {
+            d_->ctrl[i+1] = g_x[i]*hopper_->torque[i+1];
+        }
+        // Step Dynamics
+        mj_step(m_, d_);
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << elapsed.count() << std::endl;
+    return h_bar;
 }
 
 vector_2t PredCBFCommand::robustifiedSafetyFilter(vector_2t z, vector_2t vd) {

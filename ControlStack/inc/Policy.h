@@ -1,3 +1,5 @@
+#ifndef POLICY_H
+#define POLICY_H
 #include <iostream>
 #include "Types.h"
 #include <Eigen/Eigen>
@@ -190,3 +192,4 @@ public:
 
 //     void loadParams(std::string filepath, RLParams& params);  
 // };
+#endif
