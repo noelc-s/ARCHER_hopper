@@ -32,8 +32,8 @@ IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
 //simulation end time
 char path[] = "../rsc/";
-// char xmlfile[] = "hopper.xml";
-char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
+char xmlfile[] = "hopper.xml";
+// char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
 
 // MuJoCo data structures
 mjModel *m = NULL;                  // MuJoCo model

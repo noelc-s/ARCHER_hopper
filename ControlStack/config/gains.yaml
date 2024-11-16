@@ -48,11 +48,11 @@ RaibertHeuristic:
 PredCBF:
   horizon: 5
   dt: 0.01
-  alpha: 20
+  alpha: 10
   rho: 1
   smooth_barrier: False
   epsilon: 0
-  iters: 1
+  iters: 10
   K: 0.5
   tol: 0.001
   k_r: 1
@@ -63,7 +63,7 @@ PredCBF:
   cxs: [-0.5, -2]
   cys: [-2, -3]
   zd: [0, 0]
-  use_delta: true
+  use_delta: False
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 

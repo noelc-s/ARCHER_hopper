@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     // Data Logging
     fileHandle.open(dataLog);
     // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
-    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cmdx,cmdy,cmdvx,cmdvy,cmdyaw,h,Jh1,Jh2,vdx,vdy,vx,vy" << std::endl;
+    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cmdx,cmdy,cmdvx,cmdvy,cmdyaw,h,Jh1,Jh2,vdx,vdy,vx,vy,delta" << std::endl;
     // fileHandleDebug.open(predictionLog);
     // fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
@@ -47,12 +47,10 @@ int main(int argc, char **argv)
     // }
 
     std::unique_ptr<PredCBFCommand> command;
-    std::cout << p.rs[0] << std::endl;
     command = std::make_unique<PredCBFCommand>(
             p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
             p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.rs, p.cxs, p.cys, p.zd
         );
-    std::cout << "here" << std::endl;
     // Instantiate a new policy.
     // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
@@ -155,7 +153,8 @@ int main(int argc, char **argv)
                        << "," << desired_command.col(0).transpose().format(CSVFormat)
                        << "," << command->h_Dh(z).transpose().format(CSVFormat)
                        << "," << vd.transpose().format(CSVFormat)
-                       << "," << command->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat);
+                       << "," << command->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat)
+                       << "," << command->delta_;
             fileHandle << std::endl;
         }
 

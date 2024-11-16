@@ -1,5 +1,6 @@
 #include "../inc/rom.h"
 #include <thread>
+#include <fstream>
 
 V5Command::V5Command(const scalar_t x0, const scalar_t y0) : x0_(x0), y0_(y0)
 {
@@ -92,17 +93,18 @@ PredCBFCommand::PredCBFCommand(
     const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
     const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
 ) : horizon_(horizon), dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), iters_(iters), K_(K), tol_(tol), use_delta_(use_delta),
-    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size()) //, raibert_policy_(gainYamlPath)
+    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
 {
     std::cout << "here start" << std::endl;
     // Resize the command
     command_.resize(5, 1);
     command_.setZero();
     delta_ = 0;
+    num_runs_ = 0;
 
     char path[] = "../rsc/";
-    // char xmlfile[] = "hopper.xml";
-    char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
+    char xmlfile[] = "hopper.xml";
+    // char xmlfile[] = "hopper_2.xml";  // CoM +2cm in x,y
     char xmlpath[100] = {};
     char datapath[100] = {};
 
@@ -119,12 +121,12 @@ PredCBFCommand::PredCBFCommand(
         mju_error_s("Load model error: %s", error);
     }
     // make data
+    m_->opt.timestep = 0.001;
     d_ = mj_makeData(m_);
 
     // Initialize Hopper and Raibert
-    std::cout << "here1" << std::endl;
     hopper_ = std::shared_ptr<Hopper>(new Hopper(gainYamlPath));
-    std::cout << "here2" << std::endl;
+
 
     // Process the size of obstacle arrays
     assert(cxs_.size() == num_obs_ && cys_.size() == num_obs_);
@@ -195,11 +197,16 @@ vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
     bool converged = false;
     for (int i = 0; i < iters_; i++) {
         // Roll out planner/tracker
-        double h_bar = robustifiedRollout(state);
+        double h_bar;
+        if (use_delta_) {
+            h_bar = robustifiedRollout(state);
+        } else {
+            h_bar = 0;
+        }
 
         // Update robustness term based on barrier violation
         delta_ = std::max(0., delta_ - K_ * h_bar);
-
+        std::cout << delta_ << std::endl;
         // Check for convergence
         if (abs(delta_ - prev_delta) < tol_) {
             converged = true;
@@ -218,16 +225,21 @@ vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
 }
 
 double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
+    std::string dataLog = "../data/data_inner" + std::to_string(num_runs_) + ".csv";
+    num_runs_++;
+    std::ofstream fileHandle;
+    fileHandle.open(dataLog);
+    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cmdx,cmdy,cmdvx,cmdvy,cmdyaw,h,Jh1,Jh2,vdx,vdy,vx,vy,delta" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     static quat_t initial_yaw_quat = Euler2Quaternion(0, 0, extract_yaw(state.quat));
     // Set up the initial condition
     d_->qpos[0] = state.pos[0];    // x
     d_->qpos[1] = state.pos[1];    // y
     d_->qpos[2] = state.pos[2];    // z
-    d_->qpos[3] = state.quat.x();  // qx
-    d_->qpos[4] = state.quat.y();  // qy
-    d_->qpos[5] = state.quat.z();  // qz
-    d_->qpos[6] = state.quat.w();  // qw
+    d_->qpos[3] = state.quat.w();  // qw
+    d_->qpos[4] = state.quat.x();  // qx
+    d_->qpos[5] = state.quat.y();  // qy
+    d_->qpos[6] = state.quat.z();  // qz
     d_->qpos[10] = state.leg_pos;  // foot pos, note we don't care about 7-9, flywheel positions.
 
     d_->qvel[0] = state.vel[0];    // vx
@@ -242,10 +254,10 @@ double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
     d_->qvel[8] = state.wheel_vel[2];   // foot vel
 
     vector_2t z, v;
-    vector_t command;
+    vector_t tmp_command;
     vector_3t h_dh;
-    command.resize(5, 1);
-    command.setZero();
+    tmp_command.resize(5, 1);
+    tmp_command.setZero();
     vector_3t omega_des;
     omega_des.setZero();
     vector_t u_des(4);
@@ -300,11 +312,11 @@ double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
         
         // Get robustified RoM action
         v = robustifiedSafetyFilter(z, vd(z));
-        command_.block<2, 1>(0, 0) = z + v * pred_dt_;
-        command_.block<2, 1>(2, 0) = v;
+        tmp_command.block<2, 1>(0, 0) = z + v * pred_dt_;
+        tmp_command.block<2, 1>(2, 0) = v;
 
         // Compute desired quaternion TODO add raibert policy
-        quat_des = raibert_policy_.DesiredQuaternion(hopper_->state_, command);
+        quat_des = raibert_policy_.DesiredQuaternion(hopper_->state_, tmp_command);
         quat_des = plus(quat_des, initial_yaw_quat);
         omega_des = raibert_policy_.DesiredOmega();
         u_des = raibert_policy_.DesiredInputs(hopper_->state_.wheel_vel, hopper_->state_.contact);
@@ -333,10 +345,27 @@ double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
         }
         // Step Dynamics
         mj_step(m_, d_);
+        fileHandle << d_->time << "," << hopper_->state_.contact
+                       << "," << hopper_->state_.pos.transpose().format(CSVFormat)
+                       << "," << hopper_->state_.leg_pos
+                       << "," << hopper_->state_.vel.transpose().format(CSVFormat)
+                       << "," << hopper_->state_.leg_vel
+                       << "," << hopper_->state_.quat.coeffs().transpose().format(CSVFormat)
+                       << "," << quat_des.coeffs().transpose().format(CSVFormat)
+                       << "," << hopper_->state_.omega.transpose().format(CSVFormat)
+                       << "," << hopper_->torque.transpose().format(CSVFormat)
+                       << "," << hopper_->state_.wheel_vel.transpose().format(CSVFormat)
+                       << "," << command_.col(0).transpose().format(CSVFormat)
+                       << "," << h_Dh(z).transpose().format(CSVFormat)
+                       << "," << vd(z).transpose().format(CSVFormat)
+                       << "," << robustifiedSafetyFilter(z, vd(z)).transpose().format(CSVFormat)
+                       << "," << delta_;
+            fileHandle << std::endl;
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-    std::cout << elapsed.count() << std::endl;
+    // std::cout << elapsed.count() << std::endl;
+    // throw std::runtime_error("I'm stopping here...");
     return h_bar;
 }
 
@@ -354,9 +383,6 @@ vector_2t PredCBFCommand::robustifiedSafetyFilter(vector_2t z, vector_2t vd) {
     } else {
         a = -alpha_ * h;
     }
-        
-
-    // std::cout << "\n\na: " << a << "\nb: " << b << std::endl;
 
     vector_2t v;
     // Implement safety filter
@@ -369,5 +395,9 @@ vector_2t PredCBFCommand::robustifiedSafetyFilter(vector_2t z, vector_2t vd) {
 }
 
 vector_2t PredCBFCommand::vd(vector_2t z) {
-    return (-k_r_ * (z - zd_)).cwiseMax(-v_max_).cwiseMin(v_max_);
+    vector_2t vd = -k_r_ * (z - zd_);
+    if (vd.norm() > v_max_) {
+        vd = vd / vd.norm() * v_max_;
+    }
+    return vd;
 }

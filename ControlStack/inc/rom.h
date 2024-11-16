@@ -89,6 +89,7 @@ public:
     const std::vector<double> cys_;
     const vector_t zd_;
     const int num_obs_;
+    int num_runs_;
     
     mjModel *m_;
     mjData *d_;
