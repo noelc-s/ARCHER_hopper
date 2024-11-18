@@ -401,3 +401,171 @@ vector_2t PredCBFCommand::vd(vector_2t z) {
     }
     return vd;
 }
+
+
+PredCBFCommandNN::PredCBFCommand(
+    std::string nn_path, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
+    const double k_r, const double v_max, const double pred_dt, const bool use_delta,
+    const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
+) : dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), use_delta_(use_delta),
+    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
+{
+    // Initialize Hopper and Raibert
+    hopper_ = std::shared_ptr<Hopper>(new Hopper(gainYamlPath));
+    
+    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
+    Ort::SessionOptions session_options;
+    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
+
+    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
+    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
+
+    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    inputType = inputTensorInfo.GetElementType();
+    inputDims = inputTensorInfo.GetShape();
+    inputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    outputType = outputTensorInfo.GetElementType();
+    outputDims = outputTensorInfo.GetShape();
+    outputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    inputTensorSize = vectorProduct(inputDims);
+    outputTensorSize = vectorProduct(outputDims);
+
+    // Resize the command
+    command_.resize(5, 1);
+    command_.setZero();
+    delta_ = 0;
+    num_runs_ = 0;
+
+    // Process the size of obstacle arrays
+    assert(cxs_.size() == num_obs_ && cys_.size() == num_obs_);
+}
+
+void PredCBFCommandNN::update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
+{
+    // TODO: update dynamics
+    while (running)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        {
+            std::lock_guard<std::mutex> lock(m);
+
+            vector_2t v = predictiveSafetyFilter(state);
+
+            // Compute command to send to hopper for tracking
+            vector_2t z;
+            z << state.pos[0], state.pos[1];
+            command_.block<2, 1>(0, 0) = z + v * pred_dt_;
+            command_.block<2, 1>(2, 0) = v;
+            command_(4, 0) = userInput->joystick_command(2);
+            // std::cout << "\nz: "<<  z << "\nv: " << v << "\ndt: " << pred_dt_ << "\ncommand: " << command_ << std::endl;
+
+        }
+        // std::cout << command(0, 0) << ',' << command(0, 1) << std::endl;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::chrono::milliseconds sleep_duration(static_cast<int>((dt_ - elapsed.count()) * 1000));
+        if (sleep_duration.count() > 0)
+        {
+            std::this_thread::sleep_for(sleep_duration);
+        }
+    }
+}
+
+vector_3t PredCBFCommandNN::h_Dh(vector_2t z) {
+    double h = 0;
+    vector_2t dh;
+    dh.setZero();
+    double dh_denom = 0;
+    for (int i = 0; i < num_obs_; i++) {
+        double r = rs_[i];
+        vector_2t c;
+        c << cxs_[i], cys_[i];
+        double d = (z - c).norm() - r;
+        if (smooth_barrier_) {
+            double exp_d = std::exp(-rho_ * d);
+            h += exp_d;
+            dh += (z - c) / (z  - c).norm() * exp_d;
+            dh_denom += exp_d;
+        } else if (d < h || i == 0) {
+            h = d;
+            dh = (z - c) / (z - c).norm();
+        }
+    }
+    if (smooth_barrier_) {
+        h = -1 / rho_ * std::log(h);
+        dh = dh / dh_denom;
+    }
+    return vector_3t(h, dh(0), dh(1));
+}
+
+vector_2t PredCBFCommandNN::predictiveSafetyFilter(Hopper::State &state) {
+    std::vector<float>obs(4);
+    // TODO: format obs to go into 
+    // obs << state.pos[0], state.pos[1], state.pos[2], state.vel[0], state.vel[1], state.vel[2];  // CoM States
+    //  Double Int States
+    obs[0] = state.pos[0];
+    obs[1] = state.pos[1];
+    obs[2] = state.vel[0];
+    obs[3] = state.vel[1]
+    // obs << state.pos[0], state.pos[1], state.vel[0], state.vel[1];  // Double Int States
+
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float *>(obs.data()), inputTensorSize,
+        inputDims.data(), inputDims.size());
+
+    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, outpt.data(), outputTensorSize,
+        outputDims.data(), outputDims.size());
+
+    std::vector<const char *> inputNames{inputNodeName.c_str()};
+    std::vector<const char *> outputNames{outputNodeName.c_str()};
+
+    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
+
+    delta_ = outpt[0];
+    return robustifiedSafetyFilter(z, vd(z));
+}
+
+vector_2t PredCBFCommandNN::robustifiedSafetyFilter(vector_2t z, vector_2t vd) {
+    // Compute h and its jacobian at z
+    vector_3t h_dh = h_Dh(z);
+    double h = h_dh(0);
+    vector_2t Dh = h_dh.segment<2>(1);
+
+    // Create compact notation for safety filter
+    vector_2t b = Dh;                 // Lgh, but gz is identity for single int
+    double a;
+    if (use_delta_) {
+        a = -alpha_ * h + delta_;  // -alpha * h - Lfh + delta, but f is zero for single int
+    } else {
+        a = -alpha_ * h;
+    }
+
+    vector_2t v;
+    // Implement safety filter
+    if (b.dot(vd) >= a) {
+        v = vd;
+    } else {
+        v = vd + b / (b.dot(b)) * (a - b.dot(vd));
+    }
+    return v;
+}
+
+vector_2t PredCBFCommandNN::vd(vector_2t z) {
+    vector_2t vd = -k_r_ * (z - zd_);
+    if (vd.norm() > v_max_) {
+        vd = vd / vd.norm() * v_max_;
+    }
+    return vd;
+}

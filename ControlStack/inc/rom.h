@@ -7,6 +7,8 @@
 #include "mujoco.h"
 #include "../inc/Policy.h"
 
+#include <onnxruntime_cxx_api.h>
+
 
 using namespace Hopper_t;
 
@@ -102,6 +104,58 @@ public:
     vector_2t vd(vector_2t z);
     vector_2t predictiveSafetyFilter(Hopper::State &state);
     double robustifiedRollout(Hopper::State &state);
+    vector_2t robustifiedSafetyFilter(vector_2t z, vector_2t vd);
+};
+
+class PredCBFCommandNN : public Command {
+public: 
+    PredCBFCommandNN(
+        std::string nn_path, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
+        const double k_r, const double v_max, const double pred_dt, const bool use_delta,
+        const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, vector_2t zd
+    );
+    const std::string gainYamlPath = "../config/gains.yaml";
+    std::shared_ptr<Hopper> hopper_;
+    RaibertPolicy raibert_policy_ = RaibertPolicy(gainYamlPath);
+    matrix_t command_;
+    const double dt_;
+    const double alpha_;
+    const double rho_;
+    double delta_;
+    const bool use_delta_;
+    const bool smooth_barrier_;
+    const double epsilon_;
+    const double k_r_;
+    const double v_max_;
+    const double pred_dt_;
+    const std::vector<double> rs_;
+    const std::vector<double> cxs_;
+    const std::vector<double> cys_;
+    const vector_t zd_;
+    const int num_obs_;
+    int num_runs_;
+
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;    
+    
+    void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    matrix_t getCommand() {return command_;};
+    int getHorizon() const override { return 1; }
+    int getStateDim() const override { return 2; }
+    int getInputDim() const { return 2; }
+    vector_3t h_Dh(vector_2t z);
+    vector_2t vd(vector_2t z);
     vector_2t robustifiedSafetyFilter(vector_2t z, vector_2t vd);
 };
 #endif
