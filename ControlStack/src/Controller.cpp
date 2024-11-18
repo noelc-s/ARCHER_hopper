@@ -46,18 +46,19 @@ int main(int argc, char **argv)
     //     throw std::runtime_error("RoM type unrecognized");
     // }
 
-    std::unique_ptr<PredCBFCommand> command;
-    command = std::make_unique<PredCBFCommand>(
-            p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
-            p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.rs, p.cxs, p.cys, p.zd
+    // std::unique_ptr<PredCBFCommand> command;
+    // command = std::make_unique<PredCBFCommand>(
+    //         p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+    //         p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.rs, p.cxs, p.cys, p.zd
+    //     );
+    std::string nn_path = "nn_path";
+    std::unique_ptr<PredCBFCommandNN> command;
+    command = std::make_unique<PredCBFCommandNN>(
+            nn_path, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+            p.k_r, p.v_max, p.pred_dt, p.use_delta, p.rs, p.cxs, p.cys, p.zd
         );
     // Instantiate a new policy.
-    // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
-    // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
     RaibertPolicy policy = RaibertPolicy(gainYamlPath);
-    // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
-    // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
-    // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
     // std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));

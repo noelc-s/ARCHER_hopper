@@ -415,7 +415,7 @@ PredCBFCommandNN::PredCBFCommand(
     
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
     Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
+    session = std::make_unique<Ort::Session>(Ort::Session(env, nn_path.c_str(), session_options));
 
     inputNodeName = session->GetInputNameAllocated(0, allocator).get();
     outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
