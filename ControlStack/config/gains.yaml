@@ -52,7 +52,7 @@ PredCBF:
   rho: 1
   smooth_barrier: False
   epsilon: 0
-  iters: 10
+  iters: 1
   K: 0.5
   tol: 0.001
   k_r: 1
@@ -64,6 +64,7 @@ PredCBF:
   cys: [-2, -3]
   zd: [0, 0]
   use_delta: False
+  use_barrier: False
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 

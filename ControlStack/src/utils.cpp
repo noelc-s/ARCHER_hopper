@@ -83,6 +83,7 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     p.K = config["PredCBF"]["K"].as<scalar_t>();
     p.tol = config["PredCBF"]["tol"].as<scalar_t>();
     p.use_delta = config["PredCBF"]["use_delta"].as<bool>();
+    p.use_barrier = config["PredCBF"]["use_barrier"].as<bool>();
     p.rs = config["PredCBF"]["rs"].as<std::vector<scalar_t>>();
     p.cxs = config["PredCBF"]["cxs"].as<std::vector<scalar_t>>();
     p.cys = config["PredCBF"]["cys"].as<std::vector<scalar_t>>();

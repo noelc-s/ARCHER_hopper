@@ -46,6 +46,7 @@ struct Parameters {
     scalar_t K;
     scalar_t tol;
     bool use_delta;
+    bool use_barrier;
     scalar_t k_r;
     scalar_t v_max;
     scalar_t a_max;

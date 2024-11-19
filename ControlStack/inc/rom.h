@@ -64,7 +64,7 @@ public:
     PredCBFCommand(
         const double horizon, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
         const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
-        const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, vector_2t zd
+        const bool use_barrier, const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, vector_2t zd
     );
     const std::string gainYamlPath = "../config/gains.yaml";
     std::shared_ptr<Hopper> hopper_;
@@ -76,6 +76,7 @@ public:
     const double rho_;
     double delta_;
     const bool use_delta_;
+    const bool use_barrier_;
     const int iters_;
     const double K_;
     const double tol_;

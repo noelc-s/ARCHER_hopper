@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     std::unique_ptr<PredCBFCommand> command;
     command = std::make_unique<PredCBFCommand>(
             p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
-            p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.rs, p.cxs, p.cys, p.zd
+            p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
         );
     // Instantiate a new policy.
     // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);

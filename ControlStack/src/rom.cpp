@@ -91,9 +91,9 @@ void DoubleIntCommand::update(UserInput *userInput, std::atomic<bool> &running, 
 PredCBFCommand::PredCBFCommand(
     const double horizon, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
     const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
-    const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
+    const bool use_barrier, const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd
 ) : horizon_(horizon), dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), iters_(iters), K_(K), tol_(tol), use_delta_(use_delta),
-    k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
+    use_barrier_(use_barrier), k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
 {
     std::cout << "here start" << std::endl;
     // Resize the command
@@ -306,8 +306,18 @@ double PredCBFCommand::robustifiedRollout(Hopper::State &state) {
         // Update safety violation
         z << d_->qpos[0], d_->qpos[1];
         h_dh = h_Dh(z);
-        if (h_dh(0) < h_bar) {
-            h_bar = h_dh(0);
+        if (use_barrier_) {
+            vector_2t Dh = h_dh.segment<2>(1);
+            vector_2t fz;
+            fz << d_->qvel[0], d_->qvel[1];
+            float viol = Dh.dot(fz.segment<2>(0)) + alpha_ * h_dh(0);
+            if (viol < h_bar) {
+                h_bar = viol;
+            }
+        } else {
+            if (h_dh(0) < h_bar) {
+                h_bar = h_dh(0);
+            }
         }
         
         // Get robustified RoM action
