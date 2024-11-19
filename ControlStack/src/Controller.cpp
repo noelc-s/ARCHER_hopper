@@ -66,6 +66,10 @@ int main(int argc, char **argv)
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+
+    // Thread for updating delta in reduced order model
+    std::thread runDelta(&PredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+
     desired_command = command->getCommand();
 
     // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol

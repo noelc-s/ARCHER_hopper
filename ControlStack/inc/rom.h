@@ -95,6 +95,7 @@ public:
     mjModel *m_;
     mjData *d_;
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+    void update_delta(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
     matrix_t getCommand() {return command_;};
     int getHorizon() const override { return 1; }
     int getStateDim() const override { return 2; }

@@ -141,11 +141,11 @@ void PredCBFCommand::update(UserInput *userInput, std::atomic<bool> &running, st
         {
             std::lock_guard<std::mutex> lock(m);
 
-            vector_2t v = predictiveSafetyFilter(state);
-
-            // Compute command to send to hopper for tracking
             vector_2t z;
             z << state.pos[0], state.pos[1];
+            vector_2t v = robustifiedSafetyFilter(z, vd(z));
+
+            // Compute command to send to hopper for tracking
             command_.block<2, 1>(0, 0) = z + v * pred_dt_;
             command_.block<2, 1>(2, 0) = v;
             command_(4, 0) = userInput->joystick_command(2);
@@ -160,6 +160,23 @@ void PredCBFCommand::update(UserInput *userInput, std::atomic<bool> &running, st
         {
             std::this_thread::sleep_for(sleep_duration);
         }
+    }
+}
+
+void PredCBFCommand::update_delta(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
+{
+    // TODO: update dynamics
+    Hopper::State copied_state;
+
+    while (running)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        {
+            std::lock_guard<std::mutex> lock(m);
+            // copy state
+            copied_state = state;
+        }
+        predictiveSafetyFilter(copied_state);
     }
 }
 

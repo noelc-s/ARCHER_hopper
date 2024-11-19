@@ -63,8 +63,8 @@ PredCBF:
   cxs: [-0.5, -2]
   cys: [-2, -3]
   zd: [0, 0]
-  use_delta: False
-  use_barrier: False
+  use_delta: True
+  use_barrier: True
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
