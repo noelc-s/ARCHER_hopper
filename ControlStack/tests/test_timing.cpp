@@ -39,6 +39,28 @@ int add(int a, int b) {
     return a + b;
 }
 
+template<typename Scalar>
+class CodeGenABADerivativesChild : public pinocchio::CodeGenABADerivatives<Scalar>
+{
+public:
+    using Base = pinocchio::CodeGenABADerivatives<Scalar>;
+    using typename Base::MatrixXs;
+
+    // Constructor that forwards to the base class constructor
+    CodeGenABADerivativesChild(
+        const typename Base::Model &model,
+        const std::string &function_name = "partial_aba",
+        const std::string &library_name = "cg_partial_aba_eval")
+        : Base(model, function_name, library_name)
+    {
+    }
+
+    // Public getter methods
+    const MatrixXs &getDddqDq() const { return this->dddq_dq; }
+    const MatrixXs &getDddqDv() const { return this->dddq_dv; }
+    const MatrixXs &getDddqDtau() const { return this->dddq_dtau; }
+};
+
 void Aba(const ad_pin_model_t& model, const std::shared_ptr<ad_pin_data_t> data, const ad_vector_t& qva, const ad_vector_t& p, ad_vector_t& f) {
 
     ad_vector_t q(11);
@@ -53,6 +75,8 @@ void Aba(const ad_pin_model_t& model, const std::shared_ptr<ad_pin_data_t> data,
     f = aba(model, *data, q, v, a);
     // f = integrate(model, q, v);
 }
+
+
 
 // Test case for add function
 TEST(AdditionTest, HandlesPositiveInput) {
@@ -118,6 +142,9 @@ TEST(Timing, LoadModel) {
     CodeGenABA<double> aba_code_gen(model);
     aba_code_gen.initLib();
     aba_code_gen.compileAndLoadLib(PINOCCHIO_CXX_COMPILER);
+    CodeGenABADerivativesChild<double> Daba_code_gen(model);
+    Daba_code_gen.initLib();
+    Daba_code_gen.compileAndLoadLib(PINOCCHIO_CXX_COMPILER);
 
     for (int i = 0; i < 10; i++) {
         auto start = high_resolution_clock::now();
@@ -130,6 +157,14 @@ TEST(Timing, LoadModel) {
     for (int i = 0; i < 10; i++) {
         auto start = high_resolution_clock::now();
         aba_code_gen.evalJacobian(q, v, tau);
+        auto end = high_resolution_clock::now();
+        auto duration = duration_cast<nanoseconds>(end - start);
+        std::cout << "    D(CG D_ABA): " << duration.count() * pow(10, -3) << " microseconds." << std::endl;
+    }
+
+    for (int i = 0; i < 10; i++) {
+        auto start = high_resolution_clock::now();
+        Daba_code_gen.evalFunction(q, v, tau);
         auto end = high_resolution_clock::now();
         auto duration = duration_cast<nanoseconds>(end - start);
         std::cout << "    CG D_ABA: " << duration.count() * pow(10, -3) << " microseconds." << std::endl;

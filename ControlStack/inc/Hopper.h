@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <cppad/cg.hpp>
 #include "Types.h"
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
@@ -12,6 +13,7 @@
 #include "pinocchio/multibody/data.hpp"
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/contact-info.hpp"
+#include "pinocchio/codegen/code-generator-algo.hpp"
 
 #include <onnxruntime_cxx_api.h>
 
@@ -21,6 +23,48 @@ using namespace pinocchio;
 template <typename T>
 T vectorProduct(const std::vector<T>& v)
     { return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>()); }
+
+template<typename Scalar>
+class CodeGenABAChild : public pinocchio::CodeGenABA<Scalar>
+{
+public:
+    using Base = pinocchio::CodeGenABA<Scalar>;
+    using typename Base::MatrixXs;
+
+    // Constructor that forwards to the base class constructor
+    CodeGenABAChild(
+        const typename Base::Model &model,
+        const std::string &function_name = "aba",
+        const std::string &library_name = "cg_aba_eval")
+        : Base(model, function_name, library_name)
+    {
+    }
+
+    // Public getter methods
+    MatrixXs getVal() const { return this->res; }
+};
+
+template<typename Scalar>
+class CodeGenABADerivativesChild : public pinocchio::CodeGenABADerivatives<Scalar>
+{
+public:
+    using Base = pinocchio::CodeGenABADerivatives<Scalar>;
+    using typename Base::MatrixXs;
+
+    // Constructor that forwards to the base class constructor
+    CodeGenABADerivativesChild(
+        const typename Base::Model &model,
+        const std::string &function_name = "partial_aba",
+        const std::string &library_name = "cg_partial_aba_eval")
+        : Base(model, function_name, library_name)
+    {
+    }
+
+    // Public getter methods
+    MatrixXs getDddqDq() const { return this->dddq_dq; }
+    MatrixXs getDddqDv() const { return this->dddq_dv; }
+    MatrixXs getDddqDtau() const { return this->dddq_dtau; }
+};
 
 enum domain {flight, ground, flight_ground, ground_flight};
 
@@ -55,6 +99,9 @@ public:
     std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_flight;
     std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_flight;
 
+    std::shared_ptr<CodeGenABAChild<double>> aba_code_gen;
+    std::shared_ptr<CodeGenABADerivativesChild<double>> Daba_code_gen;
+
     quat_t quat_actuator;
 
     struct Gains {
@@ -67,6 +114,8 @@ public:
     scalar_t springStiffness;
 
     Hopper(const std::string yamlFile);
+
+    void setModel(const pinocchio::Model& model);
 
     void updateState(vector_t state);
 

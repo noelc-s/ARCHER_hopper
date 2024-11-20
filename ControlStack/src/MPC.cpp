@@ -205,7 +205,7 @@ vector_t MPC::oneStepPredict(Hopper hopper, const vector_t xi, const vector_t ta
   return s_kp1;
 }
 
-void MPC::LinearizeDynamics(Hopper hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time)
+void MPC::LinearizeDynamics(Hopper& hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time)
 {
   assertm(x_bar.rows() == nx, "Number of rows in x_bar not what expected");
   assertm(x_bar.cols() == p.N - 1, "Number of cols in x_bar not what expected");

@@ -7,7 +7,7 @@
 
 #include "pinocchio/algorithm/cholesky.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/aba.hpp"
+// #include "pinocchio/algorithm/aba.hpp"
 #include "pinocchio/algorithm/aba-derivatives.hpp"
 #include "pinocchio/algorithm/constrained-dynamics-derivatives.hpp"
 #include "pinocchio/algorithm/impulse-dynamics.hpp"
@@ -53,6 +53,14 @@ Hopper::Hopper(const std::string yamlFile)
 
     state_.q.resize(11);
     state_.v.resize(10);
+
+    aba_code_gen = std::make_shared<CodeGenABAChild<double>>(model);
+    Daba_code_gen = std::make_shared<CodeGenABADerivativesChild<double>>(model);
+    aba_code_gen->initLib();
+    aba_code_gen->compileAndLoadLib(PINOCCHIO_CXX_COMPILER);
+    Daba_code_gen->initLib();
+    Daba_code_gen->compileAndLoadLib(PINOCCHIO_CXX_COMPILER);
+
 }
 
 void Hopper::updateState(vector_t state)
@@ -157,10 +165,13 @@ vector_t Hopper::f(const vector_t &q, const vector_t &v, const vector_t &a, cons
         // Not constrained dynamics for flight, because that would fix the foot position
         auto start = high_resolution_clock::now();
         aba(model, data, q, v, a);
+        // aba_code_gen->evalFunction(q,v,a);
         auto end = high_resolution_clock::now();
         auto duration = duration_cast<nanoseconds>(end - start);
         std::cout << "    ABA: " << duration.count() * pow(10, -3) << " microseconds." << std::endl;
-        x_dot << v.segment(0, 6), 0, v.segment(7, 3), data.ddq;
+        // x_dot << v.segment(0, 6), 0, v.segment(7, 3), data.ddq;
+        x_dot << v.segment(0, 6), 0, v.segment(7, 3), aba_code_gen->getVal();
+        std::cout << "got val" << std::endl;
         break;
     }
     case ground:
@@ -195,12 +206,37 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
     {
         // Not constrained dynamics for flight, because that would fix the foot position
         auto start = high_resolution_clock::now();
-        computeABADerivatives(model, data, q, v, a);
+        // computeABADerivatives(model, data, q, v, a);
+        // Daba_code_gen->evalFunction(q,v,a);
+        aba_code_gen->evalJacobian(q,v,a);
         auto end = high_resolution_clock::now();
         auto duration = duration_cast<nanoseconds>(end - start);
         std::cout << "    D_ABA: " << duration.count() * pow(10, -3) << " microseconds." << std::endl;
 
         springJacobian.setZero();
+
+        A << matrix_t::Zero(10, 10), matrix_t::Identity(10, 10), aba_code_gen->da_dq + springJacobian, aba_code_gen->da_dv;
+
+        matrix_t B_mat(10, 4);
+        B_mat << 0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+        B << matrix_t::Zero(10, 4), data.Minv * B_mat;
+
+        vector_t s(20);
+        vector_t x(21);
+        x << q, v;
+        s = qk_to_xik(x, q0);
+
+        C << f - A * s - B * a.tail(4);
+
         break;
     }
     case ground:
@@ -212,6 +248,27 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
             matrix_t::Zero(3, 10),
             0, 0, 0, 0, 0, 0, -springStiffness, 0, 0, 0,
             matrix_t::Zero(3, 10);
+        A << matrix_t::Zero(10, 10), matrix_t::Identity(10, 10), data.ddq_dq + springJacobian, data.ddq_dv;
+
+        matrix_t B_mat(10, 4);
+        B_mat << 0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+        B << matrix_t::Zero(10, 4), data.Minv * B_mat;
+
+        vector_t s(20);
+        vector_t x(21);
+        x << q, v;
+        s = qk_to_xik(x, q0);
+
+        C << f - A * s - B * a.tail(4);
         break;
     }
     otherwise:
@@ -220,27 +277,6 @@ void Hopper::Df(const vector_t q, const vector_t v, const vector_t a, const doma
         break;
     }
     }
-    A << matrix_t::Zero(10, 10), matrix_t::Identity(10, 10), data.ddq_dq + springJacobian, data.ddq_dv;
-
-    matrix_t B_mat(10, 4);
-    B_mat << 0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1;
-    B << matrix_t::Zero(10, 4), data.Minv * B_mat;
-
-    vector_t s(20);
-    vector_t x(21);
-    x << q, v;
-    s = qk_to_xik(x, q0);
-
-    C << f - A * s - B * a.tail(4);
 };
 
 void Hopper::css2dss(const matrix_t &Ac, const matrix_t &Bc, const matrix_t &Cc, const float dt,
