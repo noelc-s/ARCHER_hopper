@@ -84,6 +84,10 @@ add_library(MPC SHARED
     target_link_libraries(MPC Eigen3::Eigen)
     target_link_libraries(MPC osqp-cpp)
     target_link_libraries(MPC pinocchio::pinocchio)
+    include_directories(/home/noelcs/repos/CppAD_install/include)
+    include_directories(/home/noelcs/repos/CppADCodeGen_install/include)
+    target_compile_definitions(MPC PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
+    target_link_libraries(MPC /home/noelcs/repos/CppAD_install/lib/libcppad_lib.so)
     target_include_directories(MPC PUBLIC ${manif_INCLUDE_DIRS})
     if(LEARNING)
         target_link_libraries(MPC onnxruntime::onnxruntime)
@@ -144,3 +148,22 @@ target_link_libraries(hopper_sim_hardware PUBLIC glfw)
 target_link_libraries(hopper_sim_hardware PUBLIC yaml-cpp)
 target_link_libraries(hopper_sim_hardware PUBLIC ${MUJOCO_LIB})
 target_link_directories(hopper_sim_hardware PUBLIC ${MUJOCO_PATH})
+
+
+# Add Google Test as a dependency
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# Enable testing
+enable_testing()
+
+# Add subdirectory for tests
+add_subdirectory(tests)
+
+add_subdirectory(auto_diff)

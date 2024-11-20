@@ -129,7 +129,7 @@ public:
     * @param[(implicit) out] Bd
     * @param[(implicit) out] Cd
     */
-    void LinearizeDynamics(Hopper hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time);
+    void LinearizeDynamics(Hopper& hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time);
 
     /*! @brief Reset all of the internal variables*/
     void reset();

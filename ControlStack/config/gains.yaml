@@ -36,7 +36,7 @@ MPC:
   dt_flight: 0.01                                       # dt of flight phase [s]
   dt_ground: 0.001                                      # dt of ground phase [s]
   dt_replan: 0.01                                       # dt to run MPC at
-  SQP_iter: 2                                           # number of SQP iterations
+  SQP_iter: 1                                          # number of SQP iterations
   tau_max: 15                                          # maximum control input
   f_max: 0                                              # maximum force applied to foot
   groundDuration: 0.07                                  # duration of ground phase

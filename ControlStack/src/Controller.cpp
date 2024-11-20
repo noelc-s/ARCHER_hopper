@@ -38,16 +38,16 @@ int main(int argc, char **argv)
         throw std::runtime_error("RoM type unrecognized");
     }
     // Instantiate a new policy.
-    std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
-    MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
-    // RaibertPolicy policy = RaibertPolicy(gainYamlPath);
+    // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
+    // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
+    RaibertPolicy policy = RaibertPolicy(gainYamlPath);
     // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);
     // RLPolicy policy = RLPolicy("../../models/hopper_vel_0w94yf4r.onnx", gainYamlPath);
     // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
     // Thread for user input
     std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-    // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+    // std::thread getUserInput2(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
     std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
     // Thread for updating reduced order model
