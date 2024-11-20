@@ -55,6 +55,12 @@ namespace Archer
     ud = kDb*(-wb);
   }
 
+  void ControlBia::releaseFoot(float &up,float &ud,float rb, float wb){
+    float r = -(rb-_rb0);
+    up = kPb/10*r;
+    ud = kDb/2*(-wb);
+  }
+
   void ControlBia::testPDf(float &u0,float &up,float &ud,float d0,float xf, float vf){
     float x = xf/1000.0;
     float v = vf/1000.0;

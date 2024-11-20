@@ -25,6 +25,11 @@ namespace Archer
     public:
       Bia(DualENC &dENC, ELMO_CANt4 &elmo, ControlBia &cBia); //
 
+      void exitProgram();
+      void runSin();
+      int32_t sendSafeTorque(float xb, float u);
+      void releaseMotor();
+
       int32_t initComm(int MC);
       void initSD();
       void initBia1(int MC);
@@ -66,6 +71,9 @@ namespace Archer
       int _Y1       = 35;
       int _Y2       = 36;
       int _G        = 37;
+
+      double theta_max = 1.2;
+      double theta_min = -5.0;
 
       uint32_t _prevTb;
       uint32_t _nextTb;

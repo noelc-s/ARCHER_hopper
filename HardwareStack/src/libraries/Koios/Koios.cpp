@@ -32,7 +32,7 @@ namespace Archer
   }
 
   int32_t Koios::initComm(int MC){
-    setLEDs("1000");
+    setLEDs("0010");
     delay(10);
     digitalWrite(_sOUT,HIGH);
     delay(10);
@@ -83,23 +83,23 @@ namespace Archer
   void Koios::initIMU(){
     Serial.println("Initializing VN-100 Serial..");
     IMU_PORT.print("$VNASY,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,05,921600*XX\r\n");
     delay(10);
     IMU_PORT.flush();
     delay(10);
     IMU_PORT.begin(921600);
-    delay(475);
+    delay(45);
     IMU_PORT.print("$VNASY,1*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNASY,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,06,0*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNWRG,75,2,1,01,0030*XX\r\n");
-    delay(500);
+    delay(50);
     IMU_PORT.print("$VNASY,1*XX\r\n");
-    delay(100);
+    delay(10);
     while (IMU_PORT.available() > 0) {
       IMU_PORT.read();
     }
@@ -109,17 +109,14 @@ namespace Archer
 
   void Koios::initKoios1(int MC){
     setLogo('R');
-    flashR(1);
-    delay(5000);
+    setLEDs("1000");
+    delay(3000);
     rt = initComm(MC);
-    delay(1000);
     if(rt>0){
-      flashA1(2); }
+      setLEDs("0100"); }
     else{
       flashR(10); }
     initIMU();
-    delay(10);
-    initSD();
     delay(10);
   }
 
@@ -304,7 +301,7 @@ namespace Archer
     rt2 = elmo_.motorOn(IDX_K2);
     delay(10);
     rt3 = elmo_.motorOn(IDX_K3);
-    delay(7500);
+    delay(10);
     ret = rt1*rt2*rt3;
     setLEDs("2202");
     return ret;

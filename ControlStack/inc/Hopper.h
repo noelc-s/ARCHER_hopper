@@ -1,21 +1,19 @@
-//
-// Created by igor on 7/20/22.
-//
-
-#ifndef HOPPER_HOPPER_H
-#define HOPPER_HOPPER_H
+#pragma once
 
 #include <iostream>
+#include <cppad/cg.hpp>
 #include "Types.h"
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
+#include <numeric>
 
-#include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/multibody/data.hpp"
+#include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/contact-info.hpp"
+#include "pinocchio/codegen/code-generator-algo.hpp"
 
 #include <onnxruntime_cxx_api.h>
 
@@ -26,25 +24,70 @@ template <typename T>
 T vectorProduct(const std::vector<T>& v)
     { return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>()); }
 
+template<typename Scalar>
+class CodeGenABAChild : public pinocchio::CodeGenABA<Scalar>
+{
+public:
+    using Base = pinocchio::CodeGenABA<Scalar>;
+    using typename Base::MatrixXs;
+
+    // Constructor that forwards to the base class constructor
+    CodeGenABAChild(
+        const typename Base::Model &model,
+        const std::string &function_name = "aba",
+        const std::string &library_name = "cg_aba_eval")
+        : Base(model, function_name, library_name)
+    {
+    }
+
+    // Public getter methods
+    MatrixXs getVal() const { return this->res; }
+};
+
+template<typename Scalar>
+class CodeGenABADerivativesChild : public pinocchio::CodeGenABADerivatives<Scalar>
+{
+public:
+    using Base = pinocchio::CodeGenABADerivatives<Scalar>;
+    using typename Base::MatrixXs;
+
+    // Constructor that forwards to the base class constructor
+    CodeGenABADerivativesChild(
+        const typename Base::Model &model,
+        const std::string &function_name = "partial_aba",
+        const std::string &library_name = "cg_partial_aba_eval")
+        : Base(model, function_name, library_name)
+    {
+    }
+
+    // Public getter methods
+    MatrixXs getDddqDq() const { return this->dddq_dq; }
+    MatrixXs getDddqDv() const { return this->dddq_dv; }
+    MatrixXs getDddqDtau() const { return this->dddq_dtau; }
+};
+
 enum domain {flight, ground, flight_ground, ground_flight};
 
 class Hopper {
 
 public:
-    scalar_t t;
-    vector_3t pos;
-    quat_t quat;
-    vector_3t vel;
-    vector_3t omega;
-    scalar_t contact;
-    scalar_t last_impact_time;
-    scalar_t last_flight_time;
-    scalar_t leg_pos;
-    scalar_t leg_vel;
-    vector_3t wheel_vel;
-    vector_t q;
-    vector_t v;
-    domain dom;
+
+    struct State {
+        scalar_t t;
+        vector_3t pos;
+        quat_t quat;
+        vector_3t vel;
+        vector_3t omega;
+        scalar_t contact;
+        scalar_t last_impact_time;
+        scalar_t last_flight_time;
+        scalar_t leg_pos;
+        scalar_t leg_vel;
+        vector_3t wheel_vel;
+        vector_t q;
+        vector_t v;
+        domain dom;
+    } state_;
     scalar_t multiplier_on_deltaf;
 
     vector_4t torque;
@@ -55,6 +98,9 @@ public:
     std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_ground;
     std::vector<RigidConstraintModelTpl<scalar_t, 0>> contact_model_flight;
     std::vector<RigidConstraintDataTpl<scalar_t, 0>> contact_data_flight;
+
+    std::shared_ptr<CodeGenABAChild<double>> aba_code_gen;
+    std::shared_ptr<CodeGenABADerivativesChild<double>> Daba_code_gen;
 
     quat_t quat_actuator;
 
@@ -69,8 +115,7 @@ public:
 
     Hopper(const std::string yamlFile);
 
-    static matrix_3t cross(vector_3t q);
-    static matrix_3t quat2Rot(quat_t q);
+    void setModel(const pinocchio::Model& model);
 
     void updateState(vector_t state);
 
@@ -153,5 +198,3 @@ public:
     std::vector<int64_t> outputDims;
     size_t outputTensorSize; 
 };
-
-#endif //HOPPER_HOPPER_H

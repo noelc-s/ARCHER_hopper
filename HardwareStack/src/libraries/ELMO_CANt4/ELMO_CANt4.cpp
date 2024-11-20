@@ -297,8 +297,8 @@ namespace Archer
           n32.c[2] = msgIn_.buf[6];
           n32.c[3] = msgIn_.buf[7];
           maxC_ = n32.ui;
-          // Serial.print("The max current for this motor is (in mA): ");
-          // Serial.println(n32.ui);
+          Serial.print("The max current for this motor is (in mA): ");
+          Serial.println(n32.ui);
           return 1;
         }
       }

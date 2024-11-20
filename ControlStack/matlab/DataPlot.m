@@ -1,7 +1,7 @@
 %% Read Data
 clear;clc;%clf;
-A = readmatrix('../data/data.csv');
-% A = readmatrix('../data/data_hardware.csv');
+% A = readmatrix('../data/data.csv');
+A = readmatrix('../data/data_hardware.csv');
 % A = readmatrix('../data/data_hardware_test39.csv');
 sim = true;
 if sim

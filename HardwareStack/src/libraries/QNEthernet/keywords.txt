@@ -1,0 +1,129 @@
+#######################################
+# Syntax Coloring Map for QNEthernet
+# https://arduino.github.io/arduino-cli/latest/library-specification/#keywords
+# https://github.com/arduino/Arduino/blob/master/build/shared/lib/keywords.txt
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+Ethernet	KEYWORD1	Ethernet
+EthernetClient	KEYWORD1	EthernetClient
+EthernetServer	KEYWORD1	EthernetServer
+EthernetUDP	KEYWORD1	EthernetUDP
+MDNS	KEYWORD1
+DNSClient	KEYWORD1
+stdoutPrint	KEYWORD1
+stderrPrint	KEYWORD1
+EthernetFrame	KEYWORD1
+StdioPrint	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+maxMulticastGroups	KEYWORD2
+mtu	KEYWORD2
+isPromiscuousMode	KEYWORD2
+MACAddress	KEYWORD2	Ethernet.MACAddress
+macAddress	KEYWORD2	Ethernet.MACAddress
+setMACAddress	KEYWORD2	Ethernet.setMACAddress
+loop	KEYWORD2
+begin	KEYWORD2
+setDHCPEnabled	KEYWORD2
+isDHCPEnabled	KEYWORD2
+isDHCPActive	KEYWORD2
+waitForLocalIP	KEYWORD2
+waitForLink	KEYWORD2
+end	KEYWORD2
+linkStatus	KEYWORD2	Ethernet.linkStatus
+linkState	KEYWORD2
+setLinkState	KEYWORD2
+linkSpeed	KEYWORD2
+linkIsFullDuplex	KEYWORD2
+linkIsCrossover	KEYWORD2
+onLinkState	KEYWORD2
+onAddressChanged	KEYWORD2
+onInterfaceStatus	KEYWORD2
+interfaceStatus	KEYWORD2
+localIP	KEYWORD2	Ethernet.localIP
+subnetMask	KEYWORD2	Ethernet.subnetMask
+gatewayIP	KEYWORD2	Ethernet.gatewayIP
+dnsServerIP	KEYWORD2	Ethernet.dnsServerIP
+broadcastIP	KEYWORD2
+setLocalIP	KEYWORD2	Ethernet.setLocalIP
+setSubnetMask	KEYWORD2	Ethernet.setSubnetMask
+setGatewayIP	KEYWORD2	Ethernet.setGatewayIP
+setDNSServerIP	KEYWORD2	Ethernet.setDnsServerIP
+setDnsServerIP	KEYWORD2	Ethernet.setDnsServerIP
+hardwareStatus	KEYWORD2	Ethernet.hardwareStatus
+joinGroup	KEYWORD2
+leaveGroup	KEYWORD2
+setMACAddressAllowed	KEYWORD2
+setHostname	KEYWORD2
+hostname	KEYWORD2
+maxSockets	KEYWORD2
+connect	KEYWORD2	client.connect
+connectNoWait	KEYWORD2
+connected	KEYWORD2	client.connected
+setConnectionTimeout	KEYWORD2	client.setConnectionTimeout
+connectionTimeout	KEYWORD2
+stop	KEYWORD2
+close	KEYWORD2
+closeOutput	KEYWORD2
+abort	KEYWORD2
+localPort	KEYWORD2	client.localPort
+data	KEYWORD2
+remoteIP	KEYWORD2
+remotePort	KEYWORD2
+receivedTimestamp	KEYWORD2
+connectionId	KEYWORD2
+writeFully	KEYWORD2
+write	KEYWORD2
+availableForWrite	KEYWORD2
+flush	KEYWORD2
+available	KEYWORD2
+read	KEYWORD2
+peek	KEYWORD2
+status	KEYWORD2
+setNoDelay	KEYWORD2
+isNoDelay	KEYWORD2
+maxListeners	KEYWORD2
+port	KEYWORD2
+beginWithReuse	KEYWORD2
+accept	KEYWORD2	server.accept
+receiveQueueSize	KEYWORD2
+setReceiveQueueSize	KEYWORD2
+beginMulticast	KEYWORD2	WiFiUDP.beginMulticast
+beginMulticastWithReuse	KEYWORD2
+beginPacket	KEYWORD2	EthernetUDP.beginPacket
+endPacket	KEYWORD2	EthernetUDP.endPacket
+send	KEYWORD2
+parsePacket	KEYWORD2	EthernetUDP.parsePacket
+size	KEYWORD2
+maxServices	KEYWORD2
+restart	KEYWORD2
+addService	KEYWORD2
+removeService	KEYWORD2
+maxServers	KEYWORD2
+setServer	KEYWORD2
+getServer	KEYWORD2
+getHostByName	KEYWORD2
+maxFrameLen	KEYWORD2
+minFrameLen	KEYWORD2
+beginFrame	KEYWORD2
+beginVLANFrame	KEYWORD2
+endFrame	KEYWORD2
+parseFrame	KEYWORD2
+writeMagic	KEYWORD2
+
+#######################################
+# Structures (KEYWORD3)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+kMACAddrSize	LITERAL1

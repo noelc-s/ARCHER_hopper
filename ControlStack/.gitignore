@@ -8,4 +8,6 @@ data
 *.svg
 /docs/**
 !/docs/README.md
+output.m
+stored_graph.m
 

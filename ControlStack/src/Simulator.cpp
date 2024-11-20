@@ -154,6 +154,11 @@ void mycontroller(const mjModel *m, mjData *d) {
 
 }
 
+// Helper function to compute distance between two points
+double distance(double x1, double y1, double x2, double y2) {
+    return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+}
+
 // main function
 int main(int argc, const char **argv) {
 
@@ -192,7 +197,8 @@ int main(int argc, const char **argv) {
         mju_error("Could not initialize GLFW");
 
     // create window, make OpenGL context current, request v-sync
-    GLFWwindow *window = glfwCreateWindow(1244, 700, "Demo", NULL, NULL);
+    // GLFWwindow *window = glfwCreateWindow(1244, 700, "Demo", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(3840, 2160, "Demo", NULL, NULL);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -235,10 +241,6 @@ int main(int argc, const char **argv) {
     int *new_socket = new int;
     int valread;
     struct sockaddr_in serv_addr;
-    // [receive - RX] Torques and horizon states: TODO: Fill in
-    scalar_t RX_torques[23] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0};
-    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
-    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if ((*new_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
@@ -269,6 +271,16 @@ int main(int argc, const char **argv) {
     std::vector<scalar_t> pert_start = config["Simulator"]["pert_start"].as<std::vector<scalar_t>>();
     std::vector<scalar_t> pert_end = config["Simulator"]["pert_end"].as<std::vector<scalar_t>>();
     scalar_t simend = config["Simulator"]["simEnd"].as<scalar_t>();
+
+    config = YAML::LoadFile("../config/planner_params.yaml");
+    int N = config["MPC"]["N"].as<int>();
+    int max_graph_sol_length = config["Planner"]["max_graph_sol_length"].as<int>();
+    int max_num_obstacles = config["Planner"]["max_num_obstacles"].as<int>();
+
+    // [receive - RX] Torques and horizon states: TODO: Fill in
+    float RX_torques[4 + 7 + 2] = {0};
+    // [to send - TX] States: time[1], pos[3], quat[4], vel[3], omega[3], contact[1], leg (pos,vel)[2], flywheel speed [3]
+    scalar_t TX_state[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     // Set the initial condition [pos, orientation, vel, angular rate]
     d->qpos[0] = p0[0];
@@ -305,6 +317,12 @@ int main(int argc, const char **argv) {
     pert->active = 1;
     opt.flags[mjVIS_PERTFORCE] = 1;
     int iter = 0;
+
+    //do
+    //{
+    //    std::cout << '\n'
+    //              << "Press a key to continue...";
+    //} while (std::cin.get() != '\n');
 
     // use the first while condition if you want to simulate for a period.
     while (!glfwWindowShouldClose(window)) {
@@ -390,11 +408,19 @@ int main(int argc, const char **argv) {
             }
 
             //override the communication based on the received toruqe comands from ctrl
+            // added two DOFs for foot spring and damper
             d->ctrl[0] = RX_torques[0];
             for (int i = 0; i < 3; i++) {
                 d->ctrl[i+1] = g_x[i]*RX_torques[i+1];
             }
 
+	    // trampoline logic
+	    // if (d->ncon == 0 || (d->ncon > 0 && d->contact[0].geom2 == 22)) {
+            //  d->xfrc_applied[44] = -100*d->qvel[12];
+	    // } else {
+            //  d->xfrc_applied[44] = 0;
+	    // }
+	
             // Take integrator step
             mj_step(m, d);
 	    iter++;
@@ -403,29 +429,28 @@ int main(int argc, const char **argv) {
 	///////////// Set the states of the red and yellow dots to what the MPC predicts ///////////////
 	static int body_offset = 11;
 	static int vel_offset = 10;
-	d->qpos[body_offset+0] = RX_torques[4];
- 	d->qpos[body_offset+1] = RX_torques[5];
-	d->qpos[body_offset+2] = RX_torques[6];
-	d->qvel[vel_offset+0] = 0;
-	d->qvel[vel_offset+1] = 0;
-	d->qvel[vel_offset+2] = 0;
-	d->qpos[body_offset+3] = RX_torques[7];
-	d->qpos[body_offset+4] = RX_torques[8];
-	d->qpos[body_offset+5] = RX_torques[9];
-	d->qpos[body_offset+6] = RX_torques[10];
 
-	d->qpos[22] = RX_torques[11];
-	d->qpos[23] = RX_torques[12];
-	d->qpos[24] = RX_torques[13];
-	d->qpos[25] = RX_torques[14];
-	d->qpos[26] = RX_torques[15];
-	d->qpos[27] = RX_torques[16];
-	d->qpos[28] = RX_torques[17];
-	d->qpos[29] = RX_torques[18];
-	d->qpos[30] = RX_torques[19];
-	d->qpos[31] = RX_torques[20];
-	d->qpos[32] = RX_torques[21];
-	d->qpos[33] = RX_torques[22];
+	d->qpos[body_offset+0] = RX_torques[11];
+	d->qpos[body_offset+1] = RX_torques[12];
+    // d->qpos[body_offset+2] = RX_torques[13];
+    // d->qpos[body_offset+3] = RX_torques[14];
+	//d->qpos[body_offset+2] = RX_torques[13];
+	//d->qpos[25] = RX_torques[14];
+	//d->qpos[26] = RX_torques[15];
+	//d->qpos[27] = RX_torques[16];
+	//d->qpos[28] = RX_torques[17];
+	//d->qpos[29] = RX_torques[18];
+	//d->qpos[30] = RX_torques[19];
+	//d->qpos[31] = RX_torques[20];
+	//d->qpos[32] = RX_torques[21];
+	//d->qpos[33] = RX_torques[22];
+
+            for (int i = 0; i < pert_force_x.size(); i++) {
+        if (iter>pert_start[i] && iter < pert_end[i]) {
+            d->xfrc_applied[6] += 20*pert_force_x[i];
+            d->xfrc_applied[7] += 20*pert_force_y[i];
+        }
+        }
 
 	////////////////////////////////// Standard Mujoco stuff below this //////////////////////////////
         // get framebuffer viewport
@@ -433,9 +458,10 @@ int main(int argc, const char **argv) {
         glfwGetFramebufferSize(window, &viewport.width, &viewport.height);
 
         // update scene and render
-        cam.lookat[0] = d->qpos[0];
-        cam.lookat[1] = d->qpos[1];
+        // cam.lookat[0] = d->qpos[0];
+        // cam.lookat[1] = d->qpos[1];
         mjv_updateScene(m, d, &opt, NULL, &cam, mjCAT_ALL, &scn);
+
         mjr_render(viewport, &scn, &con);
 
         // swap OpenGL buffers (blocking call due to v-sync)
@@ -452,12 +478,6 @@ int main(int argc, const char **argv) {
     // free MuJoCo model and data, deactivate
     mj_deleteData(d);
     mj_deleteModel(m);
-    //mj_deactivate();
-
-    // terminate GLFW (crashes with Linux NVidia drivers)
-#if defined(__APPLE__) || defined(_WIN32)
-    glfwTerminate();
-#endif
 
     return 1;
 }

@@ -1,6 +1,8 @@
 Orientation:
-        Kp: [ 50,50,50 ]
-        Kd: [ .15,.15,.15 ]
+        Kp: [ -90.,-90.,-90. ]
+        Kd: [ -6.,-6.,-6. ]
+        # Kp: [ -15.,-15.,-15. ]
+        # Kd: [ -3.,-3.,-3. ]
         #Kp: [ 0,0,0 ]
         #Kd: [ 0,0,0 ]
 Leg:
@@ -20,7 +22,6 @@ Simulator:
   speed: 1
 
 Debug:
-  dt: 0.001
   predHorizon: 1
   # using a predHorizon > 1 with torque is not good, as the torque will be changing
   stopIndex: 600000
@@ -42,9 +43,62 @@ MPC:
   heightOffset: 0.35
   frameOffset: 0.0 # why in the world would there be a frame offset??
   markerOffset: -0.1016 # frame is 4 inches lower than markers
+  groundDuration: 0.07                                  # duration of ground phase
   time_between_contacts: 0.3
   multiplier_on_deltaf: 0 # not SO unreasonable, as constraints are soft in Mujoco
   hop_height: 0.5
   circle_amp: -0.2
   circle_freq: 10
   max_vel: 1
+
+RaibertHeuristic:
+  # kx_p: -0.                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  # ky_p: 0.                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  # kx_d: -0.                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  # ky_d: 0.                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_f: 0.7                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
+  ky_f: 0.7              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
+  pos_clip: 0.5
+  vel_clip: 1
+  v_des_clip: 0.2
+  angle_max: 0.4
+  yaw_damping: 0.004
+
+
+# roll_offset: 0.004
+# pitch_offset: 0.025
+roll_offset:  0.006
+pitch_offset: 0.018
+# roll_offset:  -0.0
+# pitch_offset: 0.0
+
+Policy:
+  dt_lowlevel: 0.001
+  dt_policy : 0.01
+
+RL:
+  obs_scales:
+    lin_vel : 0.5
+    ang_vel : 0.25
+    dof_vel : 0.01
+    z_pos : 1.0
+  # rom_type: double_int
+  # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
+  # rom_type: single_int
+  # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
+  # model_name: ../../models/hopper_traj_single_int_cur3_rojj0ra6.onnx # Spindown
+  rom_type: position
+  model_name: ..
+  horizon: 10
+  # dt_replan: 0.02
+  v_max: 0.3
+  a_max: 1.0
+
+filter_alpha: 0.4
+
+zed_x_offset: 0
+zed_y_offset: 0

@@ -4,7 +4,7 @@
 
 #include <ESP8266WiFi.h> //lib for esp chipp
 
-const char *ssid = "NETGEAR35";
+const char *ssid = "NETGEAR46";
 const char *password = "amberlab";
 
 // Set up TCP server and port number

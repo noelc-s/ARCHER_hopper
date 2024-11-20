@@ -1,3 +1,6 @@
+#ifndef USERINPUT_H
+#define USERINPUT_H
+
 // for joystick inputs
 #include <fcntl.h>
 #include <stdio.h>
@@ -9,6 +12,7 @@
 #include <future>
 #include <condition_variable>
 #include "../inc/Types.h"
+#include <thread>
 
 using namespace Hopper_t;
 
@@ -19,8 +23,14 @@ public:
     ~UserInput(){};
     // Current state of an axis.
     struct axis_state {
-    short x, y;
+        short x, y;
     };
+    vector_4t joystick_command;
+    vector_3t keyboard_command;
+    const float deadzone = 0.025;
+
+    matrix_t singleIntHorizon;
+
     // simple list for button map
     char buttons[4] = {'X','O','T','S'}; // cross, cricle, triangle, square
 
@@ -33,8 +43,8 @@ public:
     // get PS4 LS and RS joystick axis information
     size_t get_axis_state(struct js_event *event, struct axis_state axes[3]);
 
-    void getJoystickInput(vector_2t &offsets, vector_3t &command,
-                          vector_3t &dist, std::condition_variable & cv, std::mutex & m);
+    void getJoystickInput(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
 
     static vector_3t keyboardInput();
 
@@ -43,5 +53,11 @@ public:
     // MH
     // waits for the user input and asyncronously wait for the input, if everything is okay, it reads the input to the command
     // don't read too much into it
-    void getKeyboardInput(vector_3t &command, std::condition_variable & cv, std::mutex & m);
+    void getKeyboardInput(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
+    void cornerTraversal(vector_2t &offsets,
+                          scalar_t &dist, std::condition_variable & cv, std::mutex & m);
+    void resetKeyboardInput();
 };
+
+#endif
