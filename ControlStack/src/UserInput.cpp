@@ -82,33 +82,33 @@ void UserInput::getJoystickInput(vector_2t &offsets,
         // moving a joystick
         case JS_EVENT_AXIS:
             axis = get_axis_state(&event, axes);
-            if (axis == 0)
-            {
-                joystick_command[0] = axes[axis].x / joystick_max;
-                joystick_command[1] = -axes[axis].y / joystick_max;
-                if (abs(joystick_command[0]) < deadzone)
-                { // Deadzone
-                    joystick_command[0] = 0.0;
-                }
-                if (abs(joystick_command[1]) < deadzone)
-                { // Deadzone
-                    joystick_command[1] = 0.0;
-                }
-            }
-            if (axis == 1)
-            {
-                joystick_command[2] = axes[axis].x / joystick_max;
-                joystick_command[3] = -axes[axis].y / joystick_max;
+            // if (axis == 0)
+            // {
+            //     joystick_command[0] = axes[axis].x / joystick_max;
+            //     joystick_command[1] = -axes[axis].y / joystick_max;
+            //     if (abs(joystick_command[0]) < deadzone)
+            //     { // Deadzone
+            //         joystick_command[0] = 0.0;
+            //     }
+            //     if (abs(joystick_command[1]) < deadzone)
+            //     { // Deadzone
+            //         joystick_command[1] = 0.0;
+            //     }
+            // }
+            // if (axis == 1)
+            // {
+            //     joystick_command[2] = axes[axis].x / joystick_max;
+            //     joystick_command[3] = -axes[axis].y / joystick_max;
 
-                if (abs(joystick_command[2]) < deadzone)
-                { // Deadzone
-                    joystick_command[2] = 0.0;
-                }
-                if (abs(joystick_command[3]) < deadzone)
-                { // Deadzone
-                    joystick_command[3] = 0.0;
-                }
-            }
+            //     if (abs(joystick_command[2]) < deadzone)
+            //     { // Deadzone
+            //         joystick_command[2] = 0.0;
+            //     }
+            //     if (abs(joystick_command[3]) < deadzone)
+            //     { // Deadzone
+            //         joystick_command[3] = 0.0;
+            //     }
+            // }
             
             break;
         // pressed a button
@@ -123,6 +123,24 @@ void UserInput::getJoystickInput(vector_2t &offsets,
                 std::cout << "Killed due to user input" << std::endl;
                 exit(1);
             }
+            if (event.number == 0 && event.value == 1) {
+                // Set to zd = [0, 0]
+                joystick_command[0] = 0;
+                joystick_command[1] = 0;
+                std::cout << "Setting goal to: [" << joystick_command[0] << ", " << joystick_command[1] << "]" << std::endl;
+            }
+            if (event.number == 1 && event.value == 1) {
+                // Set to IC zd = []
+                joystick_command[0] = 1.730;
+                joystick_command[1] = 1.836;
+                std::cout << "Setting goal to: [" << joystick_command[0] << ", " << joystick_command[1] << "]" << std::endl;
+            }
+            if (event.number == 2 && event.value == 1) {
+                // Set to IC zd = []
+                joystick_command[0] = 2.696;
+                joystick_command[1] = 1.145;
+                std::cout << "Setting goal to: [" << joystick_command[0] << ", " << joystick_command[1] << "]" << std::endl;
+            }
             if (event.number == 8 && event.value == 1)
             {
                 increment *= 10;
@@ -134,15 +152,15 @@ void UserInput::getJoystickInput(vector_2t &offsets,
                 std::cout << "Decreasing resolution to: " << increment << std::endl;
             }
             // can do something cool with buttons
-            if (event.number == 0 && event.value == 1)
-                offsets[1] -= increment;
-            if (event.number == 1 && event.value == 1)
-                offsets[0] += increment;
-            if (event.number == 2 && event.value == 1)
-                offsets[1] += increment;
-            if (event.number == 3 && event.value == 1)
-                offsets[0] -= increment;
-            std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
+            // if (event.number == 0 && event.value == 1)
+            //     offsets[1] -= increment;
+            // if (event.number == 1 && event.value == 1)
+            //     offsets[0] += increment;
+            // if (event.number == 2 && event.value == 1)
+            //     offsets[1] += increment;
+            // if (event.number == 3 && event.value == 1)
+            //     offsets[0] -= increment;
+            // std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
             break;
 
         // ignore init events

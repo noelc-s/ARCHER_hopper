@@ -140,6 +140,9 @@ void PredCBFCommand::update(UserInput *userInput, std::atomic<bool> &running, st
         auto start = std::chrono::high_resolution_clock::now();
         {
             std::lock_guard<std::mutex> lock(m);
+            zd_ << userInput->joystick_command[0], userInput->joystick_command[1];
+            // std::cout << zd_.transpose() << ";  " << userInput->joystick_command.transpose() << std::endl;
+
 
             vector_2t z;
             z << state.pos[0], state.pos[1];
@@ -226,7 +229,7 @@ vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
 
         // Update robustness term based on barrier violation
         delta_ = std::max(0., delta_ - K_ * h_bar);
-        std::cout << delta_ << std::endl;
+        // std::cout << delta_ << std::endl;
         // Check for convergence
         if (abs(delta_ - prev_delta) < tol_) {
             converged = true;

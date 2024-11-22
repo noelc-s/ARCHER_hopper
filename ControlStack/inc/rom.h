@@ -88,7 +88,7 @@ public:
     const std::vector<double> rs_;
     const std::vector<double> cxs_;
     const std::vector<double> cys_;
-    const vector_t zd_;
+    vector_2t zd_;
     const int num_obs_;
     int num_runs_;
     

@@ -49,7 +49,7 @@ Hopper::Hopper(const std::string yamlFile)
     state_.q.resize(11);
     state_.v.resize(10);
     
-    // zeroState();
+    zeroState();
 }
 
 void Hopper::zeroState() {

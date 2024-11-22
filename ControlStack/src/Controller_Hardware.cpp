@@ -24,34 +24,38 @@ int main(int argc, char **argv)
   setupGainsHardware(gainYamlPath);
 
   std::shared_ptr<Hopper> hopper(new Hopper(gainYamlPath));
-  std::unique_ptr<Command> command;
-  if (p.rom_type == "single_int")
-  {
-    command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max, 0, 0);
-  }
-  else if (p.rom_type == "double_int")
-  {
-    command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_policy, p.v_max, p.a_max);
-  }
-  else if (p.rom_type == "position")
-  {
-    command = std::make_unique<V5Command>(0, 0);
-  }
-  else
-  {
-    throw std::runtime_error("RoM type unrecognized");
-  }
-  // if (dynamic_cast<PredCBFCommand*>(command.get())) {
-  //   fileHandle << "h,Jh1,Jh2,vdx,vdy,vsfx,vsfy,delta";
-  // }
-  fileHandle << std::endl;
 
+  // Make Command
+  // std::unique_ptr<Command> command;
+  // if (p.rom_type == "single_int")
+  // {
+  //   command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max, 0, 0);
+  // }
+  // else if (p.rom_type == "double_int")
+  // {
+  //   command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_policy, p.v_max, p.a_max);
+  // }
+  // else if (p.rom_type == "position")
+  // {
+  //   command = std::make_unique<V5Command>(0, 0);
+  // }
+  // else
+  // {
+  //   throw std::runtime_error("RoM type unrecognized");
+  // }
   // PCBF Code 
-  // std::unique_ptr<PredCBFCommand> command;
-  // command = std::make_unique<PredCBFCommand>(
-  //         p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
-  //         p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
-  //     );
+  std::unique_ptr<PredCBFCommand> command;
+  command = std::make_unique<PredCBFCommand>(
+          p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+          p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
+      );
+
+  // Modify header
+  if (dynamic_cast<PredCBFCommand*>(command.get())) {
+    fileHandle << ",h,Jh1,Jh2,vdx,vdy,vsfx,vsfy,delta";
+  }
+  fileHandle << std::endl;
+  
   // Instantiate a new policy.
   // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
   RaibertPolicy policy = RaibertPolicy(gainYamlPath);
@@ -73,7 +77,7 @@ int main(int argc, char **argv)
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
 
   // Thread for updating delta in reduced order model
-  // std::thread runDelta(&PredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+  std::thread runDelta(&PredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
   
   desired_command = command->getCommand();
 
@@ -250,15 +254,15 @@ int main(int argc, char **argv)
                    << "," << imu_quat.coeffs().transpose().format(CSVFormat)
                    << "," << desired_command.col(0).transpose().format(CSVFormat)
                    ;
-        // if (dynamic_cast<PredCBFCommand*>(command.get())) {
-        //   vector_2t z;
-        //   z <<  hopper->state_.pos[0], hopper->state_.pos[1];
-        //   vector_2t vd = dynamic_cast<PredCBFCommand*>(command.get())->vd(z);
-        //   fileHandle << "," << dynamic_cast<PredCBFCommand*>(command.get())->h_Dh(z).transpose().format(CSVFormat)
-        //              << "," << vd.transpose().format(CSVFormat)
-        //              << "," << dynamic_cast<PredCBFCommand*>(command.get())->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat)
-        //              << "," << dynamic_cast<PredCBFCommand*>(command.get())->delta_;
-        // }
+        if (dynamic_cast<PredCBFCommand*>(command.get())) {
+          vector_2t z;
+          z <<  hopper->state_.pos[0], hopper->state_.pos[1];
+          vector_2t vd = dynamic_cast<PredCBFCommand*>(command.get())->vd(z);
+          fileHandle << "," << dynamic_cast<PredCBFCommand*>(command.get())->h_Dh(z).transpose().format(CSVFormat)
+                     << "," << vd.transpose().format(CSVFormat)
+                     << "," << dynamic_cast<PredCBFCommand*>(command.get())->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat)
+                     << "," << dynamic_cast<PredCBFCommand*>(command.get())->delta_;
+        }
         fileHandle << std::endl;
       }
     }

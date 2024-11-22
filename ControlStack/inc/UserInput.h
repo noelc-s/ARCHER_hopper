@@ -19,7 +19,7 @@ using namespace Hopper_t;
 class UserInput{
 
 public:
-    UserInput(){};
+    UserInput(){joystick_command.setZero(); keyboard_command.setZero();};
     ~UserInput(){};
     // Current state of an axis.
     struct axis_state {

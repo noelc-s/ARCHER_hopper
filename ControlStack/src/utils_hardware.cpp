@@ -78,6 +78,8 @@ struct HardwareParameters
   std::vector<scalar_t> cxs;
   std::vector<scalar_t> cys;
   vector_2t zd;
+  std::vector<scalar_t> xgs;
+  std::vector<scalar_t> ygs;
   scalar_t dt_planner;
   int stop_index;
   scalar_t dt_replan;
