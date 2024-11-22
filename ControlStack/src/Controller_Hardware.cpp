@@ -44,10 +44,14 @@ int main(int argc, char **argv)
   //   throw std::runtime_error("RoM type unrecognized");
   // }
   // PCBF Code 
-  std::unique_ptr<PredCBFCommand> command;
-  command = std::make_unique<PredCBFCommand>(
+  std::unique_ptr<NNPredCBFCommand> command;
+  // command = std::make_unique<PredCBFCommand>(
+  //         p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+  //         p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
+  //     );
+  command = std::make_unique<NNPredCBFCommand>(
           p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
-          p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
+          p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd, p.delta_model
       );
 
   // Modify header
@@ -77,7 +81,7 @@ int main(int argc, char **argv)
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
 
   // Thread for updating delta in reduced order model
-  std::thread runDelta(&PredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+  std::thread runDelta(&NNPredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
   
   desired_command = command->getCommand();
 
@@ -229,7 +233,7 @@ int main(int argc, char **argv)
         // desstate[9] = 0;
       }
 
-      std::cout << desstate[7] << ", " << desstate[8] << ", " << desstate[9] << std::endl; 
+      // std::cout << desstate[7] << ", " << desstate[8] << ", " << desstate[9] << std::endl; 
 
       // std::cout << "Orientation: " << hopper->state_.quat.coeffs().transpose().format(CSVFormat);
       // std::cout << "       Error: " << error.transpose().format(CSVFormat) << std::endl;

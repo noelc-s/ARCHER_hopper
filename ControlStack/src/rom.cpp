@@ -95,7 +95,6 @@ PredCBFCommand::PredCBFCommand(
 ) : horizon_(horizon), dt_(dt), alpha_(alpha), rho_(rho), smooth_barrier_(smooth_barrier), epsilon_(epsilon), iters_(iters), K_(K), tol_(tol), use_delta_(use_delta),
     use_barrier_(use_barrier), k_r_(k_r), v_max_(v_max), pred_dt_(pred_dt), rs_(rs), cxs_(cxs), cys_(cys), zd_(zd), num_obs_(rs.size())
 {
-    std::cout << "here start" << std::endl;
     // Resize the command
     command_.resize(5, 1);
     command_.setZero();
@@ -244,6 +243,7 @@ vector_2t PredCBFCommand::predictiveSafetyFilter(Hopper::State &state) {
     // Apply safety filter with robustness term
     vector_2t z;
     z << state.pos[0], state.pos[1];
+    // std::cout << "rollouts" << std::endl;
     return robustifiedSafetyFilter(z, vd(z));
 }
 
@@ -433,4 +433,97 @@ vector_2t PredCBFCommand::vd(vector_2t z) {
         vd = vd / vd.norm() * v_max_;
     }
     return vd;
+}
+
+NNPredCBFCommand::NNPredCBFCommand(
+    const double horizon, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
+    const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
+    const bool use_barrier, const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, const vector_2t zd,
+    std::string delta_model) : PredCBFCommand(
+        horizon, dt, alpha, rho, smooth_barrier, epsilon, k_r, v_max, pred_dt, iters, K, tol, use_delta, use_barrier, rs, cxs, cys, zd
+    ), delta_model_(delta_model)
+{
+
+    // Initialize NN Things
+    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
+    Ort::SessionOptions session_options;
+    session = std::make_unique<Ort::Session>(Ort::Session(env, delta_model_.c_str(), session_options));
+
+    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
+    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
+
+    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    inputType = inputTensorInfo.GetElementType();
+    inputDims = inputTensorInfo.GetShape();
+    inputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    outputType = outputTensorInfo.GetElementType();
+    outputDims = outputTensorInfo.GetShape();
+    outputDims[0] = 1; // hard code batch size of 1 for evaluation
+
+    inputTensorSize = vectorProduct(inputDims);
+    outputTensorSize = vectorProduct(outputDims);
+}
+
+void NNPredCBFCommand::update_delta(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state)
+{
+    // TODO: update dynamics
+    Hopper::State copied_state;
+
+    while (state.quat.coeffs().norm() < 0.99) {}
+    std::cout << state.quat.coeffs() << std::endl;
+
+    vector_t nn_input(6);
+    nn_input.setZero();
+
+    while (running)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+        {
+            std::lock_guard<std::mutex> lock(m);
+            // copy state
+            copied_state = state;
+        }
+        // TODO: Replace with NN call
+        nn_input << copied_state.pos, copied_state.vel;
+        EvaluateNetwork(nn_input);
+        // predictiveSafetyFilter(copied_state);
+    }
+}
+
+void NNPredCBFCommand::EvaluateNetwork(const vector_t& input) {
+    std::vector<float> input_(6);
+    input_[0] = input(0);
+    input_[1] = input(1);
+    input_[2] = input(2);
+    input_[3] = input(3);
+    input_[4] = input(4);
+    input_[5] = input(5);
+
+    std::vector<float> output_(1);
+
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float *>(input_.data()), inputTensorSize,
+        inputDims.data(), inputDims.size());
+
+    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, output_.data(), outputTensorSize,
+        outputDims.data(), outputDims.size());
+
+    std::vector<const char *> inputNames{inputNodeName.c_str()};
+    std::vector<const char *> outputNames{outputNodeName.c_str()};
+
+    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
+
+    delta_ = std::min(std::max(output_[0], 0.0f), 2.0f);
+    // std::cout << "NN" << std::endl;
 }

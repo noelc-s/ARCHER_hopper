@@ -81,7 +81,7 @@ void UserInput::getJoystickInput(vector_2t &offsets,
 
         // moving a joystick
         case JS_EVENT_AXIS:
-            axis = get_axis_state(&event, axes);
+            // axis = get_axis_state(&event, axes);
             // if (axis == 0)
             // {
             //     joystick_command[0] = axes[axis].x / joystick_max;

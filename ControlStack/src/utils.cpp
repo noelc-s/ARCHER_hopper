@@ -91,6 +91,7 @@ void setupGains(const std::string filepath, MPC_Parameters &mpc_p, Parameters &p
     p.zd << zd[0], zd[1];
     p.dt_planner = config["dt_planner"].as<scalar_t>();
 
+    p.delta_model= config["PredCBF"]["delta_model"].as<std::string>();
     // mpc_p.N = config["MPC"]["N"].as<int>();
     // mpc_p.SQP_iter = config["MPC"]["SQP_iter"].as<int>();
     // mpc_p.discountFactor = config["MPC"]["discountFactor"].as<scalar_t>();

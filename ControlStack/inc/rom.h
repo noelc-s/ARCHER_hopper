@@ -106,4 +106,32 @@ public:
     double robustifiedRollout(Hopper::State &state);
     vector_2t robustifiedSafetyFilter(vector_2t z, vector_2t vd);
 };
+
+class NNPredCBFCommand: public PredCBFCommand {
+    public: 
+    NNPredCBFCommand(
+        const double horizon, const double dt, const double alpha, const double rho, const bool smooth_barrier, const double epsilon,
+        const double k_r, const double v_max, const double pred_dt, const int iters, const double K, const double tol, const bool use_delta,
+        const bool use_barrier, const std::vector<double> rs, const std::vector<double> cxs, const std::vector<double> cys, vector_2t zd, std::string delta_model
+    );
+    void update_delta(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m, Hopper::State &state);
+
+    void EvaluateNetwork(const vector_t& input);
+
+    const std::string delta_model_;
+
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;    
+};
 #endif

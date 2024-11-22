@@ -83,6 +83,7 @@ struct HardwareParameters
   scalar_t dt_planner;
   int stop_index;
   scalar_t dt_replan;
+  std::string delta_model;
 } p;
 
 std::mutex state_mtx;
@@ -257,6 +258,7 @@ void setupGainsHardware(const std::string filepath)
   std::vector<scalar_t> zd = config["PredCBF"]["zd"].as<std::vector<scalar_t>>();
   p.zd << zd[0], zd[1];
   p.dt_planner = config["PredCBF"]["dt_planner"].as<scalar_t>();
+  p.delta_model= config["PredCBF"]["delta_model"].as<std::string>();
 }
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)

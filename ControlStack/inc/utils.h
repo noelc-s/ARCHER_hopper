@@ -58,6 +58,8 @@ struct Parameters {
     scalar_t dt_planner;
     int stop_index;
     scalar_t dt_replan;
+
+    std::string delta_model;
 };
 
 struct MPC_Parameters {

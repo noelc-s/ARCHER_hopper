@@ -65,6 +65,8 @@ PredCBF:
   zd: [0, 0]
   use_delta: True
   use_barrier: True
+  delta_model: ../../models/complex_a2_d2_CoM.onnx
+
 
 SpringStiffness: 1000 # Not so unreasonable that this is a parameter, as it is a soft contact simulator
 
