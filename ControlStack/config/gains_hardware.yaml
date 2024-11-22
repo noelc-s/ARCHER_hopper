@@ -26,6 +26,28 @@ Debug:
   # using a predHorizon > 1 with torque is not good, as the torque will be changing
   stopIndex: 600000
 
+PredCBF:
+  horizon: 5
+  dt: 0.01
+  alpha: 10
+  rho: 1
+  smooth_barrier: False
+  epsilon: 0
+  iters: 1
+  K: 0.5
+  tol: 0.001
+  k_r: 1
+  v_max: 0.3
+  # v_max: 10
+  pred_dt: 0.3
+  rs: [0.375, 0.375, 0.375, 0.375]
+  cxs: [-0.1, -0.1, 0.75, 1.5]
+  cys: [0.5, -0.5, -0.1, 0.4]
+  zd: [0, 0]
+  use_delta: True
+  use_barrier: True
+  dt_planner: 0.01
+
 MPC:
   N: 20
   stateScaling: [10,10,0,10,10,10,0,0,0,0, # pos
@@ -71,8 +93,8 @@ RaibertHeuristic:
 
 # roll_offset: 0.004
 # pitch_offset: 0.025
-roll_offset:  0.006
-pitch_offset: 0.018
+roll_offset:  -0.003
+pitch_offset: 0.016
 # roll_offset:  -0.0
 # pitch_offset: 0.0
 

@@ -12,7 +12,7 @@
 #include "Hopper.h"
 #include "utils.h"
 // #include "MPC.h"
-// #include <onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 #include <numeric>
 
 using namespace Hopper_t;
@@ -74,28 +74,28 @@ public:
 
 // Based on:
 // https://github.com/microsoft/onnxruntime-inference-examples/blob/main/c_cxx/OpenVINO_EP/Linux/squeezenet_classification/squeezenet_cpp_app.cpp
-// class ZeroDynamicsPolicy : public Policy{
-// public:
-//     ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
-//     void EvaluateNetwork(const vector_4t state, vector_2t& output);
-//     quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
-//     vector_3t DesiredOmega();
-//     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+class ZeroDynamicsPolicy : public Policy{
+public:
+    ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
+    void EvaluateNetwork(const vector_4t state, vector_2t& output);
+    quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
+    vector_3t DesiredOmega();
+    vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
-//     Ort::Env env;
-//     std::unique_ptr<Ort::Session> session;
-//     Ort::AllocatorWithDefaultOptions allocator;
-//     std::string inputNodeName;
-//     std::string outputNodeName;
-//     std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
-//     ONNXTensorElementDataType inputType;
-//     std::vector<int64_t> inputDims;
-//     size_t inputTensorSize;
-//     std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
-//     ONNXTensorElementDataType outputType;
-//     std::vector<int64_t> outputDims;
-//     size_t outputTensorSize;    
-// };
+    Ort::Env env;
+    std::unique_ptr<Ort::Session> session;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::string inputNodeName;
+    std::string outputNodeName;
+    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
+    ONNXTensorElementDataType inputType;
+    std::vector<int64_t> inputDims;
+    size_t inputTensorSize;
+    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
+    ONNXTensorElementDataType outputType;
+    std::vector<int64_t> outputDims;
+    size_t outputTensorSize;    
+};
 
 // class MPCPolicy : public Policy {
 // public:

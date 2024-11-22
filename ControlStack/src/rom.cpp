@@ -168,6 +168,9 @@ void PredCBFCommand::update_delta(UserInput *userInput, std::atomic<bool> &runni
     // TODO: update dynamics
     Hopper::State copied_state;
 
+    while (state.quat.coeffs().norm() < 0.99) {}
+    std::cout << state.quat.coeffs() << std::endl;
+
     while (running)
     {
         auto start = std::chrono::high_resolution_clock::now();

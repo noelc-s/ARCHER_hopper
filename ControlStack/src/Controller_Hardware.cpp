@@ -5,8 +5,11 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
-
+  // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q"_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
+  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w," <<
+                "qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3," <<
+                "wheel_vel1,wheel_vel2,wheel_vel3,imu_qx,imu_qy,imu_qz,imu_qw," <<
+                "cmd_x,cmd_y,cmd_vx,cmd_vy,cmd_yaw";
   desstate[0] = 1;
   desstate[1] = 0;
   desstate[2] = 0;
@@ -38,6 +41,17 @@ int main(int argc, char **argv)
   {
     throw std::runtime_error("RoM type unrecognized");
   }
+  // if (dynamic_cast<PredCBFCommand*>(command.get())) {
+  //   fileHandle << "h,Jh1,Jh2,vdx,vdy,vsfx,vsfy,delta";
+  // }
+  fileHandle << std::endl;
+
+  // PCBF Code 
+  // std::unique_ptr<PredCBFCommand> command;
+  // command = std::make_unique<PredCBFCommand>(
+  //         p.horizon, p.dt_replan, p.alpha, p.rho, p.smooth_barrier, p.epsilon,
+  //         p.k_r, p.v_max, p.pred_dt, p.iters, p.K, p.tol, p.use_delta, p.use_barrier, p.rs, p.cxs, p.cys, p.zd
+  //     );
   // Instantiate a new policy.
   // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
   RaibertPolicy policy = RaibertPolicy(gainYamlPath);
@@ -50,8 +64,17 @@ int main(int argc, char **argv)
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
   std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
+  // Old code
   // Thread for updating reduced order model
-  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
+  // std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+  
+  // PCBF Code
+  // Thread for updating reduced order model
+  std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+
+  // Thread for updating delta in reduced order model
+  // std::thread runDelta(&PredCBFCommand::update_delta, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m), std::ref(hopper->state_));
+  
   desired_command = command->getCommand();
 
   int size = 11 + 2;
@@ -82,7 +105,8 @@ int main(int argc, char **argv)
   // ROS stuff
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
-  ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+  // ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+  ros::Subscriber sub = n.subscribe("/natnet_ros/hopper/pose", 240, chatterCallback);
 
   quat_t quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
   while (quat_opti.norm() < 0.99)
@@ -127,6 +151,9 @@ int main(int argc, char **argv)
       }
       hopper->updateState(state);
       contact = hopper->state_.contact;
+
+      // TODO: Add more IMU information for filtering
+      quat_t imu_quat(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
       // quat_t IMU_quat = hopper->state_.quat;
 
       // // Measure the initial absolute yaw (from optitrack)
@@ -159,11 +186,20 @@ int main(int argc, char **argv)
       // TODO: this is just doing spindown. make this nice.
       u_des = policy.DesiredInputs(hopper->state_.wheel_vel, hopper->state_.contact);
 
+      // quat_des = quat_t(1, 0, 0, 0);
+      // u_des << 0, 0, 0, 0;
+      // omega_des << 0, 0, 0;
+
       hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
       for (int i = 0; i < 11; i++)
       {
         TX_torques[i] = hopper->state_.q[i];
       }
+      // Uncomment to visualize desired quaternion
+      // TX_torques[3] = quat_des.x();
+      // TX_torques[4] = quat_des.y();
+      // TX_torques[5] = quat_des.z();
+      // TX_torques[6] = quat_des.w();
       TX_torques[11] = desired_command(0);
       TX_torques[12] = desired_command(1);
 
@@ -184,23 +220,23 @@ int main(int argc, char **argv)
         desstate[7] = hopper->torque[1];
         desstate[8] = hopper->torque[2];
         desstate[9] = hopper->torque[3];
-        // desstate[0] = 1;
-        // desstate[1] = 0;
-        // desstate[2] = 0;
-        // desstate[3] = 0;
-        // desstate[4] = 0;
-        // desstate[5] = 0;
-        // desstate[6] = 0;
         // desstate[7] = 0;
         // desstate[8] = 0;
         // desstate[9] = 0;
       }
 
+      std::cout << desstate[7] << ", " << desstate[8] << ", " << desstate[9] << std::endl; 
+
+      // std::cout << "Orientation: " << hopper->state_.quat.coeffs().transpose().format(CSVFormat);
+      // std::cout << "       Error: " << error.transpose().format(CSVFormat) << std::endl;
+
       // Log data
       if (fileWrite)
       {
+        
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
-        // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
+        // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,imu_qx,imu_qy,imu_qz,imu_qw,cmd_x,cmd_y,cmd_vx,cmd_vy,cmd_yaw" << std::endl;
+        //h,Jh1,Jh2,vdx,vdy,vsfx,vsfy,delta
         fileHandle << state[0] << "," << hopper->state_.contact
                    << "," << hopper->state_.pos.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_pos
@@ -211,7 +247,18 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << "," << desired_command.col(0).transpose().format(CSVFormat);
+                   << "," << imu_quat.coeffs().transpose().format(CSVFormat)
+                   << "," << desired_command.col(0).transpose().format(CSVFormat)
+                   ;
+        // if (dynamic_cast<PredCBFCommand*>(command.get())) {
+        //   vector_2t z;
+        //   z <<  hopper->state_.pos[0], hopper->state_.pos[1];
+        //   vector_2t vd = dynamic_cast<PredCBFCommand*>(command.get())->vd(z);
+        //   fileHandle << "," << dynamic_cast<PredCBFCommand*>(command.get())->h_Dh(z).transpose().format(CSVFormat)
+        //              << "," << vd.transpose().format(CSVFormat)
+        //              << "," << dynamic_cast<PredCBFCommand*>(command.get())->robustifiedSafetyFilter(z, vd).transpose().format(CSVFormat)
+        //              << "," << dynamic_cast<PredCBFCommand*>(command.get())->delta_;
+        // }
         fileHandle << std::endl;
       }
     }

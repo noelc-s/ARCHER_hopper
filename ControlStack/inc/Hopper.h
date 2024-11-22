@@ -68,6 +68,8 @@ public:
 
     Hopper(const std::string yamlFile);
 
+    void zeroState();
+
     void updateState(vector_t state);
 
     /*! @brief compute the torque (u_ff + u_feedback)

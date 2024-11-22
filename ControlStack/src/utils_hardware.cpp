@@ -42,21 +42,45 @@ struct HardwareParameters
   scalar_t frameOffset;
   scalar_t markerOffset;
   int predHorizon;
-  int stop_index;
+  // int stop_index;
   vector_t gains;
   std::vector<scalar_t> p0;
   scalar_t roll_offset;
   scalar_t pitch_offset;
   std::string model_name;
-  scalar_t v_max;
-  scalar_t a_max;
+  // scalar_t v_max;
+  // scalar_t a_max;
   scalar_t dt_lowlevel;
   scalar_t dt_policy;
   int optiTrackSetting;
   std::string rom_type;
-  int horizon;
+  // int horizon;
   scalar_t zed_x_offset;
   scalar_t zed_y_offset;
+
+  scalar_t dt;
+
+  scalar_t horizon;
+  scalar_t alpha;
+  scalar_t rho;
+  bool smooth_barrier;
+  scalar_t epsilon;
+  int iters;
+  scalar_t K;
+  scalar_t tol;
+  bool use_delta;
+  bool use_barrier;
+  scalar_t k_r;
+  scalar_t v_max;
+  scalar_t a_max;
+  scalar_t pred_dt;
+  std::vector<scalar_t> rs;
+  std::vector<scalar_t> cxs;
+  std::vector<scalar_t> cys;
+  vector_2t zd;
+  scalar_t dt_planner;
+  int stop_index;
+  scalar_t dt_replan;
 } p;
 
 std::mutex state_mtx;
@@ -202,14 +226,35 @@ void setupGainsHardware(const std::string filepath)
       p.leg_kp, p.leg_kd;
   p.model_name = config["RL"]["model_name"].as<std::string>();
   p.rom_type = config["RL"]["rom_type"].as<std::string>();
-  p.v_max = config["RL"]["v_max"].as<scalar_t>();
+  // p.v_max = config["RL"]["v_max"].as<scalar_t>();
   p.a_max = config["RL"]["a_max"].as<scalar_t>();
   p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
   p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
-  p.horizon = config["RL"]["horizon"].as<scalar_t>();
+  // p.horizon = config["RL"]["horizon"].as<scalar_t>();
   p.zed_x_offset = config["zed_x_offset"].as<scalar_t>();
   p.zed_y_offset = config["zed_y_offset"].as<scalar_t>();
   alpha = config["filter_alpha"].as<scalar_t>();
+
+  p.horizon = config["PredCBF"]["horizon"].as<scalar_t>();
+  p.alpha = config["PredCBF"]["alpha"].as<scalar_t>();
+  p.rho = config["PredCBF"]["rho"].as<scalar_t>();
+  p.smooth_barrier = config["PredCBF"]["smooth_barrier"].as<bool>();
+  p.epsilon = config["PredCBF"]["epsilon"].as<scalar_t>(); 
+  p.k_r = config["PredCBF"]["k_r"].as<scalar_t>();   
+  p.v_max = config["PredCBF"]["v_max"].as<scalar_t>();
+  p.pred_dt = config["PredCBF"]["pred_dt"].as<scalar_t>();
+  p.dt_replan = config["PredCBF"]["dt"].as<scalar_t>();
+  p.iters = config["PredCBF"]["iters"].as<int>();
+  p.K = config["PredCBF"]["K"].as<scalar_t>();
+  p.tol = config["PredCBF"]["tol"].as<scalar_t>();
+  p.use_delta = config["PredCBF"]["use_delta"].as<bool>();
+  p.use_barrier = config["PredCBF"]["use_barrier"].as<bool>();
+  p.rs = config["PredCBF"]["rs"].as<std::vector<scalar_t>>();
+  p.cxs = config["PredCBF"]["cxs"].as<std::vector<scalar_t>>();
+  p.cys = config["PredCBF"]["cys"].as<std::vector<scalar_t>>();
+  std::vector<scalar_t> zd = config["PredCBF"]["zd"].as<std::vector<scalar_t>>();
+  p.zd << zd[0], zd[1];
+  p.dt_planner = config["PredCBF"]["dt_planner"].as<scalar_t>();
 }
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)
@@ -220,7 +265,6 @@ void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mut
 
   while (1)
   {
-
     // encode send_buff
     {
       std::lock_guard<std::mutex> lck(des_state_mtx);

@@ -48,6 +48,23 @@ Hopper::Hopper(const std::string yamlFile)
 
     state_.q.resize(11);
     state_.v.resize(10);
+    
+    // zeroState();
+}
+
+void Hopper::zeroState() {
+    state_.q.setZero();
+    state_.v.setZero();
+    state_.quat.setIdentity();
+    state_.pos.setZero();
+    state_.vel.setZero();
+    state_.omega.setZero();
+    state_.leg_pos = 0;
+    state_.leg_vel = 0;
+    state_.t = 0;
+    state_.contact = 0;
+    state_.last_flight_time = 0;
+    state_.wheel_vel.setZero();
 }
 
 void Hopper::updateState(vector_t state)
@@ -73,6 +90,7 @@ void Hopper::updateState(vector_t state)
     {
         state_.last_flight_time = state_.t;
     }
+    
     if (state[ind] <= .1)
     {
         state_.contact = 0;
@@ -81,6 +99,8 @@ void Hopper::updateState(vector_t state)
     {
         state_.contact = 1;
     }
+
+    // std::cout << state[ind] << ", " << state_.contact << std::endl;
     // For trampoline, register contact when z velocity is zero
     // // TODO: make this a bool
     // if (state_.contact > 0.5) {

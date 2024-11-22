@@ -61,6 +61,8 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t y_a = state.pos[1];
     scalar_t xd_a = std::min(std::max(state.vel[0], -params.v_clip), params.v_clip);
     scalar_t yd_a = std::min(std::max(state.vel[1], -params.v_clip), params.v_clip);
+    // scalar_t xd_a = state.vel[0];
+    // scalar_t yd_a = state.vel[1];
 
     // if (contact) {
     //     xd_a = 0;
@@ -72,6 +74,8 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     // position error
     scalar_t del_x = std::min(std::max(x_a - command(0), -params.p_clip), params.p_clip);
     scalar_t del_y = std::min(std::max(y_a - command(1), -params.p_clip), params.p_clip);
+    // scalar_t del_x = x_a - command(0);
+    // scalar_t del_y = y_a - command(1);
     scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
     scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
     scalar_t yaw_des = command(4);
@@ -108,120 +112,120 @@ vector_4t RaibertPolicy::DesiredInputs(const vector_3t wheel_vel, const bool con
     return u_des;
 }
 
-// ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath)
-// {
-//     loadParams(yamlPath, params);
+ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath)
+{
+    loadParams(yamlPath, params);
 
-//     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-//     Ort::SessionOptions session_options;
-//     session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
+    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
+    Ort::SessionOptions session_options;
+    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
 
-//     inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-//     outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
+    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
+    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
 
-//     inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-//     auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-//     inputType = inputTensorInfo.GetElementType();
-//     inputDims = inputTensorInfo.GetShape();
-//     inputDims[0] = 1; // hard code batch size of 1 for evaluation
+    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    inputType = inputTensorInfo.GetElementType();
+    inputDims = inputTensorInfo.GetShape();
+    inputDims[0] = 1; // hard code batch size of 1 for evaluation
 
-//     outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-//     auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-//     outputType = outputTensorInfo.GetElementType();
-//     outputDims = outputTensorInfo.GetShape();
-//     outputDims[0] = 1; // hard code batch size of 1 for evaluation
+    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    outputType = outputTensorInfo.GetElementType();
+    outputDims = outputTensorInfo.GetShape();
+    outputDims[0] = 1; // hard code batch size of 1 for evaluation
 
-//     inputTensorSize = vectorProduct(inputDims);
-//     outputTensorSize = vectorProduct(outputDims);
-// }
+    inputTensorSize = vectorProduct(inputDims);
+    outputTensorSize = vectorProduct(outputDims);
+}
 
-// void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &output)
-// {
+void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &output)
+{
 
-//     std::vector<float> input(4);
-//     input[0] = state(0);
-//     input[1] = state(1);
-//     input[2] = state(2);
-//     input[3] = state(3);
+    std::vector<float> input(4);
+    input[0] = state(0);
+    input[1] = state(1);
+    input[2] = state(2);
+    input[3] = state(3);
 
-//     std::vector<float> outpt(2);
+    std::vector<float> outpt(2);
 
-//     auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-//     auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
+    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
 
-//     Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-//         OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
-//     Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-//         memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-//         inputDims.data(), inputDims.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
+        inputDims.data(), inputDims.size());
 
-//     Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-//         memoryInfo, outpt.data(), outputTensorSize,
-//         outputDims.data(), outputDims.size());
+    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
+        memoryInfo, outpt.data(), outputTensorSize,
+        outputDims.data(), outputDims.size());
 
-//     std::vector<const char *> inputNames{inputNodeName.c_str()};
-//     std::vector<const char *> outputNames{outputNodeName.c_str()};
+    std::vector<const char *> inputNames{inputNodeName.c_str()};
+    std::vector<const char *> outputNames{outputNodeName.c_str()};
 
-//     session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
+    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
 
-//     output << outpt[0], outpt[1];
-// }
+    output << outpt[0], outpt[1];
+}
 
-// quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
-// {
-//     if ((command.rows() != 5) || (command.cols() != 1)) {
-//         throw std::runtime_error("Input to ZD Policy is not of proper shape (expected 5x1) but got " +
-//                             std::to_string(command.rows()) + "x" + std::to_string(command.cols()));
-//     }
-//     bool contact = state.contact;
-//     scalar_t x_a = state.pos[0];
-//     scalar_t y_a = state.pos[1];
-//     scalar_t xd_a = state.vel[0];
-//     scalar_t yd_a = state.vel[1];
+quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
+{
+    if ((command.rows() != 5) || (command.cols() != 1)) {
+        throw std::runtime_error("Input to ZD Policy is not of proper shape (expected 5x1) but got " +
+                            std::to_string(command.rows()) + "x" + std::to_string(command.cols()));
+    }
+    bool contact = state.contact;
+    scalar_t x_a = state.pos[0];
+    scalar_t y_a = state.pos[1];
+    scalar_t xd_a = state.vel[0];
+    scalar_t yd_a = state.vel[1];
 
-//     // if (contact) {
-//     //     x_a = 0;
-//     //     y_a = 0;
-//     //     command(0) = xd_a;
-//     //     command(1) = yd_a;
-//     // }
-//     vector_4t input_state;
+    // if (contact) {
+    //     x_a = 0;
+    //     y_a = 0;
+    //     command(0) = xd_a;
+    //     command(1) = yd_a;
+    // }
+    vector_4t input_state;
 
-//     scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
-//     scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
+    scalar_t des_vx = -std::min(std::max(command(2), -params.vd_clip), params.vd_clip);
+    scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
 
-//     input_state << x_a - command(0), y_a - command(1), xd_a + params.kx_f * des_vx, yd_a + params.ky_f * des_vy;
-//     scalar_t yaw_des = command(4);
-//     vector_2t rp_des;
-//     EvaluateNetwork(input_state, rp_des);
+    input_state << x_a - command(0), y_a - command(1), xd_a + params.kx_f * des_vx, yd_a + params.ky_f * des_vy;
+    scalar_t yaw_des = command(4);
+    vector_2t rp_des;
+    EvaluateNetwork(input_state, rp_des);
 
-//     static scalar_t yaw_des_rolling = 0;
-//     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
-//     yaw_des_rolling += params.yaw_damping * (yaw_des);
-//     scalar_t yaw_d = yaw_des_rolling;
+    static scalar_t yaw_des_rolling = 0;
+    // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
+    yaw_des_rolling += params.yaw_damping * (yaw_des);
+    scalar_t yaw_d = yaw_des_rolling;
 
-//     quat_t desQuat = Euler2Quaternion(-rp_des(1), rp_des(0), yaw_des_rolling);
-//     return desQuat;
-// }
+    quat_t desQuat = Euler2Quaternion(-rp_des(1), rp_des(0), yaw_des_rolling);
+    return desQuat;
+}
 
-// vector_3t ZeroDynamicsPolicy::DesiredOmega()
-// {
-//     vector_3t omega;
-//     omega.setZero();
-//     return omega;
-// }
+vector_3t ZeroDynamicsPolicy::DesiredOmega()
+{
+    vector_3t omega;
+    omega.setZero();
+    return omega;
+}
 
-// vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
-// {
-//     vector_4t u_des;
-//     u_des.setZero();
-//     vector_3t desired_wheel_vel(0, 0,0);
-//     if (contact) {
-//         u_des.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
-//     }
-//     return u_des;
-// }
+vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
+{
+    vector_4t u_des;
+    u_des.setZero();
+    vector_3t desired_wheel_vel(0, 0,0);
+    if (contact) {
+        u_des.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
+    }
+    return u_des;
+}
 
 // MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc) : hopper(std::move(hopper)), mpc_(std::move(mpc)) {
 //     loadParams(yamlPath, params);
