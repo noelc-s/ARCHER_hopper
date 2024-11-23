@@ -37,9 +37,6 @@ public:
     } params;
 
     void loadParams(std::string filepath, Params& params);   
-
-
-    static vector_3t Quaternion2Euler(const quat_t& q);
     
     /*! @brief  evaluate the forward dynamics
     *  @param [in] x_a  current position (x-direction) of the body frame wrt the world frame
@@ -97,9 +94,7 @@ public:
 
 class MPCPolicy : public Policy {
 public:
-    MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc);
-
-    std::shared_ptr<Hopper> hopper;
+    MPCPolicy(const std::string yamlPath, std::shared_ptr<MPC> mpc);
     std::shared_ptr<MPC> mpc_;
     vector_t q0, q0_local;
     vector_t sol, sol_g;

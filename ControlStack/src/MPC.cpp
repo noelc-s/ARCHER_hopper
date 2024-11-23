@@ -6,7 +6,7 @@ using namespace std::chrono;
 // Use (void) to silence unused warnings.
 #define assertm(exp, msg) assert(((void)msg, exp))
 
-int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp)
+int MPC::solve(vector_t &sol, vector_3t &command, vector_2t &command_interp)
 {
   matrix_t x_bar(nx, p.N - 1);
   matrix_t u_bar(nu, p.N - 1);
@@ -14,13 +14,13 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   vector_t x0(21);
   vector_t x0_local(21);
   vector_t s0(20);
-  x0 << hopper.state_.q, hopper.state_.v;
+  x0 << hopper->state_.q, hopper->state_.v;
   x0_local = global2local(x0);
   s0 = qk_to_xik(x0_local, x0_local);
   vector_t log_x0(20);
   log_x0 = Log(x0_local);
   scalar_t t2i = time2impact(x0, p.heightOffset);
-  if (hopper.state_.contact || t2i != t2i || t2i < 0)
+  if (hopper->state_.contact || t2i != t2i || t2i < 0)
   {
     t2i = 0;
   }
@@ -31,7 +31,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   bool first_impact = false;
   bool first_flight = false;
   int first_flight_index = 0;
-  if (hopper.state_.contact)
+  if (hopper->state_.contact)
   {
     first_impact = true;
   }
@@ -63,7 +63,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     }
     else
     {
-      if (t2i == 0 && elapsed_time(i) - offset + (hopper.state_.t - hopper.state_.last_impact_time) - t2i > p.groundDuration)
+      if (t2i == 0 && elapsed_time(i) - offset + (hopper->state_.t - hopper->state_.last_impact_time) - t2i > p.groundDuration)
       {
         if (!first_flight)
         {
@@ -119,8 +119,8 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
     full_ref.segment(i * nx + 3, 3) << -log_x0.segment(3, 3); // Hacky modification to cost to get orientation tracking back TODO
     if (first_flight)
     {
-      scalar_t t = elapsed_time(i) + hopper.state_.t - hopper.state_.last_flight_time;
-      scalar_t t_max = t2i + hopper.state_.t - hopper.state_.last_flight_time;
+      scalar_t t = elapsed_time(i) + hopper->state_.t - hopper->state_.last_flight_time;
+      scalar_t t_max = t2i + hopper->state_.t - hopper->state_.last_flight_time;
       // Heuristic to deal with log
       full_ref(i * nx + 4) = -log_x0(4);
     }
@@ -136,7 +136,7 @@ int MPC::solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &comm
   for (int iter = 0; iter < p.SQP_iter; iter++)
   {
     auto start = high_resolution_clock::now();
-    LinearizeDynamics(hopper, x_bar, u_bar, d_bar, x0_local, elapsed_time);
+    LinearizeDynamics(x_bar, u_bar, d_bar, x0_local, elapsed_time);
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
     std::cout << "Linearization: " << duration.count() * pow(10, -3) << " microseconds." << std::endl;
@@ -188,7 +188,7 @@ scalar_t MPC::time2impact(vector_t x, scalar_t heightOffset)
   return t;
 }
 
-vector_t MPC::oneStepPredict(Hopper hopper, const vector_t xi, const vector_t tau,
+vector_t MPC::oneStepPredict(const vector_t xi, const vector_t tau,
                              const float dt, const domain d, const vector_t q0)
 {
   matrix_t Ac(20, 20);
@@ -199,13 +199,13 @@ vector_t MPC::oneStepPredict(Hopper hopper, const vector_t xi, const vector_t ta
   matrix_t Cd(20, 1);
   vector_t s_k(20);
   vector_t s_kp1(20);
-  hopper.DiscreteDynamics(xik_to_qk(xi, q0), tau.tail(4), d, dt, Ac, Bc, Cc, Ad, Bd, Cd, q0);
+  hopper->DiscreteDynamics(xik_to_qk(xi, q0), tau.tail(4), d, dt, Ac, Bc, Cc, Ad, Bd, Cd, q0);
   s_k = xi;
   s_kp1 = Ad * s_k + Bd * tau.tail(4) + Cd;
   return s_kp1;
 }
 
-void MPC::LinearizeDynamics(Hopper& hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time)
+void MPC::LinearizeDynamics(matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time)
 {
   assertm(x_bar.rows() == nx, "Number of rows in x_bar not what expected");
   assertm(x_bar.cols() == p.N - 1, "Number of cols in x_bar not what expected");
@@ -215,7 +215,7 @@ void MPC::LinearizeDynamics(Hopper& hopper, matrix_t x_bar, matrix_t u_bar, Eige
   for (int i = 0; i < p.N - 1; i++)
   {
     auto start = high_resolution_clock::now();
-    hopper.DiscreteDynamics(xik_to_qk(x_bar.block(0, i, nx, 1), q0), u_bar.block(0, i, nu, 1), d_bar(i), elapsed_time(i + 1) - elapsed_time(i), Ac_, Bc_, Cc_, Ad_, Bd_, Cd_, q0);
+    hopper->DiscreteDynamics(xik_to_qk(x_bar.block(0, i, nx, 1), q0), u_bar.block(0, i, nu, 1), d_bar(i), elapsed_time(i + 1) - elapsed_time(i), Ac_, Bc_, Cc_, Ad_, Bd_, Cd_, q0);
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
     std::cerr << "  Discrete " << i <<  ": " << duration.count() * pow(10, -3) << " microseconds." << std::endl;

@@ -28,6 +28,8 @@ static vector_3t getInput();
 
 void hi(int num);
 
+enum domain {flight, ground, flight_ground, ground_flight};
+
 struct Parameters {
     scalar_t dt;
     scalar_t MPC_dt_flight;

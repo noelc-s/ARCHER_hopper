@@ -38,7 +38,7 @@ int main(int argc, char **argv)
         throw std::runtime_error("RoM type unrecognized");
     }
     // Instantiate a new policy.
-    // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p);
+    // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p, hopper);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
     RaibertPolicy policy = RaibertPolicy(gainYamlPath);
     // ZeroDynamicsPolicy policy = ZeroDynamicsPolicy("../../models/trained_model.onnx", gainYamlPath);

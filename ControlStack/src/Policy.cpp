@@ -223,7 +223,7 @@ vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const boo
     return u_des;
 }
 
-MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc) : hopper(std::move(hopper)), mpc_(std::move(mpc)) {
+MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<MPC> mpc) : mpc_(std::move(mpc)) {
     loadParams(yamlPath, params);
     q0.resize(21);
     q0_local.resize(21);
@@ -259,7 +259,7 @@ quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     command_interp << command(0), command(1);
     if (replan)
     {
-        mpc_->solve(*hopper, sol, command_, command_interp);
+        mpc_->solve(sol, command_, command_interp);
         for (int i = 0; i < mpc_->p.N; i++)
         {
             sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << local2global(xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));

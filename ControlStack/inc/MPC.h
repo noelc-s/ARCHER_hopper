@@ -33,15 +33,16 @@ public:
     OsqpInstance instance;
     OsqpSettings settings;
 
+    std::shared_ptr<Hopper> hopper;
 
     // Parameters for the MPC program
     MPC_Parameters p;
 
     // Initialize the MPC object
-    MPC(int nx, int nu, MPC_Parameters &loaded_p) {
+    MPC(int nx, int nu, MPC_Parameters &loaded_p, std::shared_ptr<Hopper> hopper) : hopper(hopper) {
         this->nx = nx;
         this->nu = nu;
-	p = loaded_p;
+	    p = loaded_p;
 
         std::cout << "Horizon length: " << p.N << std::endl;
         std::cout << "Pos gain: " << p.stateScaling(0) << ", " << p.stateScaling(1) << std::endl;
@@ -105,7 +106,6 @@ public:
 
     /*! @brief Apply the discrete time dynamics to predict where the system will be in on dt time step
     *
-    * @param[in] hopper the hopping robot object
     * @param[in] xi the Lie Algebra elements
     * @param[in] tau the control input
     * @param[in] dt discretization time
@@ -113,10 +113,9 @@ public:
     * @param[in] q0 base point for the exp operation
     * @param[out] x_kp1 vector of the predicted states one dt in the future
     */
-    vector_t oneStepPredict(Hopper hopper, const vector_t xi, const vector_t tau, const float dt, const domain d, const vector_t q0);
+    vector_t oneStepPredict(const vector_t xi, const vector_t tau, const float dt, const domain d, const vector_t q0);
 
     /*! @brief Apply the discrete time dynamics to predict where the system will be in on dt time step
-    * @param[in] hopper the hopping robot object
     * @param[in] x_bar states to linearize around
     * @param[in] u_bar input to linearize around
     * @param[in] d_bar vector of domains over the horizon
@@ -129,7 +128,7 @@ public:
     * @param[(implicit) out] Bd
     * @param[(implicit) out] Cd
     */
-    void LinearizeDynamics(Hopper& hopper, matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time);
+    void LinearizeDynamics(matrix_t x_bar, matrix_t u_bar, Eigen::Matrix<domain, Eigen::Dynamic, 1> d_bar, const vector_t q0, const vector_t elapsed_time);
 
     /*! @brief Reset all of the internal variables*/
     void reset();
@@ -152,7 +151,7 @@ public:
      * @param [in] &command the commanded global pos [x,y] and extra signal [flip, traj tracking, etc]
      * @param [in] &command_interp the interpolated command for trajectory tracking
      */
-    int solve(Hopper hopper, vector_t &sol, vector_3t &command, vector_2t &command_interp);
+    int solve(vector_t &sol, vector_3t &command, vector_2t &command_interp);
 
     /*! @brief build the cost function matrices*/
     void buildCost();

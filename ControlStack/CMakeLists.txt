@@ -74,7 +74,7 @@ add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/pinocchio_wrapper.cpp)
 target_link_libraries(hopper_ctrl yaml-cpp)
 
 if(MPC)
@@ -109,6 +109,8 @@ if(MPC)
     # )
     target_link_libraries(hopper_ctrl Eigen3::Eigen)
     target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
+    target_compile_definitions(hopper_ctrl PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
+    target_link_libraries(hopper_ctrl /home/noelcs/repos/CppAD_install/lib/libcppad_lib.so)
     # target_link_directories(hopper_ctrl PUBLIC ${PINOCCHIO_INCLUDE_DIRS})
     # target_link_libraries(hopper_ctrl MPC)
     if(LEARNING)
@@ -120,11 +122,13 @@ endif()
 
 if(HARDWARE)
     message(STATUS "Hardware is building")
-    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp src/pinocchio_wrapper.cpp)
     target_link_libraries(hopper_ctrl_hardware yaml-cpp)
     target_link_libraries(hopper_ctrl_hardware Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
     target_include_directories(hopper_ctrl_hardware PUBLIC ${manif_INCLUDE_DIRS})
+    target_compile_definitions(hopper_ctrl_hardware PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
+    target_link_libraries(hopper_ctrl_hardware /home/noelcs/repos/CppAD_install/lib/libcppad_lib.so)
     target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
     if(LEARNING)
         target_link_libraries(hopper_ctrl_hardware onnxruntime::onnxruntime)
@@ -167,3 +171,5 @@ enable_testing()
 add_subdirectory(tests)
 
 add_subdirectory(auto_diff)
+
+# cmake .. -DCMAKE_INSTALL_PREFIX=/home/noelcs/repos/eigenpy_install -DPYTHON_EXECUTABLE=/usr/bin/python3.8
