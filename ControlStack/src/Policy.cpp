@@ -111,61 +111,7 @@ vector_4t RaibertPolicy::DesiredInputs(const vector_3t wheel_vel, const bool con
 ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath)
 {
     loadParams(yamlPath, params);
-
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-    inputDims[0] = 1; // hard code batch size of 1 for evaluation
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-    outputDims[0] = 1; // hard code batch size of 1 for evaluation
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
-}
-
-void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &output)
-{
-
-    std::vector<float> input(4);
-    input[0] = state(0);
-    input[1] = state(1);
-    input[2] = state(2);
-    input[3] = state(3);
-
-    std::vector<float> outpt(2);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1];
+    network = createNNInstance(model_name);
 }
 
 quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
@@ -193,8 +139,8 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t comma
 
     input_state << x_a - command(0), y_a - command(1), xd_a + params.kx_f * des_vx, yd_a + params.ky_f * des_vy;
     scalar_t yaw_des = command(4);
-    vector_2t rp_des;
-    EvaluateNetwork(input_state, rp_des);
+    vector_t rp_des = vector_2t::Zero();
+    network->evaluateNetwork(input_state, rp_des);
 
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
@@ -223,7 +169,7 @@ vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const boo
     return u_des;
 }
 
-MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<MPC> mpc) : mpc_(std::move(mpc)) {
+MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<MPCInterface> mpc) : mpc_(std::move(mpc)) {
     loadParams(yamlPath, params);
     q0.resize(21);
     q0_local.resize(21);
@@ -309,31 +255,12 @@ RLPolicy::RLPolicy(std::string model_name, const std::string yamlPath)
     q_des << 1,0,0,0;
     t_last_RL = -1;
 
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
+    network = createNNInstance(model_name);
 }
 
 void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
-    
-    std::vector<float> input(21);
+    vector_t input(21);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
     int quat_sign = 1; 
@@ -361,33 +288,9 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command
     input[19] = previous_action[2]; // y
     input[20] = previous_action[3]; // z
 
-    for (auto i : input) {
-        std::cout << i << ",";
-    }
-    std::cout << std::endl;
-
-    std::vector<float> outpt(4);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1], outpt[2], outpt[3];
+    vector_t output_network(4);
+    network->evaluateNetwork(input, output_network);
+    output << output_network;
 
     std::cout << output.transpose() << std::endl;
 
@@ -441,31 +344,13 @@ RLTrajPolicy::RLTrajPolicy(std::string model_name, const std::string yamlPath, i
     q_des << 1,0,0,0;
     t_last_RL = -1;
 
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
+    network = createNNInstance(model_name);
 }
 
 void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
 
-    std::vector<float> input(18 + horizon * state_dim);
+    vector_t input(18 + horizon * state_dim);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
     int quat_sign = 1; 
@@ -510,35 +395,9 @@ void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t com
     input[16 + horizon * state_dim] = previous_action[2] * act_sign; // y
     input[17 + horizon * state_dim] = previous_action[3] * act_sign; // z
 
-    // std::cout << input << std::endl << std::endl;
-
-    // for (auto i : input) {
-    //     std::cout << i << ",";
-    // }
-    // std::cout << std::endl << std::endl;
-
-    std::vector<float> outpt(4);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1], outpt[2], outpt[3];
+    vector_t output_network(4);
+    network->evaluateNetwork(input, output_network);
+    output << output_network;
 }
 
 quat_t RLTrajPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)

@@ -8,7 +8,7 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include "yaml-cpp/yaml.h"
 #include <numeric>
-#include "pinocchio_wrapper.h"
+#include "pinocchio/pinocchio_interface.h"
 
 using namespace Hopper_t;
 
@@ -19,7 +19,6 @@ T vectorProduct(const std::vector<T>& v)
 class Hopper {
 
 public:
-
     struct State {
         scalar_t t;
         vector_3t pos;
@@ -48,7 +47,7 @@ public:
         scalar_t leg_kd;
     } gains;
 
-    std::unique_ptr<PinocchioWrapper> pinocchioWrapper;
+    std::unique_ptr<PinocchioInterface> pinocchioWrapper;
 
     scalar_t springStiffness;
 

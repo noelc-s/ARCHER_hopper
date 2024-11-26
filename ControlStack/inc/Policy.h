@@ -9,9 +9,10 @@
 
 #include "Hopper.h"
 #include "utils.h"
-#include "MPC.h"
-#include <onnxruntime_cxx_api.h>
 #include <numeric>
+
+#include "mpc/mpc_interface.h"
+#include "nn/nn_interface.h"
 
 using namespace Hopper_t;
 using namespace Eigen;
@@ -73,38 +74,27 @@ class ZeroDynamicsPolicy : public Policy{
 public:
     ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath);
     void EvaluateNetwork(const vector_4t state, vector_2t& output);
+
     quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
 
-    Ort::Env env;
-    std::unique_ptr<Ort::Session> session;
-    Ort::AllocatorWithDefaultOptions allocator;
-    std::string inputNodeName;
-    std::string outputNodeName;
-    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
-    ONNXTensorElementDataType inputType;
-    std::vector<int64_t> inputDims;
-    size_t inputTensorSize;
-    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
-    ONNXTensorElementDataType outputType;
-    std::vector<int64_t> outputDims;
-    size_t outputTensorSize;    
+    std::unique_ptr<NNInterface> network; 
 };
 
 class MPCPolicy : public Policy {
 public:
-    MPCPolicy(const std::string yamlPath, std::shared_ptr<MPC> mpc);
-    std::shared_ptr<MPC> mpc_;
+    MPCPolicy(const std::string yamlPath, std::shared_ptr<MPCInterface> mpc);
     vector_t q0, q0_local;
     vector_t sol, sol_g;
     matrix_t x_pred, u_pred;
     scalar_t dt_elapsed_MPC, t_last_MPC;
-    
 
     quat_t DesiredQuaternion(Hopper::State state, matrix_t command);
     vector_3t DesiredOmega();
     vector_4t DesiredInputs(const vector_3t wheel_vel, const bool contact);
+
+    std::shared_ptr<MPCInterface> mpc_;
 };
 
 class RLPolicy : public Policy {
@@ -119,20 +109,7 @@ public:
     scalar_t dt_elapsed_RL;
     scalar_t t_last_RL;
 
-    vector_4t previous_action;
-    Ort::Env env;
-    std::unique_ptr<Ort::Session> session;
-    Ort::AllocatorWithDefaultOptions allocator;
-    std::string inputNodeName;
-    std::string outputNodeName;
-    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
-    ONNXTensorElementDataType inputType;
-    std::vector<int64_t> inputDims;
-    size_t inputTensorSize;
-    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
-    ONNXTensorElementDataType outputType;
-    std::vector<int64_t> outputDims;
-    size_t outputTensorSize;    
+    vector_4t previous_action;   
 
     struct RLParams {
       scalar_t lin_vel_scaling;
@@ -143,6 +120,8 @@ public:
     } RLparams;
 
     void loadParams(std::string filepath, RLParams& params);  
+
+    std::unique_ptr<NNInterface> network; 
 };
 
 
@@ -160,20 +139,7 @@ public:
     const int horizon;
     const int state_dim;
 
-    vector_4t previous_action;
-    Ort::Env env;
-    std::unique_ptr<Ort::Session> session;
-    Ort::AllocatorWithDefaultOptions allocator;
-    std::string inputNodeName;
-    std::string outputNodeName;
-    std::unique_ptr<Ort::TypeInfo> inputTypeInfo;
-    ONNXTensorElementDataType inputType;
-    std::vector<int64_t> inputDims;
-    size_t inputTensorSize;
-    std::unique_ptr<Ort::TypeInfo> outputTypeInfo;
-    ONNXTensorElementDataType outputType;
-    std::vector<int64_t> outputDims;
-    size_t outputTensorSize;    
+    vector_4t previous_action;  
 
     struct RLParams {
       scalar_t lin_vel_scaling;
@@ -184,4 +150,6 @@ public:
     } RLparams;
 
     void loadParams(std::string filepath, RLParams& params);  
+
+    std::unique_ptr<NNInterface> network; 
 };

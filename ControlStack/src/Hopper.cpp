@@ -5,8 +5,6 @@
 #include <manif/manif.h>
 #include "../inc/utils.h"
 
-using namespace pinocchio;
-
 Hopper::Hopper(const std::string yamlFile)
 {
     // Read gain yaml
@@ -24,7 +22,7 @@ Hopper::Hopper(const std::string yamlFile)
     state_.q.resize(11);
     state_.v.resize(10);
 
-    pinocchioWrapper = std::make_unique<PinocchioWrapper>();
+    pinocchioWrapper = createPinocchioInstance();
 
 }
 

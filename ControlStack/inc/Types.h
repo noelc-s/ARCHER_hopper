@@ -37,6 +37,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Hopper_t {
 
+enum domain {flight, ground, flight_ground, ground_flight};
+
 /** size_t trajectory type. */
 using size_array_t = std::vector<size_t>;
 /** Array of size_t trajectory type. */
@@ -89,6 +91,46 @@ using eigen_scalar_array_t = std::vector<eigen_scalar_t>;
 using eigen_scalar_array2_t = std::vector<eigen_scalar_array_t>;
 /** Array of arrays of eigen scalar trajectory type. */
 using eigen_scalar_array3_t = std::vector<eigen_scalar_array2_t>;
+
+struct Parameters {
+    scalar_t dt;
+    scalar_t MPC_dt_flight;
+    scalar_t MPC_dt_ground;
+    scalar_t MPC_dt_replan;
+    scalar_t roll_offset;
+    scalar_t pitch_offset;
+    scalar_t yaw_drift;
+    std::string model_name;
+    scalar_t v_max;
+    scalar_t a_max;
+    scalar_t dt_replan;
+    scalar_t dt_planner;
+    int horizon;
+    std::string rom_type;
+    int stop_index; 
+    scalar_t x0, y0;
+};
+
+struct MPC_Parameters {
+    int N;
+	int SQP_iter;
+    vector_t stateScaling;
+    vector_t inputScaling;
+    scalar_t discountFactor;
+	scalar_t dt_flight;
+	scalar_t dt_ground;
+    scalar_t MPC_dt_replan;
+	scalar_t tau_max;
+	scalar_t f_max;
+	scalar_t terminalScaling;
+	scalar_t groundDuration;
+	scalar_t heightOffset;
+	scalar_t time_between_contacts;
+	scalar_t hop_height;
+	scalar_t circle_freq;
+	scalar_t circle_amp;
+	scalar_t max_vel;
+};
 
 } 
 
