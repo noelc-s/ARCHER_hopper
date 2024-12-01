@@ -22,7 +22,7 @@
 #include "../inc/Types.h"
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
-#include "../inc/rom.h"
+#include "../inc/command.h"
 
 
 using namespace Eigen;
@@ -45,10 +45,9 @@ scalar_t dt_planner_elapsed;
 scalar_t dt_print_elapsed;
 
 quat_t quat_des = Quaternion<scalar_t>(1, 0, 0, 0);
-vector_3t omega_des;
-vector_t u_des(4);
+vector_3t omega_des = vector_3t::Zero();
+vector_t u_des = vector_t::Zero(4);
 vector_2t command_interp;
-vector_t x_term(21);
 vector_3t error;
 manif::SO3Tangent<scalar_t> xi;
 quat_t e;
@@ -80,3 +79,8 @@ std::mutex m;
 std::atomic<bool> running(true);
 
 matrix_t desired_command;
+
+// 4 torques, 7 terminal s SE(3) state, 2 command
+float TX_torques[4 + 7 + 2] = {};
+// time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
+scalar_t RX_state[20] = {};

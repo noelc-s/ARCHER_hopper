@@ -21,23 +21,10 @@ int main(int argc, char **argv)
   setupGainsHardware(gainYamlPath);
 
   std::shared_ptr<Hopper> hopper(new Hopper(gainYamlPath));
-  std::unique_ptr<Command> command;
-  if (p.rom_type == "single_int")
-  {
-    command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_policy, p.v_max, 0, 0);
-  }
-  else if (p.rom_type == "double_int")
-  {
-    command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_policy, p.v_max, p.a_max);
-  }
-  else if (p.rom_type == "position")
-  {
-    command = std::make_unique<V5Command>(0, 0);
-  }
-  else
-  {
-    throw std::runtime_error("RoM type unrecognized");
-  }
+  
+  // Instantiate a command (i.e. a reduced order model)
+    std::unique_ptr<Command> command = createCommand(p);
+  
   // Instantiate a new policy.
   // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, opt);
   RaibertPolicy policy = RaibertPolicy(gainYamlPath);

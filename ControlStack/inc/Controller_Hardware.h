@@ -25,7 +25,7 @@
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
 #include "../src/utils_hardware.cpp"
-#include "../inc/rom.h"
+#include "../inc/command.h"
 
 using namespace Eigen;
 using namespace Hopper_t;
@@ -89,11 +89,6 @@ scalar_t reset;
 // scalar_t TX_torques[4 + 7 + 2 + 2 * 5] = {};
 //  // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
 // scalar_t RX_state[20] = {};
-
-
-
-// int ind;
-// vector_t x_term(21);
 
 
 // quat_t IMU_quat;

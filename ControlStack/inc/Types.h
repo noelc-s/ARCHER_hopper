@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Hopper_t {
 
 enum domain {flight, ground, flight_ground, ground_flight};
+enum class RomType { SingleInt, DoubleInt, Position };
 
 /** size_t trajectory type. */
 using size_array_t = std::vector<size_t>;

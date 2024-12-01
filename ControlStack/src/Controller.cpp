@@ -4,39 +4,19 @@
 int main(int argc, char **argv)
 {
     setupSocket(server_fd, new_socket, address, opt_socket, addrlen);
-    setupGains(gainYamlPath, mpc_p, p); // mpc_p,
-    // std::shared_ptr<MPC> opt(new MPC(20, 4, mpc_p));
+    setupGains(gainYamlPath, mpc_p, p);
     std::shared_ptr<Hopper> hopper(new Hopper(gainYamlPath));
 
     // Data Logging
     fileHandle.open(dataLog);
     fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
-    fileHandleDebug.open(predictionLog);
-    fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
     // Initialize
     offsets << p.roll_offset, p.pitch_offset;
-    omega_des.setZero();
-    u_des.setZero();
-    x_term.setZero();
-    ind = 1;
 
-    std::unique_ptr<Command> command;
-    if (p.rom_type == "single_int")
-    {
-        command = std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
-    }
-    else if (p.rom_type == "double_int")
-    {
-        command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
-    }
-    else if (p.rom_type == "position") {
-        command = std::make_unique<V5Command>(p.x0, p.y0);
-    }
-    else
-    {
-        throw std::runtime_error("RoM type unrecognized");
-    }
+    // Instantiate a command (i.e. a reduced order model)
+    std::unique_ptr<Command> command = createCommand(p);
+
     // Instantiate a new policy.
     // std::shared_ptr<MPC> mpc = std::make_shared<MPC>(20,4,mpc_p, hopper);
     // MPCPolicy policy = MPCPolicy(gainYamlPath, hopper, mpc);
@@ -51,14 +31,6 @@ int main(int argc, char **argv)
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
-    desired_command = command->getCommand();
-
-    // 4 torques, 7 terminal s SE(3) state, 2 command, 8 obstacle_corners, xy mpc sol
-    float TX_torques[4 + 7 + 2] = {};
-    // time, pos, quat, vel, omega, contact, leg_pos, leg_vel, wheel_vel
-    scalar_t RX_state[20] = {};
-
-    // sleep(10);
 
     for (;;)
     {
@@ -84,14 +56,8 @@ int main(int argc, char **argv)
         // Measure the initial absolute yaw (from optitrack)
         static scalar_t initial_yaw = optitrack_yaw;
         static quat_t initial_yaw_quat = Euler2Quaternion(0, 0, initial_yaw);
-
-        // Remove the measured yaw to put us back in the global frame
-        scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
-        quat_t measured_yaw_quat = Euler2Quaternion(0, 0, measured_yaw);
-        quat_t optitrack_yaw_quat = Euler2Quaternion(0, 0, optitrack_yaw);
-        quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
-        hopper->state_.quat = yaw_corrected;
-
+        // Remove yaw drift
+        hopper->removeYaw(optitrack_yaw);
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
         hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
@@ -109,11 +75,6 @@ int main(int argc, char **argv)
         }
 
         hopper->computeTorque(quat_des, omega_des, 0.1, u_des);
-
-        e = quat_des.inverse() * hopper->state_.quat;
-        auto e_ = manif::SO3<scalar_t>(e);
-        xi = e_.log();
-        error << xi.coeffs();
 
         // Log data
         if (fileWrite)
@@ -139,11 +100,6 @@ int main(int argc, char **argv)
             TX_torques[i] = hopper->torque[i];
         }
 
-        // for (int i = 4; i < 23; i++)
-        // {
-        //     TX_torques[i] = 0;
-        // }
-
         if ((desired_command.rows() == 5) & (desired_command.cols() == 1))
         {
             TX_torques[11] = desired_command(0);
@@ -156,11 +112,5 @@ int main(int argc, char **argv)
         }
 
         send(new_socket, &TX_torques, sizeof(TX_torques), 0);
-        if (ind == p.stop_index)
-        {
-            running = false;
-            exit(2);
-        }
-        ind++;
     }
 }

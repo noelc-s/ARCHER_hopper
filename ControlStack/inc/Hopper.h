@@ -53,6 +53,8 @@ public:
 
     Hopper(const std::string yamlFile);
 
+    void removeYaw(const scalar_t& optitrack_yaw);
+
     void updateState(vector_t state);
 
     /*!  @brief  compute the discretization of the system
