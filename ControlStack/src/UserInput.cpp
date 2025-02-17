@@ -48,7 +48,8 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
 }
 
 void UserInput::getJoystickInput(vector_2t &offsets,
-                                 scalar_t &reset, std::condition_variable &cv, std::mutex &m)
+                                 scalar_t &reset, 
+                                 scalar_t& yaw, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -113,6 +114,16 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             break;
         // pressed a button
         case JS_EVENT_BUTTON:
+            if (event.number == 6 && event.value == 1)
+            {
+                yaw -= 0.1;
+                std::cout << "Yaw decreased to: " << yaw << std::endl;
+            }
+            if (event.number == 7 && event.value == 1)
+            {
+                yaw += 0.1;
+                std::cout << "Yaw increased to: " << yaw << std::endl;
+            }
             if (event.number == 5 && event.value == 1)
             {
                 std::cout << "reset" << std::endl;

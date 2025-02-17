@@ -78,6 +78,8 @@ manif::SO3Tangent<scalar_t> xi;
 
 scalar_t reset;
 
+scalar_t yaw;
+
 
 
 

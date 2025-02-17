@@ -56,10 +56,10 @@ RaibertHeuristic:
   # ky_p: 0.                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
   # kx_d: -0.                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   # ky_d: 0.                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.3                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.25                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.25                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
   kx_f: 0.7                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
   ky_f: 0.7              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
   pos_clip: 0.5
@@ -69,12 +69,10 @@ RaibertHeuristic:
   yaw_damping: 0.004
 
 
-# roll_offset: 0.004
-# pitch_offset: 0.025
-roll_offset:  0.006
-pitch_offset: 0.018
-# roll_offset:  -0.0
-# pitch_offset: 0.0
+# roll_offset:  0.006
+# pitch_offset: 0.018
+roll_offset:  -0.0
+pitch_offset: 0.0
 
 Policy:
   dt_lowlevel: 0.001

@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
+  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -46,13 +46,15 @@ int main(int argc, char **argv)
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
-  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
-  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(cv), std::ref(m));
+  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
   desired_command = command->getCommand();
+
+  std::thread realsense(&realSenseLoop, std::ref(yaw));
 
   int size = 11 + 2;
   float *TX_torques = new float[size](); // Dynamically allocate array
@@ -82,7 +84,8 @@ int main(int argc, char **argv)
   // ROS stuff
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
-  ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+  // ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
+  ros::Subscriber sub = n.subscribe("/natnet_ros/hopper/pose", 240, chatterCallback);
 
   quat_t quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
   while (quat_opti.norm() < 0.99)
@@ -96,7 +99,7 @@ int main(int argc, char **argv)
   signal(SIGINT, signal_callback_handler);
   setupSocketHardware();
   std::thread thread_object(getStateFromEthernet, std::ref(reset), std::ref(cv), std::ref(m));
-  sleep(1);
+  sleep(5);
   vector_3t current_vel, previous_vel;
   std::chrono::high_resolution_clock::time_point last_t_state_log;
 
@@ -119,8 +122,8 @@ int main(int argc, char **argv)
         quat_optitrack.normalize();
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
             OptiState.x, OptiState.y, OptiState.z,
-            quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
-            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
+            // quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
+            ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
             OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice

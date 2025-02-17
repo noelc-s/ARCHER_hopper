@@ -8,11 +8,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "-O3 -pthread")
 
-set(PATH_TO_REPOS /home/noel/repos CACHE PATH "Path to repos")
+set(PATH_TO_REPOS /home/noelcs/repos CACHE PATH "Path to repos")
 message("Looking for dependecies in: ${PATH_TO_REPOS}")
 
 # Option to build hardare support (requires ros to be installed, not needed for sim only results)
-option(HARDWARE "build with hardware support (ros)" OFF)
+option(HARDWARE "build with hardware support (ros)" ON)
 option(MPC "build with MPC controller" OFF)
 option(LEARNING "build with NN controller" OFF)
 
@@ -32,6 +32,10 @@ include_directories(${MUJOCO_DIR}/include/mujoco)
 find_library(MUJOCO_LIB mujoco REQUIRED HINTS ${MUJOCO_DIR}/lib)
 add_library(mujoco SHARED IMPORTED GLOBAL)
 set_property(TARGET mujoco PROPERTY IMPORTED_LOCATION ${CMAKE_INCLUDE_DIR}/lib/libmujoco.so)
+
+include_directories(${PATH_TO_REPOS}/librealsense-2.53.1/include)
+add_library(realsense2 SHARED IMPORTED)
+set_property(TARGET realsense2 PROPERTY IMPORTED_LOCATION ${PATH_TO_REPOS}/librealsense-2.53.1/build/librealsense2.so)
 
 if(MPC)
     SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
@@ -126,13 +130,13 @@ if(HARDWARE)
     find_package(geometry_msgs REQUIRED)
     
     add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
-    target_link_libraries(hopper_ctrl_hardware yaml-cpp)
-    target_link_libraries(hopper_ctrl_hardware Eigen3::Eigen)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC yaml-cpp)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})
     target_include_directories(hopper_ctrl_hardware PUBLIC ${manif_INCLUDE_DIRS})
     target_compile_definitions(hopper_ctrl_hardware PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
-    target_link_libraries(hopper_ctrl_hardware /home/noelcs/repos/CppAD_install/lib/libcppad_lib.so)
-    target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
+    target_link_libraries(hopper_ctrl_hardware PUBLIC /home/noelcs/repos/CppAD_install/lib/libcppad_lib.so)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC ${roscpp_LIBRARIES})
     add_executable(hopper_sim_hardware src/SimVisHardware.cpp)
     target_link_libraries(hopper_sim_hardware PUBLIC Eigen3::Eigen)
     target_link_libraries(hopper_sim_hardware PUBLIC glfw)
@@ -142,6 +146,8 @@ if(HARDWARE)
 
     target_link_libraries(hopper_ctrl_hardware PUBLIC NN)
     target_link_libraries(hopper_ctrl_hardware PUBLIC MPC)
+
+    target_link_libraries(hopper_ctrl_hardware PUBLIC realsense2)
 endif()
 
 
