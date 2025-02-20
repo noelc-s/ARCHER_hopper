@@ -45,7 +45,8 @@ public:
 
     void getJoystickInput(vector_2t &offsets,
                           scalar_t &dist, 
-                          scalar_t& yaw, std::condition_variable & cv, std::mutex & m);
+                          scalar_t& yaw,
+			  bool& reset_pos, std::condition_variable & cv, std::mutex & m);
 
     static vector_3t keyboardInput();
 

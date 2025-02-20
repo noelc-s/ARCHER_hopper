@@ -46,7 +46,8 @@ int main(int argc, char **argv)
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
-  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(cv), std::ref(m));
+  bool reset_pos = false;
+  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(reset_pos), std::ref(cv), std::ref(m));
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
@@ -54,7 +55,9 @@ int main(int argc, char **argv)
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
   desired_command = command->getCommand();
 
-  std::thread realsense(&realSenseLoop, std::ref(yaw));
+  EstimatedState estimated_state = {};
+  bool realsense_connected = false;
+  std::thread realsense(&realSenseLoop, std::ref(yaw), std::ref(estimated_state), std::ref(realsense_connected), std::ref(reset_pos));
 
   int size = 11 + 2;
   float *TX_torques = new float[size](); // Dynamically allocate array
@@ -81,36 +84,21 @@ int main(int argc, char **argv)
       0, -0.0000, 30.9689, -0.0000,
       0.0042, 0.0000, 0.0000, 30.9689;
 
-  // ROS stuff
-  ros::init(argc, argv, "listener");
-  ros::NodeHandle n;
-  // ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
-  ros::Subscriber sub = n.subscribe("/natnet_ros/hopper/pose", 240, chatterCallback);
-
-  quat_t quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-  while (quat_opti.norm() < 0.99)
-  {
-    ros::spinOnce();
-    quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-    // std::cout << "Waiting for optitrack quat" << std::endl;
-    // std::cout << quat_opti.coeffs().transpose() << std::endl;
-  };
-
   signal(SIGINT, signal_callback_handler);
   setupSocketHardware();
   std::thread thread_object(getStateFromEthernet, std::ref(reset), std::ref(cv), std::ref(m));
-  sleep(5);
-  vector_3t current_vel, previous_vel;
-  std::chrono::high_resolution_clock::time_point last_t_state_log;
 
   tstart = std::chrono::high_resolution_clock::now();
   t_loop = tstart;
   t_lowlevel = tstart;
   t_policy = tstart;
 
-  while (ros::ok())
+  while (!realsense_connected) {std::cout << "Waiting for realsense" << std::endl;}
+  sleep(1);
+
+
+  while (1)
   {
-    ros::spinOnce();
     t_loop = std::chrono::high_resolution_clock::now();
     if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_lowlevel).count() * 1e-9 > p.dt_lowlevel)
     {
@@ -118,13 +106,11 @@ int main(int argc, char **argv)
 
       {
         std::lock_guard<std::mutex> lck(state_mtx);
-        quat_optitrack = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-        quat_optitrack.normalize();
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
-            OptiState.x, OptiState.y, OptiState.z,
-            // quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
-            ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
-            OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
+            estimated_state.x, estimated_state.y, estimated_state.z,
+            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
+            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z, // realsense as orientation
+            estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
@@ -144,7 +130,6 @@ int main(int argc, char **argv)
       // quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
       // hopper->state_.quat = yaw_corrected;
 
-      hopper->state_.quat = quat_optitrack;
       // Add roll pitch offset to body frame
       quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
       hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
@@ -169,11 +154,6 @@ int main(int argc, char **argv)
       }
       TX_torques[11] = desired_command(0);
       TX_torques[12] = desired_command(1);
-
-      e = quat_des.inverse() * hopper->state_.quat;
-      auto e_ = manif::SO3<scalar_t>(e);
-      xi = e_.log();
-      error << xi.coeffs();
 
       {
         std::lock_guard<std::mutex> lck(des_state_mtx);

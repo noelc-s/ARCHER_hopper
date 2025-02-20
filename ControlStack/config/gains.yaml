@@ -13,7 +13,7 @@ LowLevel:
 Simulator:
   p0: [0, 0, 0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
-  rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
+  rpy0: [0,0,0.5]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
   speed: 1              # speed of simulation [multiplier]
@@ -76,11 +76,11 @@ RL:
   # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
   # rom_type: single_int
-  rom_type: position
+  rom_type: single_int
   model_name: ..
-  horizon: 10
+  horizon: 1
   dt_replan : 0.02
-  v_max: 1.0
+  v_max: 0.2
   a_max: 1.0
 
 dt_planner: 0.2

@@ -89,11 +89,11 @@ RL:
   # rom_type: single_int
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
   # model_name: ../../models/hopper_traj_single_int_cur3_rojj0ra6.onnx # Spindown
-  rom_type: position
+  rom_type: single_int
   model_name: ..
-  horizon: 10
-  # dt_replan: 0.02
-  v_max: 0.3
+  horizon: 1
+  dt_replan: 0.02
+  v_max: 0.05
   a_max: 1.0
 
 filter_alpha: 0.4

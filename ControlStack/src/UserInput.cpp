@@ -49,7 +49,8 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
 
 void UserInput::getJoystickInput(vector_2t &offsets,
                                  scalar_t &reset, 
-                                 scalar_t& yaw, std::condition_variable &cv, std::mutex &m)
+                                 scalar_t& yaw,
+				 bool& reset_pos, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -128,6 +129,11 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             {
                 std::cout << "reset" << std::endl;
                 reset = 1;
+            }
+            if (event.number == 9 && event.value == 1)
+            {
+                std::cout << "Position reset sent" << std::endl;
+                reset_pos = true;
             }
             if (event.number == 4 && event.value == 1)
             {

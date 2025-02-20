@@ -82,10 +82,14 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
 
     vector_3t delta_quat;
     quat_t e = quat_d_.inverse() * state_.quat;
-    manif::SO3Tangent<scalar_t> xi;
-    auto e_ = manif::SO3<scalar_t>(e);
-    xi = e_.log();
-    delta_quat << xi.coeffs();
+    if (e.norm() < 0.99) {
+	delta_quat << 0,0,0;
+    } else {
+      manif::SO3Tangent<scalar_t> xi;
+      auto e_ = manif::SO3<scalar_t>(e);
+      xi = e_.log();
+      delta_quat << xi.coeffs();
+    }
 
     matrix_3t Kp, Kd;
     Kp.setZero();

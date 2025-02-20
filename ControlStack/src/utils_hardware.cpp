@@ -1,10 +1,4 @@
 #include <string>
-#include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "geometry_msgs/TwistStamped.h"
-#include "geometry_msgs/AccelStamped.h"
-#include "geometry_msgs/TransformStamped.h"
-#include "std_msgs/String.h"
 
 #include "../inc/Types.h"
 #include "../inc/utils.h"
@@ -18,22 +12,13 @@ char buff[52];
 float states[13];
 vector_t ESPstate(13);
 volatile bool ESP_initialized = false;
-struct State
+
+struct EstimatedState
 {
-  scalar_t x;
-  scalar_t y;
-  scalar_t z;
-  scalar_t x_dot;
-  scalar_t y_dot;
-  scalar_t z_dot;
-  scalar_t q_w;
-  scalar_t q_x;
-  scalar_t q_y;
-  scalar_t q_z;
-  scalar_t w_x;
-  scalar_t w_y;
-  scalar_t w_z;
-} OptiState;
+  scalar_t x, y, z;
+  scalar_t x_dot, y_dot, z_dot;
+  scalar_t q_w, q_x, q_y, q_z;
+};
 
 struct HardwareParameters
 {
@@ -190,21 +175,20 @@ rs2_pose predict_pose(rs2_pose & pose, float dt_s)
     return P;
 }
 
+void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsense_connected, bool& reset_pos) {
 
-  Eigen::Quaternion<double> q;  
-  Eigen::Matrix<double, 3, 1> v;
-  Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
-  Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
-  Eigen::Matrix<double, 3, 3> R;                
-
-
-
-vector_3t realsense_pos{0,0,0};
-vector_3t realsense_vel{0,0,0};
-quat_t realsense_q;
-
-void realSenseLoop(scalar_t& yaw) {
-std::string serial;
+    Eigen::Quaternion<double> q;  
+    Eigen::Matrix<double, 3, 1> v;
+    Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
+    Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
+    Eigen::Matrix<double, 3, 3> R;                
+    
+    vector_3t realsense_pos{0,0,0};
+    vector_3t pos_origin{0,0,0};
+    vector_3t realsense_vel{0,0,0};
+    quat_t realsense_q;
+    
+    std::string serial;
     if (!device_with_streams({ RS2_STREAM_POSE }, serial))
         return;
 
@@ -216,6 +200,15 @@ std::string serial;
         cfg.enable_device(serial);
     // Add pose stream
     cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
+
+    // Magic numbers from solidworks macro
+    R_RS_to_RS_aligned << 0.271397251061513,0.863510292339979,0.425080588993638,
+                0.962467418729722,-0.243493249790936,-0.119864528489434,
+                1.01307850997046E-15,0.441657120772634,-0.897183920760302;  
+    R_RS_aligned_to_H << 0,1,0,
+                        0, 0, 1,
+                        1, 0, 0;
+    R = R_RS_to_RS_aligned * R_RS_aligned_to_H;
 
     auto callback = [&](const rs2::frame& frame)
     {
@@ -240,127 +233,44 @@ std::string serial;
 			  predicted_pose.velocity.y,
 			  predicted_pose.velocity.z;
             q = Eigen::Quaternion<double>(pose_data.rotation.w, pose_data.rotation.x, pose_data.rotation.y, pose_data.rotation.z);
-            realsense_vel = R.transpose()*(q.inverse() * realsense_vel);
+            realsense_vel = R.transpose()*(q.inverse() * realsense_vel); // transform to local vel
+	    static auto initial_yaw = ((q * quat_t(R_RS_to_RS_aligned)).y() > 0 ? 1 : -1) * 2*acos((q * quat_t(R_RS_to_RS_aligned)).w());
+	    std::cout << (quat_t(R).inverse() * q * quat_t(R)).coeffs().transpose() << "        " << Euler2Quaternion(0, initial_yaw, 0).coeffs().transpose() << std::endl;
+	    quat_t R_y = Euler2Quaternion(-1.5*initial_yaw, 0, 0);
+	    //quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), Euler2Quaternion(0, 0, initial_yaw));
+	    quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), R_y);
+
+	    if (reset_pos) {
+		pos_origin = realsense_pos;
+		//pipe.stop();
+		//std::this_thread::sleep_for( std::chrono::seconds( 1 ) ); // wait a little bit
+		//pipe.start();
+		std::cout << "Reset command received" << std::endl;
+		reset_pos = false;
+	    }
+
+	    estimated_state.q_w = body_q.w();
+	    estimated_state.q_x = body_q.x();
+	    estimated_state.q_y = body_q.y();
+	    estimated_state.q_z = body_q.z();
+	    estimated_state.x = realsense_pos(0) - pos_origin(0);
+            estimated_state.y = realsense_pos(1) - pos_origin(1);
+            estimated_state.z = realsense_pos(2) - pos_origin(2);
+	    //estimated_state.x = realsense_pos(0);
+            //estimated_state.y = realsense_pos(1);
+            //estimated_state.z = realsense_pos(2);
+            estimated_state.x_dot = realsense_vel(0);
+            estimated_state.y_dot = realsense_vel(1);
+            estimated_state.z_dot = realsense_vel(2);
         }
     };
 
     rs2::pipeline_profile profiles = pipe.start(cfg, callback);
     std::cout << "started RealSense\n";
+    realsense_connected = true;
     while(true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-}
-void chatterCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
-{
-  static std::chrono::high_resolution_clock::time_point t1;
-  t1 = std::chrono::high_resolution_clock::now();
-  static std::chrono::seconds oneSecond(1);
-  static std::chrono::high_resolution_clock::time_point last_t_state_log = t1 - oneSecond;
-  static bool init = false;
-  static scalar_t dt;
-  static vector_3t state_init(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z + p.frameOffset + p.markerOffset);
-  static vector_3t current_vel(0, 0, 0);
-  static vector_3t filtered_current_vel(0, 0, 0);
-  static bool first_contact = false;
-
-  static vector_3t previous_vel(0, 0, 0);
-  static vector_3t last_state(0.,0., msg->pose.position.z + p.frameOffset + p.markerOffset);
-  static vector_6t est_state(6);
-
-  if (!init) 
-  {
-    est_state.setZero();
-    est_state.segment(0,3) << last_state;
-    R_RS_to_RS_aligned << 0.271397251061513,0.863510292339979,0.425080588993638,
-                0.962467418729722,-0.243493249790936,-0.119864528489434,
-                1.01307850997046E-15,0.441657120772634,-0.897183920760302;  
-    R_RS_aligned_to_H << 0,1,0,
-                        0, 0, 1,
-                        1, 0, 0;
-    R = R_RS_to_RS_aligned * R_RS_aligned_to_H;
-    init = true;
-  }
-
-
-  static const scalar_t g = 9.81;
-
-  // else
-  // local
-  // OptiState.x = msg->pose.position.x - state_init(0);
-  // OptiState.y = msg->pose.position.y - state_init(1);
-  // global
-  // OptiState.x = msg->pose.position.x;
-  // OptiState.y = msg->pose.position.y;
-  // OptiState.z = msg->pose.position.z + p.frameOffset + p.markerOffset;
-
-  OptiState.x = realsense_pos(0);
-  OptiState.y = realsense_pos(1);
-  OptiState.z = realsense_pos(2);
-
-  // std::cout << msg->pose.position.x << ", " << msg->pose.position.y << ", " << msg->pose.position.z
-  //          << ", " << realsense_state(0)<< ", " << realsense_state(1)<< ", " << realsense_state(2) << std::endl;
-
-  OptiState.q_w = msg->pose.orientation.w;
-  OptiState.q_x = msg->pose.orientation.x;
-  OptiState.q_y = msg->pose.orientation.y;
-  OptiState.q_z = msg->pose.orientation.z;
-
-  dt = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - last_t_state_log).count() * 1e-9;
-  if (dt < 1e-3)
-    return;
-
-  current_vel << (OptiState.x - last_state(0)) / dt, (OptiState.y - last_state(1)) / dt, (OptiState.z - last_state(2)) / dt;
-  filtered_current_vel << alpha * current_vel + (1 - alpha) * previous_vel;
-  last_state << OptiState.x, OptiState.y, OptiState.z;
-
-  if (contact)
-    first_contact = true;
-
-  // Kalman Filter
-  vector_4t input(-g, OptiState.x, OptiState.y, OptiState.z);
-  est_state << A_kf * est_state + B_kf * input;
-  if (!first_contact || contact)
-  {
-    est_state(2) = OptiState.z;
-    est_state(5) = filtered_current_vel(2);
-  }
-
-  OptiState.x = realsense_pos(0);
-  OptiState.y = realsense_pos(1);
-  OptiState.z = realsense_pos(2);
-  OptiState.x_dot = realsense_vel(0);
-  OptiState.y_dot = realsense_vel(1);
-  OptiState.z_dot = realsense_vel(2);
-
-  //OptiState.x = est_state(0);
-  //OptiState.y = est_state(1);
-  //OptiState.z = est_state(2);
-  //OptiState.x_dot = est_state(3);
-  //OptiState.y_dot = est_state(4);
-  //OptiState.z_dot = est_state(5);
-
-  // for ii = 2:size(xyz, 1)
-
-  //         % predict
-  //         xyz_hat = A * estim(ii-1, :)' + B * -u;
-  //         % update
-  //         estim(ii, :) = xyz_hat + K * (xyz(ii, :)' - C * xyz_hat);
-  //         estim2(ii, :) = kf.A * estim2(ii-1, :)' + kf.B * [-u; xyz(ii, :)'];
-  //     if contact_sampled(ii)
-  //         estim(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
-  //         estim2(ii, [3 6]) = [xyz(ii, 3) finite_diff_vel(ii,3)];
-  //     end
-  // end
-
-  // OptiState.x_dot = alpha * current_vel(0) + (1-alpha) * previous_vel(0);
-  // OptiState.y_dot = alpha * current_vel(1) + (1-alpha) * previous_vel(1);
-  // OptiState.z_dot = alpha * current_vel(2) + (1-alpha) * previous_vel(2);
-  // OptiState.x_dot = (alpha * (current_vel(0) + previous_vel(0)) + (1. - alpha) * OptiState.x_dot) / (alpha + 1.);
-  // OptiState.y_dot = (alpha * (current_vel(1) + previous_vel(1)) + (1. - alpha) * OptiState.y_dot) / (alpha + 1.);
-  // OptiState.z_dot = (alpha * (current_vel(2) + previous_vel(2)) + (1. - alpha) * OptiState.z_dot) / (alpha + 1.);
-  previous_vel << current_vel;
-  last_t_state_log = t1;
-  // optitrack_updated = true;
 }
 
 void setupGainsHardware(const std::string filepath)
