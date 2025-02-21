@@ -18,6 +18,7 @@ struct EstimatedState
   scalar_t x, y, z;
   scalar_t x_dot, y_dot, z_dot;
   scalar_t q_w, q_x, q_y, q_z;
+  scalar_t cam_q_w, cam_q_x, cam_q_y, cam_q_z;
 };
 
 struct HardwareParameters
@@ -181,7 +182,8 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     Eigen::Matrix<double, 3, 1> v;
     Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
     Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
-    Eigen::Matrix<double, 3, 3> R;                
+    Eigen::Matrix<double, 3, 3> R;
+    Eigen::Matrix<double, 3, 3> R_z_up;                
     
     vector_3t realsense_pos{0,0,0};
     vector_3t pos_origin{0,0,0};
@@ -202,14 +204,17 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     cfg.enable_stream(RS2_STREAM_POSE, RS2_FORMAT_6DOF);
 
     // Magic numbers from solidworks macro
-    R_RS_to_RS_aligned << 0.271397251061513,0.863510292339979,0.425080588993638,
-                0.962467418729722,-0.243493249790936,-0.119864528489434,
-                1.01307850997046E-15,0.441657120772634,-0.897183920760302;  
-    R_RS_aligned_to_H << 0,1,0,
-                        0, 0, 1,
-                        1, 0, 0;
+    R_RS_to_RS_aligned << 0.271397251061513,    0.863510292339979,  0.425080588993638,
+                          0.962467418729722,   -0.243493249790936, -0.119864528489434,
+                          1.01307850997046E-15, 0.441657120772634, -0.897183920760302;
+    R_RS_aligned_to_H << 0, 1, 0,
+                         0, 0, 1,
+                         1, 0, 0;
     R = R_RS_to_RS_aligned * R_RS_aligned_to_H;
 
+    R_z_up << 1,0,0,
+              0,0,-1,
+              0,1,0;
     auto callback = [&](const rs2::frame& frame)
     {
         if (rs2::pose_frame fp = frame.as<rs2::pose_frame>()) {
@@ -218,45 +223,59 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
             double now_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(now).count());
             double pose_time_ms = fp.get_timestamp();
             float dt_s = static_cast<float>(std::max(0., (now_ms - pose_time_ms)/1000.));
-            rs2_pose predicted_pose = predict_pose(pose_data, dt_s);
+            rs2_pose predicted_pose = predict_pose(pose_data, dt_s);  // Question: how much lag are we typically compensating for here?
              
             realsense_pos << predicted_pose.translation.z,
-                          predicted_pose.translation.x,
-                          predicted_pose.translation.y; //  6 4 5
+                             predicted_pose.translation.x,
+                             predicted_pose.translation.y; //  6 4 5
             matrix_3t R_yaw;
             R_yaw << cos(yaw),-sin(yaw),0,
-              sin(yaw),cos(yaw),0,
-              0,0,1;
+                     sin(yaw),cos(yaw),0,
+                     0,0,1;
             realsense_pos = R_yaw * realsense_pos;
 
-	    realsense_vel << predicted_pose.velocity.x,
-			  predicted_pose.velocity.y,
-			  predicted_pose.velocity.z;
+            realsense_vel << predicted_pose.velocity.x,
+                             predicted_pose.velocity.y,
+                             predicted_pose.velocity.z;
             q = Eigen::Quaternion<double>(pose_data.rotation.w, pose_data.rotation.x, pose_data.rotation.y, pose_data.rotation.z);
             realsense_vel = R.transpose()*(q.inverse() * realsense_vel); // transform to local vel
-	    static auto initial_yaw = ((q * quat_t(R_RS_to_RS_aligned)).y() > 0 ? 1 : -1) * 2*acos((q * quat_t(R_RS_to_RS_aligned)).w());
-	    std::cout << (quat_t(R).inverse() * q * quat_t(R)).coeffs().transpose() << "        " << Euler2Quaternion(0, initial_yaw, 0).coeffs().transpose() << std::endl;
-	    quat_t R_y = Euler2Quaternion(-1.5*initial_yaw, 0, 0);
-	    //quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), Euler2Quaternion(0, 0, initial_yaw));
-	    quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), R_y);
 
-	    if (reset_pos) {
-		pos_origin = realsense_pos;
-		//pipe.stop();
-		//std::this_thread::sleep_for( std::chrono::seconds( 1 ) ); // wait a little bit
-		//pipe.start();
-		std::cout << "Reset command received" << std::endl;
-		reset_pos = false;
-	    }
+            
+            // std::cout << (quat_t(R).inverse() * q * quat_t(R)).coeffs().transpose() << "        " << Euler2Quaternion(0, initial_yaw, 0).coeffs().transpose() << std::endl;
+            // quat_t R_y = Euler2Quaternion(-1.5*initial_yaw, 0, 0);  // Why is yaw the first element here, why multiplied by -1.5
+            //quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), Euler2Quaternion(0, 0, initial_yaw));
+            // quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), R_y);
 
-	    estimated_state.q_w = body_q.w();
-	    estimated_state.q_x = body_q.x();
-	    estimated_state.q_y = body_q.y();
-	    estimated_state.q_z = body_q.z();
-	    estimated_state.x = realsense_pos(0) - pos_origin(0);
+            // quat_t body_q = q * quat_t(R_z_up) * quat_t(R);
+            quat_t body_q = quat_t(R_z_up) * q * quat_t(R);
+            static scalar_t initial_yaw = extract_yaw(body_q);
+            body_q = Euler2Quaternion(0,0,-initial_yaw) * body_q;
+
+            if (reset_pos) {
+                pos_origin = realsense_pos;
+                //pipe.stop();
+                //std::this_thread::sleep_for( std::chrono::seconds( 1 ) ); // wait a little bit
+                //pipe.start();
+                std::cout << "Reset command received" << std::endl;
+                reset_pos = false;
+            }
+
+            estimated_state.cam_q_w = q.w();
+            estimated_state.cam_q_x = q.x();
+            estimated_state.cam_q_y = q.y();
+            estimated_state.cam_q_z = q.z();
+            estimated_state.q_w = body_q.w();
+            estimated_state.q_x = body_q.x();
+            estimated_state.q_y = body_q.y();
+            estimated_state.q_z = body_q.z();
+            // This is not the position of the CoM, but the position of the camera?
+            // We don't want to do control on the position/velocity of the camera, but of the CoM?
+            // Might want a homogenous transform here, rather than just a rotation, to move everything to body frame,
+            // rather than just body-aligned frame.
+            estimated_state.x = realsense_pos(0) - pos_origin(0);
             estimated_state.y = realsense_pos(1) - pos_origin(1);
             estimated_state.z = realsense_pos(2) - pos_origin(2);
-	    //estimated_state.x = realsense_pos(0);
+            //estimated_state.x = realsense_pos(0);
             //estimated_state.y = realsense_pos(1);
             //estimated_state.z = realsense_pos(2);
             estimated_state.x_dot = realsense_vel(0);
@@ -269,133 +288,133 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     std::cout << "started RealSense\n";
     realsense_connected = true;
     while(true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));  // why are we running this at 10Hz? and is RealSense == t265?
     }
 }
 
 void setupGainsHardware(const std::string filepath)
 {
-  YAML::Node config = YAML::LoadFile(filepath);
-  p.roll_offset = config["roll_offset"].as<scalar_t>();
-  p.pitch_offset = config["pitch_offset"].as<scalar_t>();
+    YAML::Node config = YAML::LoadFile(filepath);
+    p.roll_offset = config["roll_offset"].as<scalar_t>();
+    p.pitch_offset = config["pitch_offset"].as<scalar_t>();
 
-  p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
-  p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
-  p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
-  p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
-  p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
-  p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
-  p.predHorizon = config["Debug"]["predHorizon"].as<int>();
-  p.stop_index = config["Debug"]["stopIndex"].as<int>();
-  p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
-  p.gains.resize(8);
-  p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
-      p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
-      p.leg_kp, p.leg_kd;
-  p.model_name = config["RL"]["model_name"].as<std::string>();
-  p.rom_type = config["RL"]["rom_type"].as<std::string>();
-  p.v_max = config["RL"]["v_max"].as<scalar_t>();
-  p.a_max = config["RL"]["a_max"].as<scalar_t>();
-  p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
-  p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
-  p.horizon = config["RL"]["horizon"].as<scalar_t>();
-  p.zed_x_offset = config["zed_x_offset"].as<scalar_t>();
-  p.zed_y_offset = config["zed_y_offset"].as<scalar_t>();
-  alpha = config["filter_alpha"].as<scalar_t>();
+    p.orientation_kp = config["Orientation"]["Kp"].as<std::vector<scalar_t>>();
+    p.orientation_kd = config["Orientation"]["Kd"].as<std::vector<scalar_t>>();
+    p.leg_kp = config["Leg"]["Kp"].as<scalar_t>();
+    p.leg_kd = config["Leg"]["Kd"].as<scalar_t>();
+    p.frameOffset = config["MPC"]["frameOffset"].as<scalar_t>();
+    p.markerOffset = config["MPC"]["markerOffset"].as<scalar_t>();
+    p.predHorizon = config["Debug"]["predHorizon"].as<int>();
+    p.stop_index = config["Debug"]["stopIndex"].as<int>();
+    p.p0 = config["Simulator"]["p0"].as<std::vector<scalar_t>>();
+    p.gains.resize(8);
+    p.gains << p.orientation_kp[0], p.orientation_kp[1], p.orientation_kp[2],
+               p.orientation_kd[0], p.orientation_kd[1], p.orientation_kd[2],
+               p.leg_kp, p.leg_kd;
+    p.model_name = config["RL"]["model_name"].as<std::string>();
+    p.rom_type = config["RL"]["rom_type"].as<std::string>();
+    p.v_max = config["RL"]["v_max"].as<scalar_t>();
+    p.a_max = config["RL"]["a_max"].as<scalar_t>();
+    p.dt_lowlevel = config["Policy"]["dt_lowlevel"].as<scalar_t>();
+    p.dt_policy = config["Policy"]["dt_policy"].as<scalar_t>();
+    p.horizon = config["RL"]["horizon"].as<scalar_t>();
+    p.zed_x_offset = config["zed_x_offset"].as<scalar_t>();
+    p.zed_y_offset = config["zed_y_offset"].as<scalar_t>();
+    alpha = config["filter_alpha"].as<scalar_t>();
 }
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)
 {
 
-  ssize_t recvBytes = 0;
-  ssize_t n_bytes = 0;
+    ssize_t recvBytes = 0;
+    ssize_t n_bytes = 0;
 
-  while (1)
-  {
-
-    // encode send_buff
+    while (1)
     {
-      std::lock_guard<std::mutex> lck(des_state_mtx);
-      memcpy(send_buff, desstate, 10 * 4);
+
+        // encode send_buff
+        {
+            std::lock_guard<std::mutex> lck(des_state_mtx);
+            memcpy(send_buff, desstate, 10 * 4);
+        }
+
+        // std::cout<<"Writing..."<<std::endl;
+        if (reset > 0.5)
+        {
+            send_buff[0] = 1;
+            send_buff[1] = 2;
+            send_buff[2] = 3;
+            send_buff[3] = 4;
+            send_buff[4] = 5;
+            send_buff[5] = 6;
+            send_buff[6] = 7;
+            send_buff[7] = 8;
+            reset = 0;
+        }
+
+        n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr *>(&destination), destinationAddrLen);
+
+        // receive string states, ESP8266 -> PC
+        //  std::cout<<"Reading..."<<std::endl;
+        recvBytes = ::recvfrom(sock, buff, sizeof(buff), 0, reinterpret_cast<sockaddr *>(&senderAddr), &senderAddrLen);
+
+        memcpy(&states, buff, 13 * sizeof(float));
+        quat_t quat_a = quat_t(states[6], states[7], states[8], states[9]);
+        quat_a.normalize();
+        {
+            std::lock_guard<std::mutex> lck(state_mtx);
+            ESPstate << states[0], states[1], states[2], states[3], states[4], states[5], quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), states[10], states[11], states[12];
+            ESP_initialized = true;
+        }
     }
 
-    // std::cout<<"Writing..."<<std::endl;
-    if (reset > 0.5)
-    {
-      send_buff[0] = 1;
-      send_buff[1] = 2;
-      send_buff[2] = 3;
-      send_buff[3] = 4;
-      send_buff[4] = 5;
-      send_buff[5] = 6;
-      send_buff[6] = 7;
-      send_buff[7] = 8;
-      reset = 0;
-    }
-
-    n_bytes = ::sendto(sock, send_buff, sizeof(send_buff), 0, reinterpret_cast<sockaddr *>(&destination), destinationAddrLen);
-
-    // receive string states, ESP8266 -> PC
-    //  std::cout<<"Reading..."<<std::endl;
-    recvBytes = ::recvfrom(sock, buff, sizeof(buff), 0, reinterpret_cast<sockaddr *>(&senderAddr), &senderAddrLen);
-
-    memcpy(&states, buff, 13 * sizeof(float));
-    quat_t quat_a = quat_t(states[6], states[7], states[8], states[9]);
-    quat_a.normalize();
-    {
-      std::lock_guard<std::mutex> lck(state_mtx);
-      ESPstate << states[0], states[1], states[2], states[3], states[4], states[5], quat_a.w(), quat_a.x(), quat_a.y(), quat_a.z(), states[10], states[11], states[12];
-      ESP_initialized = true;
-    }
-  }
-
-  ::close(sock);
+    ::close(sock);
 }
 
 void signal_callback_handler(int signum)
 {
-  std::cout << "Caught signal " << signum << std::endl;
-  // Terminate program
-  exit(signum);
+    std::cout << "Caught signal " << signum << std::endl;
+    // Terminate program
+    exit(signum);
 }
 
 void setupSocketHardware()
 {
 
-  std::string hostname{"10.0.0.6"}; // IP Adress of the MACHINE communicating with the teensy
-  std::string destname{"10.0.0.7"}; // IP Address of the TEENSY communicating with the machine
-  uint16_t port = 4333;             // Port over which you want to communicate
+    std::string hostname{"10.0.0.6"}; // IP Adress of the MACHINE communicating with the teensy
+    std::string destname{"10.0.0.7"}; // IP Address of the TEENSY communicating with the machine
+    uint16_t port = 4333;             // Port over which you want to communicate
 
-  sock = ::socket(AF_INET, SOCK_DGRAM, 0); // AF_INET for IPV4, SOCK_DGRAM for UDP, 0 for IP (protocol value)
+    sock = ::socket(AF_INET, SOCK_DGRAM, 0); // AF_INET for IPV4, SOCK_DGRAM for UDP, 0 for IP (protocol value)
 
-  if (sock == -1)
-  {
-    printf("socket creation failed...\n");
-    exit(0);
-  }
-  else
-  {
-    printf("Socket successfully created..\n");
-  }
+    if (sock == -1)
+    {
+        printf("socket creation failed...\n");
+        exit(0);
+    }
+    else
+    {
+        printf("Socket successfully created..\n");
+    }
 
-  source_sock.sin_family = AF_INET;
-  source_sock.sin_port = htons(port);
-  source_sock.sin_addr.s_addr = inet_addr(hostname.c_str());
+    source_sock.sin_family = AF_INET;
+    source_sock.sin_port = htons(port);
+    source_sock.sin_addr.s_addr = inet_addr(hostname.c_str());
 
-  destination.sin_family = AF_INET;
-  destination.sin_port = htons(port);
-  destination.sin_addr.s_addr = inet_addr(destname.c_str());
-  destinationAddrLen = sizeof(destination);
+    destination.sin_family = AF_INET;
+    destination.sin_port = htons(port);
+    destination.sin_addr.s_addr = inet_addr(destname.c_str());
+    destinationAddrLen = sizeof(destination);
 
-  int enabled = 1;
-  setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled));
+    int enabled = 1;
+    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enabled, sizeof(enabled));
 
-  int val = bind(sock, (struct sockaddr *)&source_sock,
-                 sizeof(source_sock));
+    int val = bind(sock, (struct sockaddr *)&source_sock,
+                    sizeof(source_sock));
 
-  senderAddr.sin_family = AF_INET;
-  senderAddr.sin_port = htons(port);
-  senderAddr.sin_addr.s_addr = inet_addr(hostname.c_str());
-  senderAddrLen = sizeof(senderAddr);
-  sleep(1);
+    senderAddr.sin_family = AF_INET;
+    senderAddr.sin_port = htons(port);
+    senderAddr.sin_addr.s_addr = inet_addr(hostname.c_str());
+    senderAddrLen = sizeof(senderAddr);
+    sleep(1);
 }

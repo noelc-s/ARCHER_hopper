@@ -190,6 +190,7 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_vel
                    << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
+                   << "," << estimated_state.cam_q_x << "," << estimated_state.cam_q_y << "," << estimated_state.cam_q_z << "," <<  estimated_state.cam_q_w
                    << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
