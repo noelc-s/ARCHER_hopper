@@ -239,23 +239,12 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
                              predicted_pose.velocity.z;
             q = Eigen::Quaternion<double>(pose_data.rotation.w, pose_data.rotation.x, pose_data.rotation.y, pose_data.rotation.z);
             realsense_vel = R.transpose()*(q.inverse() * realsense_vel); // transform to local vel
-
-            
-            // std::cout << (quat_t(R).inverse() * q * quat_t(R)).coeffs().transpose() << "        " << Euler2Quaternion(0, initial_yaw, 0).coeffs().transpose() << std::endl;
-            // quat_t R_y = Euler2Quaternion(-1.5*initial_yaw, 0, 0);  // Why is yaw the first element here, why multiplied by -1.5
-            //quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), Euler2Quaternion(0, 0, initial_yaw));
-            // quat_t body_q =  minus(quat_t(R).inverse() * q * quat_t(R), R_y);
-
-            // quat_t body_q = q * quat_t(R_z_up) * quat_t(R);
             quat_t body_q = quat_t(R_z_up) * q * quat_t(R);
             static scalar_t initial_yaw = extract_yaw(body_q);
             body_q = Euler2Quaternion(0,0,-initial_yaw) * body_q;
 
             if (reset_pos) {
                 pos_origin = realsense_pos;
-                //pipe.stop();
-                //std::this_thread::sleep_for( std::chrono::seconds( 1 ) ); // wait a little bit
-                //pipe.start();
                 std::cout << "Reset command received" << std::endl;
                 reset_pos = false;
             }

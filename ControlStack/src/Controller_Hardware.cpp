@@ -105,11 +105,16 @@ int main(int argc, char **argv)
       t_lowlevel = t_loop;
 
       {
+	scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
+	quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
+	vector_nav = Euler2Quaternion(0, 0, -extract_yaw(vector_nav)) * vector_nav;
+	quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav; 
         std::lock_guard<std::mutex> lck(state_mtx);
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
             estimated_state.x, estimated_state.y, estimated_state.z,
             // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
-            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z, // realsense as orientation
+            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z, // realsense as orientation
+            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(), // imu with realsense yaw
             estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,
             ESPstate(3), ESPstate(4), ESPstate(5),
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
