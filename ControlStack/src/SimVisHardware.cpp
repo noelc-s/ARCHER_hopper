@@ -32,7 +32,7 @@ IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
 // simulation end time
 char path[] = "../rsc/";
-char xmlfile[] = "hopper.xml";
+char xmlfile[] = "hopper_v.xml";
 
 // MuJoCo data structures
 mjModel *m = NULL;   // MuJoCo model
@@ -339,6 +339,7 @@ int main(int argc, const char **argv)
 
             // Take integrator step
             mj_step(m, d);
+            // mj_forward(m, d);
             iter++;
         }
 

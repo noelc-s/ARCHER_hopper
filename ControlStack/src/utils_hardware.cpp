@@ -12,13 +12,17 @@ char buff[52];
 float states[13];
 vector_t ESPstate(13);
 volatile bool ESP_initialized = false;
+const vector_3t r_cam_to_body = {-0.067, -0.05, 0.121};
+// const vector_3t r_cam_to_body = {-0.134, -0.086, 0.066};
 
 struct EstimatedState
 {
   scalar_t x, y, z;
+  scalar_t cam_x, cam_y, cam_z;
   scalar_t x_dot, y_dot, z_dot;
   scalar_t q_w, q_x, q_y, q_z;
   scalar_t cam_q_w, cam_q_x, cam_q_y, cam_q_z;
+  scalar_t omega_x, omega_y, omega_z;
 };
 
 struct HardwareParameters
@@ -182,12 +186,13 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     Eigen::Matrix<double, 3, 1> v;
     Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
     Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
-    Eigen::Matrix<double, 3, 3> R;
+    Eigen::Matrix<double, 3, 3> R_RS_to_H;
     Eigen::Matrix<double, 3, 3> R_z_up;                
     
     vector_3t realsense_pos{0,0,0};
     vector_3t pos_origin{0,0,0};
     vector_3t realsense_vel{0,0,0};
+    vector_3t realsense_ang_vel{0,0,0};
     quat_t realsense_q;
     
     std::string serial;
@@ -210,7 +215,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     R_RS_aligned_to_H << 0, 1, 0,
                          0, 0, 1,
                          1, 0, 0;
-    R = R_RS_to_RS_aligned * R_RS_aligned_to_H;
+    R_RS_to_H = R_RS_to_RS_aligned * R_RS_aligned_to_H;
 
     R_z_up << 1,0,0,
               0,0,-1,
@@ -218,58 +223,76 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     auto callback = [&](const rs2::frame& frame)
     {
         if (rs2::pose_frame fp = frame.as<rs2::pose_frame>()) {
+            // Collect pose data
             rs2_pose pose_data = fp.get_pose_data();
+            // Compensate for system lag
             auto now = std::chrono::system_clock::now().time_since_epoch();
             double now_ms = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(now).count());
             double pose_time_ms = fp.get_timestamp();
             float dt_s = static_cast<float>(std::max(0., (now_ms - pose_time_ms)/1000.));
-            rs2_pose predicted_pose = predict_pose(pose_data, dt_s);  // Question: how much lag are we typically compensating for here?
-             
-            realsense_pos << predicted_pose.translation.z,
-                             predicted_pose.translation.x,
-                             predicted_pose.translation.y; //  6 4 5
-            matrix_3t R_yaw;
-            R_yaw << cos(yaw),-sin(yaw),0,
-                     sin(yaw),cos(yaw),0,
-                     0,0,1;
-            realsense_pos = R_yaw * realsense_pos;
-
+            // std::cout << dt_s << std::endl;
+            rs2_pose predicted_pose = predict_pose(pose_data, dt_s);  // Question: how much lag are we typically compensating for here -> 0.005s ~ one frame
+            
+            // Realsense position, velocity, angular velocity (in camera frame)
+            realsense_pos << predicted_pose.translation.x,
+                             predicted_pose.translation.y,
+                             predicted_pose.translation.z;
             realsense_vel << predicted_pose.velocity.x,
                              predicted_pose.velocity.y,
                              predicted_pose.velocity.z;
+            realsense_ang_vel << predicted_pose.angular_velocity.x,
+                                 predicted_pose.angular_velocity.y,
+                                 predicted_pose.angular_velocity.z;
+            
+            // realsense orientation
             q = Eigen::Quaternion<double>(pose_data.rotation.w, pose_data.rotation.x, pose_data.rotation.y, pose_data.rotation.z);
-            realsense_vel = R.transpose()*(q.inverse() * realsense_vel); // transform to local vel
-            quat_t body_q = quat_t(R_z_up) * q * quat_t(R);
-            static scalar_t initial_yaw = extract_yaw(body_q);
-            body_q = Euler2Quaternion(0,0,-initial_yaw) * body_q;
 
+            // Transform velocities into local frame
+            realsense_vel = R_RS_to_H.transpose()*(q.inverse() * realsense_vel);
+            realsense_ang_vel = R_RS_to_H.transpose()*(q.inverse() * realsense_ang_vel); // transform to local vel
+
+            // Body orientation (correct for where identity quat is, and cam to body transform R)
+            quat_t body_q = quat_t(R_z_up) * q * quat_t(R_RS_to_H);
+
+            // Remove initial yaw (continuing to correct global identity)
+            static scalar_t initial_yaw = extract_yaw(body_q);
+            quat_t inv_yaw_quat = Euler2Quaternion(0,0,-initial_yaw);
+            body_q = inv_yaw_quat * body_q;
+
+            // Transform position into the global frame
+            vector_t camera_pos = inv_yaw_quat * quat_t(R_z_up) * realsense_pos;    // Camera pos with z up (and initial yaw removed)
+            static vector_t p0  = camera_pos + body_q * r_cam_to_body;              // Hopper initial position global frame
+            vector_t global_pos = camera_pos + body_q * r_cam_to_body - p0;         // Hopper current position global frame
+            
+            // Print camera and gloal positions
+            std::cout << "Camera pos: " << camera_pos.transpose() << "    global pos: " << global_pos.transpose() << std::endl;
+            // Reset origin
             if (reset_pos) {
-                pos_origin = realsense_pos;
+                pos_origin = global_pos;
                 std::cout << "Reset command received" << std::endl;
                 reset_pos = false;
             }
 
-            estimated_state.cam_q_w = q.w();
+            estimated_state.cam_q_w = q.w();                            // Quat from camera
             estimated_state.cam_q_x = q.x();
             estimated_state.cam_q_y = q.y();
             estimated_state.cam_q_z = q.z();
-            estimated_state.q_w = body_q.w();
+            estimated_state.q_w = body_q.w();                           // body quaternion, with initial yaw removed
             estimated_state.q_x = body_q.x();
             estimated_state.q_y = body_q.y();
             estimated_state.q_z = body_q.z();
-            // This is not the position of the CoM, but the position of the camera?
-            // We don't want to do control on the position/velocity of the camera, but of the CoM?
-            // Might want a homogenous transform here, rather than just a rotation, to move everything to body frame,
-            // rather than just body-aligned frame.
-            estimated_state.x = realsense_pos(0) - pos_origin(0);
-            estimated_state.y = realsense_pos(1) - pos_origin(1);
-            estimated_state.z = realsense_pos(2) - pos_origin(2);
-            //estimated_state.x = realsense_pos(0);
-            //estimated_state.y = realsense_pos(1);
-            //estimated_state.z = realsense_pos(2);
-            estimated_state.x_dot = realsense_vel(0);
+            estimated_state.x = global_pos(0) - pos_origin(0);          // global position (initial yaw removed)
+            estimated_state.y = global_pos(1) - pos_origin(1);
+            estimated_state.z = global_pos(2) - pos_origin(2);
+            estimated_state.cam_x = camera_pos(0) - pos_origin(0);      // camera position (global frame, initial yaw removed)
+            estimated_state.cam_y = camera_pos(1) - pos_origin(1);
+            estimated_state.cam_z = camera_pos(2) - pos_origin(2);
+            estimated_state.x_dot = realsense_vel(0);                   // linear velocity, body frame
             estimated_state.y_dot = realsense_vel(1);
             estimated_state.z_dot = realsense_vel(2);
+            estimated_state.omega_x = realsense_ang_vel(0);             // angular velocity, body frame
+            estimated_state.omega_y = realsense_ang_vel(1);
+            estimated_state.omega_z = realsense_ang_vel(2);
         }
     };
 

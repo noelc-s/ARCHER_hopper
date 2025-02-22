@@ -76,10 +76,18 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
     scalar_t yaw_des = command(4);
 
+    vector_t global_error(2);
+    global_error << del_x, del_y;
+    scalar_t yaw = extract_yaw(state.quat);
+    matrix_t R_yaw_inv(2,2);
+    R_yaw_inv << cos(-yaw), sin(-yaw),
+            -sin(-yaw), cos(-yaw);
+    vector_t local_error = R_yaw_inv * global_error;
+
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
+    scalar_t pitch_d = std::min(params.kx_p * local_error(0) + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
     pitch_d = std::max(pitch_d, -params.angle_max);
-    scalar_t roll_d = std::min(params.ky_p * del_y + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
+    scalar_t roll_d = std::min(params.ky_p * local_error(1) + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
     roll_d = std::max(roll_d, -params.angle_max);
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);

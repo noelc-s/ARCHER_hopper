@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
+  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cam_vel_x,cam_vel_y,cam_vel_z,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
   t_lowlevel = tstart;
   t_policy = tstart;
 
-  while (!realsense_connected) {std::cout << "Waiting for realsense" << std::endl;}
+  while (!realsense_connected) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
   sleep(1);
 
 
@@ -105,20 +105,43 @@ int main(int argc, char **argv)
       t_lowlevel = t_loop;
 
       {
-	scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
-	quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
-	vector_nav = Euler2Quaternion(0, 0, -extract_yaw(vector_nav)) * vector_nav;
-	quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav; 
+        // Extract the yaw of the realsense
+        scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
+        
+        // Remove yaw from the vector nav
+        quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
+        vector_nav = Euler2Quaternion(0, 0, -extract_yaw(vector_nav)) * vector_nav;
+
+        // Add in yaw from the realsense
+        quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
+
+        // Transform linear velocity from the body-aligned camera frame into the body frame
+        vector_3t body_vel;
+        vector_3t body_omega;
         std::lock_guard<std::mutex> lck(state_mtx);
+        // body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
+        body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
+        body_vel << estimated_state.x_dot + (body_omega(1) * r_cam_to_body(2) - body_omega(2) * r_cam_to_body(1)),
+                    estimated_state.y_dot + (body_omega(2) * r_cam_to_body(0) - body_omega(0) * r_cam_to_body(2)),
+                    estimated_state.z_dot + (body_omega(0) * r_cam_to_body(1) - body_omega(1) * r_cam_to_body(0));
+
+        // Construct the state
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
+          // Orientation
             estimated_state.x, estimated_state.y, estimated_state.z,
-            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
-            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z, // realsense as orientation
-            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(), // imu with realsense yaw
-            estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,
-            ESPstate(3), ESPstate(4), ESPstate(5),
+            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
+            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+          // Linear velocity
+            // estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,                 // body aligned camera frame velocity
+            body_vel(0), body_vel(1), body_vel(2),                                                  // Corrected to body frame velocity
+          // Angular velocity
+            body_omega(0), body_omega(1), body_omega(2),
+          // Wheel speeds and foot data?
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
+
+      // Update the state
       hopper->updateState(state);
       contact = hopper->state_.contact;
       // quat_t IMU_quat = hopper->state_.quat;
@@ -189,8 +212,10 @@ int main(int argc, char **argv)
       {
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
+        // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
         fileHandle << state[0] << "," << hopper->state_.contact
                    << "," << hopper->state_.pos.transpose().format(CSVFormat)
+                   << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
                    << "," << hopper->state_.leg_pos
                    << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_vel
@@ -200,6 +225,7 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
+                   << "," << estimated_state.x_dot << "," << estimated_state.y_dot << "," << estimated_state.z_dot
                    << "," << desired_command.col(0).transpose().format(CSVFormat);
         fileHandle << std::endl;
       }

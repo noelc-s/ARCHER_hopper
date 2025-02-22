@@ -56,10 +56,10 @@ RaibertHeuristic:
   # ky_p: 0.                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
   # kx_d: -0.                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
   # ky_d: 0.                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_p: -0.2                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_p: 0.2                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
-  kx_d: -0.25                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
-  ky_d: 0.25                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_p: -0.1                                            # p gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_p: 0.1                                             # p gain for placing foot to manipulate the forward velocity (y-direction)
+  kx_d: -0.3                                            # d gain for placing foot to manipulate the forward velocity (x-direction)
+  ky_d: 0.3                                            # d gain for placing foot to manipulate the forward velocity (y-direction)
   kx_f: 0.7                # feed forward gain for velocity tracking (x-direction) as a scaling of ky_d
   ky_f: 0.7              # feed forward gain for velocity tracking (y-direction) as a scaling of ky_d
   pos_clip: 0.5
