@@ -8,12 +8,16 @@
 
 using namespace Hopper_t;
 
+struct OptiState {
+    scalar_t x, y, z;
+    scalar_t q_w, q_x, q_y, q_z;
+    scalar_t x_dot, y_dot, z_dot;
+};
+
 class OTInterface
 {
 public:
     virtual ~OTInterface() = default;
-
-    virtual void getState(vector_t& state) = 0;
 
 };
 
