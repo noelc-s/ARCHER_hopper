@@ -1,18 +1,27 @@
 #include "../../inc/optitrack/ot_interface.h"
+#include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/AccelStamped.h"
+#include "geometry_msgs/TransformStamped.h"
+#include "std_msgs/String.h"
 
 class OTWrapper : public OTInterface
 {
 public:
     std::shared_ptr<EstimatedState> optiState_;
-    matrix_t A_kf(6, 6);
-    matrix_t B_kf(6, 4);
+    matrix_t A_kf;
+    matrix_t B_kf;
 
     OTWrapper(std::shared_ptr<EstimatedState> optiState): optiState_(optiState) {
         // ROS stuff
+        int argc = 0;
+        char **argv = NULL;
         ros::init(argc, argv, "listener");
         ros::NodeHandle n;
 
+        A_kf.resize(6,6);
+        B_kf.resize(6,4);
         A_kf << 0.4234, 0.0000, -0.0000, 0.0042, 0, 0,
                 0.0000, 0.4234, 0.0000, 0, 0.0042, 0,
                -0.0000, -0.0000, 0.4234, 0, 0, 0.0042,
@@ -26,7 +35,7 @@ public:
                 0, -0.0000, 30.9689, -0.0000,
                 0.0042, 0.0000, 0.0000, 30.9689;
 
-        ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper_outdoor/pose", 200, chatterCallback);
+        ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper_outdoor/pose", 200, &OTWrapper::chatterCallback, this);
 
         quat_t quat_opti = quat_t(optiState_->q_w, optiState_->q_x, optiState_->q_y, optiState_->q_z);
         while (quat_opti.norm() < 0.99)
@@ -76,7 +85,7 @@ public:
 
         current_vel << (optiState_->x - last_state(0)) / dt, (optiState_->y - last_state(1)) / dt, (optiState_->z - last_state(2)) / dt;
         filtered_current_vel << alpha * current_vel + (1 - alpha) * previous_vel;
-        last_state << optiState_->x, OptiState.y, OptiState.z;
+        last_state << optiState_->x, optiState_->y, optiState_->z;
 
         if (contact)
             first_contact = true;
@@ -86,7 +95,7 @@ public:
         est_state << A_kf * est_state + B_kf * input;
         if (!first_contact || contact)
         {
-            est_state(2) = OptiState.z;
+            est_state(2) = optiState_->z;
             est_state(5) = filtered_current_vel(2);
         }
 

@@ -12,3 +12,7 @@ struct EstimatedState
   scalar_t cam_q_w, cam_q_x, cam_q_y, cam_q_z;
   scalar_t omega_x, omega_y, omega_z;
 };
+
+// Kalman Filter gain
+bool contact = false;
+scalar_t alpha; // filtering alpha
