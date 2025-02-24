@@ -4,10 +4,10 @@ class OTDummy : public OTInterface
 {
 public:
 
-    OTDummy() {}
+    OTDummy(std::shared_ptr<EstimatedState> optiState) {}
 };
 
-std::unique_ptr<OTInterface> createOTInstance()
+std::unique_ptr<OTInterface> createOTInstance(std::shared_ptr<EstimatedState> optiState)
 {
-    return std::make_unique<OTDummy>();
+    return std::make_unique<OTDummy>(optiState);
 }

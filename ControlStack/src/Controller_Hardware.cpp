@@ -64,8 +64,8 @@ int main(int argc, char **argv)
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
 
-  state optrtrackState;
-  std::unique_ptr<OTInterface> ot = createOTInstance(optrtrackState);
+  std::shared_ptr<EstimatedState> optitrackState = std::make_shared<EstimatedState>();
+  std::unique_ptr<OTInterface> ot = createOTInstance(optitrackState);
 
 
   quat_des.setIdentity();
@@ -74,19 +74,6 @@ int main(int argc, char **argv)
 
   offsets << p.roll_offset, p.pitch_offset;
   std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
-
-  A_kf << 0.4234, 0.0000, -0.0000, 0.0042, 0, 0,
-      0.0000, 0.4234, 0.0000, 0, 0.0042, 0,
-      -0.0000, -0.0000, 0.4234, 0, 0, 0.0042,
-      -30.9689, 0.0000, -0.0000, 1.0000, 0, 0,
-      0.0000, -30.9689, 0.0000, 0, 1.0000, 0,
-      -0.0000, -0.0000, -30.9689, 0, 0, 1.0000;
-  B_kf << 0, 0.5766, -0.0000, 0.0000,
-      0, -0.0000, 0.5766, -0.0000,
-      0, 0.0000, 0.0000, 0.5766,
-      0, 30.9689, -0.0000, 0.0000,
-      0, -0.0000, 30.9689, -0.0000,
-      0.0042, 0.0000, 0.0000, 30.9689;
 
   signal(SIGINT, signal_callback_handler);
   setupSocketHardware();
@@ -230,6 +217,9 @@ int main(int argc, char **argv)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
                    << "," << estimated_state.x_dot << "," << estimated_state.y_dot << "," << estimated_state.z_dot
+                   << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
+                   << "," << optitrackState->x_dot << "," << optitrackState->y_dot << "," << optitrackState->z_dot
+                   << "," << optitrackState->q_x << "," << optitrackState->q_y << "," << optitrackState->q_z << "," << optitrackState->q_w
                    << "," << desired_command.col(0).transpose().format(CSVFormat);
         fileHandle << std::endl;
       }

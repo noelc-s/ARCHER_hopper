@@ -1,6 +1,5 @@
 #include "../../inc/optitrack/ot_interface.h"
 #include "geometry_msgs/PoseStamped.h"
-#include "../../src/utils_hardware.cpp"
 
 class OTWrapper : public OTInterface
 {
@@ -104,7 +103,7 @@ public:
     }
 };
 
-std::unique_ptr<OTInterface> createOTInstance()
+std::unique_ptr<OTInterface> createOTInstance(std::shared_ptr<EstimatedState> optiState)
 {
-    return std::make_unique<OTWrapper>();
+    return std::make_unique<OTWrapper>(optiState);
 }

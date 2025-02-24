@@ -5,14 +5,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <memory>
+#include "../../inc/estimatedState.h"
 
 using namespace Hopper_t;
-
-struct OptiState {
-    scalar_t x, y, z;
-    scalar_t q_w, q_x, q_y, q_z;
-    scalar_t x_dot, y_dot, z_dot;
-};
 
 class OTInterface
 {
@@ -22,4 +17,4 @@ public:
 };
 
 // Factory function for creating the implementation
-std::unique_ptr<OTInterface> createOTInstance();
+std::unique_ptr<OTInterface> createOTInstance(std::shared_ptr<EstimatedState> optiState);
