@@ -56,10 +56,6 @@ sockaddr_in source_sock, destination;
 sockaddr_in senderAddr;
 socklen_t destinationAddrLen;
 socklen_t senderAddrLen;
-scalar_t alpha; // filtering alpha
-
-// Kalman Filter gain
-bool contact = false;
 
 inline rs2_quaternion quaternion_exp(rs2_vector v)
 {
