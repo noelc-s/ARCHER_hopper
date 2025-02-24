@@ -256,7 +256,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
             vector_t global_pos = camera_pos + body_q * r_cam_to_body - p0;         // Hopper current position global frame
             
             // Print camera and gloal positions
-            std::cout << "Camera pos: " << camera_pos.transpose() << "    global pos: " << global_pos.transpose() << std::endl;
+            // std::cout << "Camera pos: " << camera_pos.transpose() << "    global pos: " << global_pos.transpose() << std::endl;
             // Reset origin
             if (reset_pos) {
                 pos_origin = global_pos;

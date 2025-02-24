@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,cam_vel_x,cam_vel_y,cam_vel_z,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
+  fileHandle << "t,contact,x,y,z,cam_x,cam_y,cam_z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,cam_qx,cam_qy,cam_qz,cam_qw,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,global_vel_x,global_vel_y,global_vel_z,o_x,o_y,o_z,o_xdot,o_ydot,o_zdot,o_qx,o_qy,o_qz,o_qw,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -84,6 +84,12 @@ int main(int argc, char **argv)
   t_lowlevel = tstart;
   t_policy = tstart;
 
+  vector_3t global_vel;
+  vector_3t body_vel;
+  vector_3t body_omega;
+  
+  global_vel.setZero();
+
   while (!realsense_connected) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
   sleep(1);
 
@@ -107,8 +113,7 @@ int main(int argc, char **argv)
         quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
 
         // Transform linear velocity from the body-aligned camera frame into the body frame
-        vector_3t body_vel;
-        vector_3t body_omega;
+        
         std::lock_guard<std::mutex> lck(state_mtx);
         // body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
         body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
@@ -135,6 +140,7 @@ int main(int argc, char **argv)
       // Update the state
       hopper->updateState(state);
       contact = hopper->state_.contact;
+      global_vel = hopper->state_.quat * body_vel;    // global velocity
       // quat_t IMU_quat = hopper->state_.quat;
 
       // // Measure the initial absolute yaw (from optitrack)
@@ -204,6 +210,7 @@ int main(int argc, char **argv)
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
+
         fileHandle << state[0] << "," << hopper->state_.contact
                    << "," << hopper->state_.pos.transpose().format(CSVFormat)
                    << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
@@ -216,7 +223,7 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << "," << estimated_state.x_dot << "," << estimated_state.y_dot << "," << estimated_state.z_dot
+                   << "," << global_vel(0) << "," << global_vel(1) << "," << global_vel(2)
                    << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
                    << "," << optitrackState->x_dot << "," << optitrackState->y_dot << "," << optitrackState->z_dot
                    << "," << optitrackState->q_x << "," << optitrackState->q_y << "," << optitrackState->q_z << "," << optitrackState->q_w
