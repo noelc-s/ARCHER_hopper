@@ -64,6 +64,10 @@ int main(int argc, char **argv)
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
 
+  state optrtrackState;
+  std::unique_ptr<OTInterface> ot = createOTInstance(optrtrackState);
+
+
   quat_des.setIdentity();
   omega_des.setZero();
   u_des.setZero();

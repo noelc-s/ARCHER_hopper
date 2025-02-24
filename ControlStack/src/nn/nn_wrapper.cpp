@@ -1,7 +1,7 @@
 #include "../../inc/nn/nn_interface.h"
 #include <onnxruntime_cxx_api.h>
 
-class NNDummy : public NNInterface
+class NNWrapper : public NNInterface
 {
 public:
     Ort::Env env;

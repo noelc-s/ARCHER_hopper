@@ -151,6 +151,20 @@ if(HARDWARE)
     target_link_libraries(hopper_ctrl_hardware PUBLIC MPC)
 
     target_link_libraries(hopper_ctrl_hardware PUBLIC realsense2)
+
+    if(OPTITRACK)
+        find_package(roscpp REQUIRED)
+        find_package(geometry_msgs REQUIRED)
+        include_directories(${roscpp_INCLUDE_DIRS})
+
+        add_library(OT SHARED src/optitrack/ot_wrapper.cpp)
+        target_link_libraries(hopper_ctrl_hardware ${roscpp_LIBRARIES})
+    else()
+        add_library(OT SHARED src/optitrack/ot_dummy.cpp)
+    endif()
+    target_link_libraries(OT Eigen3::Eigen)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC OT)
+
 endif()
 
 
