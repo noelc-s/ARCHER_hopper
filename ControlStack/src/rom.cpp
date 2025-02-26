@@ -13,7 +13,8 @@ void V5Command::update(UserInput *userInput, std::atomic<bool> &running, std::co
     {
         {
             std::lock_guard<std::mutex> lock(m);
-            command << x0_ + userInput->joystick_command(0), y0_ + userInput->joystick_command(1),0,0, userInput->joystick_command(2);
+	    const static scalar_t T = 1;
+            command << x0_ + userInput->joystick_command(0)*T, y0_ + userInput->joystick_command(1)*T,userInput->joystick_command(0),userInput->joystick_command(1), userInput->joystick_command(2);
         }
     }
 }

@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,cam_x,cam_y,cam_z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,cam_qx,cam_qy,cam_qz,cam_qw,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,global_vel_x,global_vel_y,global_vel_z,o_x,o_y,o_z,o_xdot,o_ydot,o_zdot,o_qx,o_qy,o_qz,o_qw,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
+  fileHandle << "t,contact,x,y,z,cam_x,cam_y,cam_z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,cam_qx,cam_qy,cam_qz,cam_qw,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,global_vel_x,global_vel_y,global_vel_z,o_x,o_y,o_z,o_xdot,o_ydot,o_zdot,o_qx,o_qy,o_qz,o_qw,vn_yaw,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -87,7 +87,8 @@ int main(int argc, char **argv)
   vector_3t global_vel;
   vector_3t body_vel;
   vector_3t body_omega;
-  
+  scalar_t vn_yaw;
+  vn_yaw = 0;
   global_vel.setZero();
 
   while (!realsense_connected) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
@@ -107,7 +108,8 @@ int main(int argc, char **argv)
         
         // Remove yaw from the vector nav
         quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
-        vector_nav = Euler2Quaternion(0, 0, -extract_yaw(vector_nav)) * vector_nav;
+	vn_yaw = extract_yaw(vector_nav);
+        vector_nav = Euler2Quaternion(0, 0, -vn_yaw) * vector_nav;
 
         // Add in yaw from the realsense
         quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
@@ -126,8 +128,8 @@ int main(int argc, char **argv)
           // Orientation
             estimated_state.x, estimated_state.y, estimated_state.z,
             // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
-            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
-            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            // yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
           // Linear velocity
             // estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,                 // body aligned camera frame velocity
             body_vel(0), body_vel(1), body_vel(2),                                                  // Corrected to body frame velocity
@@ -210,7 +212,7 @@ int main(int argc, char **argv)
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
-
+	std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
         fileHandle << state[0] << "," << hopper->state_.contact
                    << "," << hopper->state_.pos.transpose().format(CSVFormat)
                    << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
@@ -227,7 +229,8 @@ int main(int argc, char **argv)
                    << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
                    << "," << optitrackState->x_dot << "," << optitrackState->y_dot << "," << optitrackState->z_dot
                    << "," << optitrackState->q_x << "," << optitrackState->q_y << "," << optitrackState->q_z << "," << optitrackState->q_w
-                   << "," << desired_command.col(0).transpose().format(CSVFormat);
+                   << "," << vn_yaw
+		   << "," << desired_command.col(0).transpose().format(CSVFormat);
         fileHandle << std::endl;
       }
     }
