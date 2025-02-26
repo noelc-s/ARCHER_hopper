@@ -5,7 +5,22 @@ int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,cam_x,cam_y,cam_z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,cam_qx,cam_qy,cam_qz,cam_qw,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,global_vel_x,global_vel_y,global_vel_z,o_x,o_y,o_z,o_xdot,o_ydot,o_zdot,o_qx,o_qy,o_qz,o_qw,vn_yaw,des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
+  fileHandle << "t,contact,legpos,legvel,x,y,z,xdot,ydot,zdot,"
+             << "qx,qy,qz,qw,wx,wy,wz,qxdes,qydes,qzdes,qwdes,taufoot,tau1,tau2,tau3,wheelvel1,wheelvel2,wheelvel3,"
+             << "camx,camy,camz,"
+             << "camxdot,camydot,camzdot,"
+             << "camqx,camqy,camqz,camqw,camwx,camwy,camwz,"
+             << "globalxdot,globalydot,globalzdot,"
+             << "optitrackx,optitracky,optitrackz,optitrackxdot,optitrackydot,optitrackzdot,"
+             << "optitrackqx,optitrackqy,optitrackqz,optitrackqw,"
+             << "cmd1,cmd2,cmd3,cmd4,cmd5"
+             << std::endl;
+
+  // Camera pos, camera velocity
+  // body aligned vel (at camera), body vel (at com)
+  // global pos, global vel
+  // optitrack pos, optitrack vel
+  // cam omega, imu omega
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -117,8 +132,8 @@ int main(int argc, char **argv)
         // Transform linear velocity from the body-aligned camera frame into the body frame
         
         std::lock_guard<std::mutex> lck(state_mtx);
-        // body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
-        body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
+        body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
+        // body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
         body_vel << estimated_state.x_dot + (body_omega(1) * r_cam_to_body(2) - body_omega(2) * r_cam_to_body(1)),
                     estimated_state.y_dot + (body_omega(2) * r_cam_to_body(0) - body_omega(0) * r_cam_to_body(2)),
                     estimated_state.z_dot + (body_omega(0) * r_cam_to_body(1) - body_omega(1) * r_cam_to_body(0));
@@ -213,18 +228,22 @@ int main(int argc, char **argv)
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
 	std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
-        fileHandle << state[0] << "," << hopper->state_.contact
-                   << "," << hopper->state_.pos.transpose().format(CSVFormat)
-                   << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
+
+        fileHandle << state[0] 
+                   << "," << hopper->state_.contact
                    << "," << hopper->state_.leg_pos
-                   << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_vel
+                   << "," << hopper->state_.pos.transpose().format(CSVFormat)
+                   << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
-                   << "," << estimated_state.cam_q_x << "," << estimated_state.cam_q_y << "," << estimated_state.cam_q_z << "," <<  estimated_state.cam_q_w
-                   << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
+                   << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
+                   << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
+                   << "," << estimated_state.x_dot << ", " << estimated_state.y_dot << ", " << estimated_state.z_dot
+                   << "," << estimated_state.cam_q_x << "," << estimated_state.cam_q_y << "," << estimated_state.cam_q_z << "," <<  estimated_state.cam_q_w
+                   << "," << estimated_state.omega_x << ", " << estimated_state.omega_y << ", " << estimated_state.omega_z
                    << "," << global_vel(0) << "," << global_vel(1) << "," << global_vel(2)
                    << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
                    << "," << optitrackState->x_dot << "," << optitrackState->y_dot << "," << optitrackState->z_dot
