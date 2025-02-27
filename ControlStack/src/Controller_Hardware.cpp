@@ -227,7 +227,7 @@ int main(int argc, char **argv)
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
-	// std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
+	std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
 
         fileHandle << state[0] 
                    << "," << hopper->state_.contact

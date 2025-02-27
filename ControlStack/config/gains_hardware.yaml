@@ -73,8 +73,8 @@ RaibertHeuristic:
 # pitch_offset: 0.018
 # roll_offset:  -0.016
 # pitch_offset: 0.001
-roll_offset: 0.
-pitch_offset: 0.
+roll_offset: 0.015
+pitch_offset: -0.013
 
 Policy:
   dt_lowlevel: 0.001
