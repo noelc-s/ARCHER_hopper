@@ -75,24 +75,24 @@ int main(int argc, char **argv)
         hopper->updateState(state);
 
         ///////     SIMULATING DRIFT /////////////////
-        scalar_t yaw_drift = state(0) * p.yaw_drift;
-        quat_t yaw_drift_quat = Euler2Quaternion(0, 0, yaw_drift);
-        quat_t q_meas = plus(yaw_drift_quat, hopper->state_.quat);
-        scalar_t optitrack_yaw = extract_yaw(hopper->state_.quat);
-        hopper->state_.quat = q_meas;
-        IMU_quat = hopper->state_.quat;
+        // scalar_t yaw_drift = state(0) * p.yaw_drift;
+        // quat_t yaw_drift_quat = Euler2Quaternion(0, 0, yaw_drift);
+        // quat_t q_meas = plus(yaw_drift_quat, hopper->state_.quat);
+        // scalar_t optitrack_yaw = extract_yaw(hopper->state_.quat);
+        // hopper->state_.quat = q_meas;
+        // IMU_quat = hopper->state_.quat;
         ///////////////////////////////////////////
 
         // Measure the initial absolute yaw (from optitrack)
-        static scalar_t initial_yaw = optitrack_yaw;
-        static quat_t initial_yaw_quat = Euler2Quaternion(0, 0, initial_yaw);
+        // static scalar_t initial_yaw = optitrack_yaw;
+        // static quat_t initial_yaw_quat = Euler2Quaternion(0, 0, initial_yaw);
 
         // Remove the measured yaw to put us back in the global frame
-        scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
-        quat_t measured_yaw_quat = Euler2Quaternion(0, 0, measured_yaw);
-        quat_t optitrack_yaw_quat = Euler2Quaternion(0, 0, optitrack_yaw);
-        quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
-        hopper->state_.quat = yaw_corrected;
+        // scalar_t measured_yaw = extract_yaw(hopper->state_.quat);
+        // quat_t measured_yaw_quat = Euler2Quaternion(0, 0, measured_yaw);
+        // quat_t optitrack_yaw_quat = Euler2Quaternion(0, 0, optitrack_yaw);
+        // quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
+        // hopper->state_.quat = yaw_corrected;
 
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
             desired_command = command->getCommand();
             quat_des = policy.DesiredQuaternion(hopper->state_, desired_command.col(0));
             // Add initial yaw to desired signal
-            quat_des = plus(quat_des, initial_yaw_quat);
+            // quat_des = plus(quat_des, initial_yaw_quat);
             omega_des = policy.DesiredOmega();
             u_des = policy.DesiredInputs(hopper->state_.wheel_vel, hopper->state_.contact);
             t_last = state(0);

@@ -13,7 +13,7 @@ LowLevel:
 Simulator:
   p0: [0, 0, 0.5]         # initial position [x,y,z]
   v0: [0,0,0]           # initial velocity [x_dot, y_dot, z_dot]
-  rpy0: [0,0,0.5]         # initial orientation [roll, pitch, yaw]
+  rpy0: [0,0,0]         # initial orientation [roll, pitch, yaw]
   w0: [0,0,0]           # initial angular rate [roll_dot, pitch_dot, yaw_dot]
   pauseBeforeStart: 0   # how long to wait [in seconds] before simulation begins
   speed: 1              # speed of simulation [multiplier]
@@ -24,7 +24,7 @@ Simulator:
   pert_start: [2000, 5000, 11000,14000] # start time for force [milliseconds]
   pert_end: [2700, 5700, 11150, 14150]  # end time for force [milliseconds
   simEnd: 10000.0               # time to end the simulation [s]
-  yaw_drift: 1     # drift in rad / s
+  yaw_drift: 0     # drift in rad / s
   
 MPC:
   N: 20                                                 # nodes of MPC horizon
