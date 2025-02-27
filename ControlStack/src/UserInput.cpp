@@ -99,8 +99,8 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             }
             if (axis == 1)
             {
-                joystick_command[2] = axes[axis].x / joystick_max;
-                joystick_command[3] = -axes[axis].y / joystick_max;
+                joystick_command[2] = -axes[axis].y / joystick_max;
+                joystick_command[3] = -axes[axis].x / joystick_max;
 
                 if (abs(joystick_command[2]) < deadzone)
                 { // Deadzone

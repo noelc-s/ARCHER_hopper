@@ -179,7 +179,8 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
     Eigen::Matrix<double, 3, 3> R_RS_to_H;
     Eigen::Matrix<double, 3, 3> R_z_up;                
-    
+    Eigen::Matrix<double, 3, 3> R_error;
+
     vector_3t realsense_pos{0,0,0};
     vector_3t pos_origin{0,0,0};
     vector_3t realsense_vel{0,0,0};
@@ -206,7 +207,10 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     R_RS_aligned_to_H << 0, 1, 0,
                          0, 0, 1,
                          1, 0, 0;
-    R_RS_to_H = R_RS_to_RS_aligned * R_RS_aligned_to_H;
+    R_error <<0.9995,    0.0000,    0.0305,
+              0.0006,    0.9998,   -0.0194,
+             -0.0305,    0.0194,    0.9993;
+    R_RS_to_H = R_error.transpose() * R_RS_to_RS_aligned * R_RS_aligned_to_H;
 
     R_z_up << 1,0,0,
               0,0,-1,

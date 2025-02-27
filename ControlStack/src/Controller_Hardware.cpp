@@ -13,6 +13,7 @@ int main(int argc, char **argv)
              << "globalxdot,globalydot,globalzdot,"
              << "optitrackx,optitracky,optitrackz,optitrackxdot,optitrackydot,optitrackzdot,"
              << "optitrackqx,optitrackqy,optitrackqz,optitrackqw,"
+	     << "vn_yaw,"
              << "cmd1,cmd2,cmd3,cmd4,cmd5"
              << std::endl;
 
@@ -127,8 +128,8 @@ int main(int argc, char **argv)
         vector_nav = Euler2Quaternion(0, 0, -vn_yaw) * vector_nav;
 
         // Add in yaw from the realsense
-        quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
-
+        // quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
+	quat_t yaw_corrected = vector_nav * Euler2Quaternion(0, 0, realsense_yaw);
         // Transform linear velocity from the body-aligned camera frame into the body frame
         
         std::lock_guard<std::mutex> lck(state_mtx);
@@ -143,8 +144,8 @@ int main(int argc, char **argv)
           // Orientation
             estimated_state.x, estimated_state.y, estimated_state.z,
             // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
-            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
-            // yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
           // Linear velocity
             // estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,                 // body aligned camera frame velocity
             body_vel(0), body_vel(1), body_vel(2),                                                  // Corrected to body frame velocity
@@ -172,15 +173,15 @@ int main(int argc, char **argv)
       // quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
       // hopper->state_.quat = yaw_corrected;
 
-      // Add roll pitch offset to body frame
-      quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
-      hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
 
       if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_policy).count() * 1e-9 > p.dt_policy)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
         quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+        // Add roll pitch offset to body frame
+        quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
+        quat_des = plus(quat_des, rollPitch);
 
         // Add initial yaw to desired signal
         // quat_des = plus(quat_des, initial_yaw_quat);
@@ -242,7 +243,7 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
                    << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
                    << "," << estimated_state.x_dot << ", " << estimated_state.y_dot << ", " << estimated_state.z_dot
-                   << "," << estimated_state.cam_q_x << "," << estimated_state.cam_q_y << "," << estimated_state.cam_q_z << "," <<  estimated_state.cam_q_w
+                   << "," << estimated_state.q_x << "," << estimated_state.q_y << "," << estimated_state.q_z << "," <<  estimated_state.q_w
                    << "," << estimated_state.omega_x << ", " << estimated_state.omega_y << ", " << estimated_state.omega_z
                    << "," << global_vel(0) << "," << global_vel(1) << "," << global_vel(2)
                    << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
