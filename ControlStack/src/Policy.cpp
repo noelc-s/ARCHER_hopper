@@ -85,9 +85,9 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     vector_t local_error = R_yaw_inv * global_error;
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
-    scalar_t pitch_d = std::min(params.kx_p * local_error(0) + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
+    scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
     pitch_d = std::max(pitch_d, -params.angle_max);
-    scalar_t roll_d = std::min(params.ky_p * local_error(1) + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
+    scalar_t roll_d = std::min(params.ky_p * del_y + params.ky_d * (yd_a + params.ky_f * des_vy), params.angle_max);
     roll_d = std::max(roll_d, -params.angle_max);
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);

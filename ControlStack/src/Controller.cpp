@@ -10,7 +10,17 @@ int main(int argc, char **argv)
 
     // Data Logging
     fileHandle.open(dataLog);
-    fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
+    fileHandle << "t,contact,"
+            << "x,y,z,"
+            << "legpos,"
+            << "vx,vy,vz,"
+            << "legvel,"
+            << "q_x,q_y,q_z,q_w,"
+            << "qd_x,qd_y,qd_z,qd_w,"
+            << "w_x,w_y,w_z,"
+            << "tau_foot,tau1,tau2,tau3,"
+            << "wheel_vel1,wheel_vel2,wheel_vel3,"
+            << "des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
     fileHandleDebug.open(predictionLog);
     fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 

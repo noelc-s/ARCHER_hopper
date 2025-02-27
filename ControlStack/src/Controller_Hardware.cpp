@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         
         // Remove yaw from the vector nav
         quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
-	vn_yaw = extract_yaw(vector_nav);
+	      vn_yaw = extract_yaw(vector_nav);
         vector_nav = Euler2Quaternion(0, 0, -vn_yaw) * vector_nav;
 
         // Add in yaw from the realsense
@@ -138,16 +138,17 @@ int main(int argc, char **argv)
                     estimated_state.y_dot + (body_omega(2) * r_cam_to_body(0) - body_omega(0) * r_cam_to_body(2)),
                     estimated_state.z_dot + (body_omega(0) * r_cam_to_body(1) - body_omega(1) * r_cam_to_body(0));
 
+        global_vel = yaw_corrected * body_vel;
+
         // Construct the state
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
           // Orientation
             estimated_state.x, estimated_state.y, estimated_state.z,
             // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
-            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
-            // yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+            //estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
           // Linear velocity
-            // estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,                 // body aligned camera frame velocity
-            body_vel(0), body_vel(1), body_vel(2),                                                  // Corrected to body frame velocity
+            global_vel(0), global_vel(1), global_vel(2),                                                  // Corrected to global frame velocity
           // Angular velocity
             body_omega(0), body_omega(1), body_omega(2),
           // Wheel speeds and foot data?
@@ -157,7 +158,6 @@ int main(int argc, char **argv)
       // Update the state
       hopper->updateState(state);
       contact = hopper->state_.contact;
-      global_vel = hopper->state_.quat * body_vel;    // global velocity
       // quat_t IMU_quat = hopper->state_.quat;
 
       // // Measure the initial absolute yaw (from optitrack)
