@@ -75,13 +75,9 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
 
     quat_t quat_a_ = state_.quat;
 
-    vector_4t quat_d;
-    vector_4t quat_a;
-    quat_d << quat_d_.w(), quat_d_.x(), quat_d_.y(), quat_d_.z();
-    quat_a << quat_a_.w(), quat_a_.x(), quat_a_.y(), quat_a_.z();
-
     vector_3t delta_quat;
-    quat_t e = quat_d_.inverse() * state_.quat;
+    // quat_t e = quat_d_.inverse() * state_.quat;
+    quat_t e = state_.quat.inverse() * quat_d_;
     if (e.norm() < 0.99) {
 	delta_quat << 0,0,0;
     } else {
@@ -102,7 +98,7 @@ void Hopper::computeTorque(quat_t quat_d_, vector_3t omega_d, scalar_t length_de
     // Keep orientation control on in the ground phase
     // tau = quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (state_.omega - omega_d));
     // switch orientation control off in the ground phase
-    tau = (1 - state_.contact) * quat_actuator.inverse()._transformVector(-Kp * delta_quat - Kd * (state_.omega - omega_d));
+    tau = (1 - state_.contact) * quat_actuator.inverse()._transformVector(Kp * delta_quat - Kd * (state_.omega - omega_d));
 
     scalar_t spring_f = (1 - state_.contact) * (-gains.leg_kp * (state_.leg_pos - length_des) - gains.leg_kd * state_.leg_vel);
     torque << spring_f, tau;

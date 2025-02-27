@@ -177,7 +177,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     Eigen::Matrix<double, 3, 1> v;
     Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
     Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
-    Eigen::Matrix<double, 3, 3> R_RS_to_H;
+    Eigen::Matrix<double, 3, 3> R_H_to_RS;
     Eigen::Matrix<double, 3, 3> R_z_up;                
     Eigen::Matrix<double, 3, 3> R_error;
 
@@ -210,7 +210,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     R_error <<0.9995,    0.0000,    0.0305,
               0.0006,    0.9998,   -0.0194,
              -0.0305,    0.0194,    0.9993;
-    R_RS_to_H = R_error.transpose() * R_RS_to_RS_aligned * R_RS_aligned_to_H;
+    R_H_to_RS = R_error.transpose() * R_RS_to_RS_aligned * R_RS_aligned_to_H;
 
     R_z_up << 1,0,0,
               0,0,-1,
@@ -243,11 +243,11 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
             q = Eigen::Quaternion<double>(pose_data.rotation.w, pose_data.rotation.x, pose_data.rotation.y, pose_data.rotation.z);
 
             // Transform velocities into local frame
-            realsense_vel = R_RS_to_H.transpose()*(q.inverse() * realsense_vel);
-            realsense_ang_vel = R_RS_to_H.transpose()*(q.inverse() * realsense_ang_vel); // transform to local vel
+            realsense_vel = R_H_to_RS.transpose()*(q.inverse() * realsense_vel);
+            realsense_ang_vel = R_H_to_RS.transpose()*(q.inverse() * realsense_ang_vel); // transform to local vel
 
             // Body orientation (correct for where identity quat is, and cam to body transform R)
-            quat_t body_q = quat_t(R_z_up) * q * quat_t(R_RS_to_H);
+            quat_t body_q = quat_t(R_z_up) * q * quat_t(R_H_to_RS);
 
             // Remove initial yaw (continuing to correct global identity)
             static scalar_t initial_yaw = extract_yaw(body_q);
@@ -258,6 +258,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
             vector_t camera_pos = inv_yaw_quat * quat_t(R_z_up) * realsense_pos;    // Camera pos with z up (and initial yaw removed)
             static vector_t p0  = camera_pos + body_q * r_cam_to_body;              // Hopper initial position global frame
             vector_t global_pos = camera_pos + body_q * r_cam_to_body - p0;         // Hopper current position global frame
+            // std::cout << camera_pos.transpose() << "," <<  global_pos.transpose() << std::endl;
             
             // Print camera and gloal positions
             // std::cout << "Camera pos: " << camera_pos.transpose() << "    global pos: " << global_pos.transpose() << std::endl;

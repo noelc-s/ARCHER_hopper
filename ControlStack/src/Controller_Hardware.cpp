@@ -128,8 +128,7 @@ int main(int argc, char **argv)
         vector_nav = Euler2Quaternion(0, 0, -vn_yaw) * vector_nav;
 
         // Add in yaw from the realsense
-        // quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
-	quat_t yaw_corrected = vector_nav * Euler2Quaternion(0, 0, realsense_yaw);
+        quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
         // Transform linear velocity from the body-aligned camera frame into the body frame
         
         std::lock_guard<std::mutex> lck(state_mtx);
@@ -144,8 +143,8 @@ int main(int argc, char **argv)
           // Orientation
             estimated_state.x, estimated_state.y, estimated_state.z,
             // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
-            // estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
-            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+            estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            // yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
           // Linear velocity
             // estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot,                 // body aligned camera frame velocity
             body_vel(0), body_vel(1), body_vel(2),                                                  // Corrected to body frame velocity
@@ -228,7 +227,7 @@ int main(int argc, char **argv)
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
-	std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
+	// std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
 
         fileHandle << state[0] 
                    << "," << hopper->state_.contact

@@ -80,8 +80,8 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     global_error << del_x, del_y;
     scalar_t yaw = extract_yaw(state.quat);
     matrix_t R_yaw_inv(2,2);
-    R_yaw_inv << cos(-yaw), sin(-yaw),
-            -sin(-yaw), cos(-yaw);
+    R_yaw_inv << cos(-yaw), -sin(-yaw),
+            sin(-yaw), cos(-yaw);
     vector_t local_error = R_yaw_inv * global_error;
 
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
@@ -95,7 +95,7 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t yaw_d = yaw_des_rolling;
 
     quat_t desiredLocalInput = Euler2Quaternion(roll_d, pitch_d, yaw_d);
-
+    std::cout << global_error.transpose().format(CSVFormat) << "," << yaw << "," << local_error.transpose().format(CSVFormat) << "," << xd_a << "," << yd_a << "," << roll_d << "," << pitch_d << std::endl;
     return desiredLocalInput;
 }
 
