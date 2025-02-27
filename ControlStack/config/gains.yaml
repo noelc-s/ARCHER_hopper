@@ -76,7 +76,7 @@ RL:
   # model_name: ../../models/hopper_traj_double_int_cur3_6h4jvlo2.onnx
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
   # rom_type: single_int
-  rom_type: position
+  rom_type: single_int
   model_name: ..
   horizon: 10
   dt_replan : 0.02
