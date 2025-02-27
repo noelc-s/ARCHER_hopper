@@ -1,5 +1,4 @@
-#ifndef ROM_H
-#define ROM_H
+#pragma once
 #include "../inc/Types.h"
 #include "../inc/UserInput.h"
 
@@ -53,4 +52,6 @@ public:
     void update(UserInput *userInput, std::atomic<bool> &running, std::condition_variable &cv, std::mutex &m);
     matrix_t getCommand() {return command.transpose();};
 };
-#endif
+
+std::unique_ptr<Command> createCommand(const Parameters& p);
+std::unique_ptr<Command> createCommand(const HardwareParameters& p);

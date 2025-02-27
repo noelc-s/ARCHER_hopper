@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Hopper_t {
 
 enum domain {flight, ground, flight_ground, ground_flight};
+enum class RomType { SingleInt, DoubleInt, Position };
 
 /** size_t trajectory type. */
 using size_array_t = std::vector<size_t>;
@@ -110,6 +111,35 @@ struct Parameters {
     int stop_index; 
     scalar_t x0, y0;
 };
+
+struct HardwareParameters
+{
+  std::vector<scalar_t> orientation_kp;
+  std::vector<scalar_t> orientation_kd;
+  scalar_t leg_kp;
+  scalar_t leg_kd;
+  scalar_t frameOffset;
+  scalar_t markerOffset;
+  int predHorizon;
+  int stop_index;
+  vector_t gains;
+  std::vector<scalar_t> p0;
+  scalar_t roll_offset;
+  scalar_t pitch_offset;
+  std::string model_name;
+  scalar_t v_max;
+  scalar_t a_max;
+  scalar_t dt_lowlevel;
+  scalar_t dt_policy;
+  int optiTrackSetting;
+  std::string rom_type;
+  int horizon;
+  scalar_t zed_x_offset;
+  scalar_t zed_y_offset;
+  scalar_t x0, y0;
+  scalar_t dt_replan;
+};
+
 
 struct MPC_Parameters {
     int N;

@@ -33,31 +33,7 @@ struct State
   scalar_t w_z;
 } OptiState;
 
-struct HardwareParameters
-{
-  std::vector<scalar_t> orientation_kp;
-  std::vector<scalar_t> orientation_kd;
-  scalar_t leg_kp;
-  scalar_t leg_kd;
-  scalar_t frameOffset;
-  scalar_t markerOffset;
-  int predHorizon;
-  int stop_index;
-  vector_t gains;
-  std::vector<scalar_t> p0;
-  scalar_t roll_offset;
-  scalar_t pitch_offset;
-  std::string model_name;
-  scalar_t v_max;
-  scalar_t a_max;
-  scalar_t dt_lowlevel;
-  scalar_t dt_policy;
-  int optiTrackSetting;
-  std::string rom_type;
-  int horizon;
-  scalar_t zed_x_offset;
-  scalar_t zed_y_offset;
-} p;
+HardwareParameters p;
 
 std::mutex state_mtx;
 std::mutex des_state_mtx;

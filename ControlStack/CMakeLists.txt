@@ -109,7 +109,7 @@ endif()
 target_link_libraries(NN Eigen3::Eigen)
 
 # add the executable
-add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+add_executable(hopper_ctrl src/Controller.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/command.cpp)
 target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
 target_link_libraries(hopper_ctrl PUBLIC yaml-cpp Eigen3::Eigen)
 target_link_libraries(hopper_ctrl PUBLIC NN)
@@ -125,7 +125,7 @@ if(HARDWARE)
     find_package(roscpp REQUIRED)
     find_package(geometry_msgs REQUIRED)
     
-    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/rom.cpp)
+    add_executable(hopper_ctrl_hardware src/Controller_Hardware.cpp src/utils.cpp src/Hopper.cpp src/Policy.cpp src/UserInput.cpp src/command.cpp)
     target_link_libraries(hopper_ctrl_hardware PUBLIC yaml-cpp)
     target_link_libraries(hopper_ctrl_hardware PUBLIC Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${roscpp_INCLUDE_DIRS})

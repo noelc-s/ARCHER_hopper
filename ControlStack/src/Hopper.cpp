@@ -26,6 +26,16 @@ Hopper::Hopper(const std::string yamlFile)
 
 }
 
+void Hopper::removeYaw(const scalar_t& optitrack_yaw)
+{
+    // Remove the measured yaw to put us back in the global frame
+    scalar_t measured_yaw = extract_yaw(state_.quat);
+    quat_t measured_yaw_quat = Euler2Quaternion(0, 0, measured_yaw);
+    quat_t optitrack_yaw_quat = Euler2Quaternion(0, 0, optitrack_yaw);
+    quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(state_.quat, measured_yaw_quat));
+    state_.quat = yaw_corrected;
+}
+
 void Hopper::updateState(vector_t state)
 {
     int ind = 0;

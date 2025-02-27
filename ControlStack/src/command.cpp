@@ -1,5 +1,29 @@
-#include "../inc/rom.h"
+#include "../inc/command.h"
 #include <thread>
+
+std::unique_ptr<Command> createCommand(const Parameters& p) {
+    if (p.rom_type == "single_int") {
+        return std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
+    } else if (p.rom_type == "double_int") {
+        return std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
+    } else if (p.rom_type == "position") {
+        return std::make_unique<V5Command>(p.x0, p.y0);
+    } else {
+        throw std::runtime_error("RoM type unrecognized");
+    }
+}
+
+std::unique_ptr<Command> createCommand(const HardwareParameters& p) {
+    if (p.rom_type == "single_int") {
+        return std::make_unique<SingleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.x0, p.y0);
+    } else if (p.rom_type == "double_int") {
+        return std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
+    } else if (p.rom_type == "position") {
+        return std::make_unique<V5Command>(p.x0, p.y0);
+    } else {
+        throw std::runtime_error("RoM type unrecognized");
+    }
+}
 
 V5Command::V5Command(const scalar_t x0, const scalar_t y0) : x0_(x0), y0_(y0)
 {
