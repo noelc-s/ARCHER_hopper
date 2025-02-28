@@ -47,6 +47,8 @@ struct HardwareParameters
   int horizon;
   scalar_t zed_x_offset;
   scalar_t zed_y_offset;
+  scalar_t filter_v_alpha;
+  scalar_t filter_w_alpha;
 } p;
 
 std::mutex state_mtx;
@@ -215,6 +217,7 @@ void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsen
     R_z_up << 1,0,0,
               0,0,-1,
               0,1,0;
+    
     auto callback = [&](const rs2::frame& frame)
     {
         if (rs2::pose_frame fp = frame.as<rs2::pose_frame>()) {
@@ -328,7 +331,8 @@ void setupGainsHardware(const std::string filepath)
     p.horizon = config["RL"]["horizon"].as<scalar_t>();
     p.zed_x_offset = config["zed_x_offset"].as<scalar_t>();
     p.zed_y_offset = config["zed_y_offset"].as<scalar_t>();
-    alpha = config["filter_alpha"].as<scalar_t>();
+    p.filter_v_alpha = config["filter_v_alpha"].as<scalar_t>();
+    p.filter_w_alpha = config["filter_w_alpha"].as<scalar_t>();
 }
 
 void getStateFromEthernet(scalar_t &reset, std::condition_variable &cv, std::mutex &m)
