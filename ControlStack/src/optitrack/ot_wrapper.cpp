@@ -37,7 +37,7 @@ public:
                 0, -0.0000, 30.9689, -0.0000,
                 0.0042, 0.0000, 0.0000, 30.9689;
 
-        sub = n.subscribe("/natnet_ros/hopper_outdoor/pose", 200, &OTWrapper::chatterCallback, this);
+        sub = n.subscribe("/natnet_ros/hopper_shield/pose", 200, &OTWrapper::chatterCallback, this);
 
         quat_t quat_opti = quat_t(optiState_->q_w, optiState_->q_x, optiState_->q_y, optiState_->q_z);
         while (quat_opti.norm() < 0.99)

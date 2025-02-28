@@ -1,17 +1,19 @@
 clear;clc;
 
-d = readtable("data_hardware.csv");
+% d_ns = readtable("../data/data_hardware_no_standoff.csv");
+% d_ws = readtable("../data/data_hardware_standoff.csv");
+d = readtable("../data/data_hardware.csv");
 
 %%
+
 yaw_0_opti = quat2yaw([d.optitrackqw(1), d.optitrackqx(1), d.optitrackqy(1), d.optitrackqz(1)]);
 yaw_0 = quat2yaw([d.qw(1), d.qx(1), d.qy(1), d.qz(1)]);
 
-yaw_off = -1.02;
-theta = yaw_0_opti - yaw_0 - yaw_off;
+yaw_off = 0;
 Ryaw = [
-    cos(theta), sin(theta);
-    -sin(theta), cos(theta)
-];
+    cos(yaw_off), sin(yaw_off);
+    -sin(yaw_off), cos(yaw_off)
+    ];
 
 tmp_pos = (Ryaw * [d.optitrackx d.optitracky]')';
 o_x = tmp_pos(:, 1);
@@ -21,13 +23,13 @@ tmp_vel = (Ryaw * [d.optitrackxdot d.optitrackydot]')';
 o_x_global = tmp_vel(:, 1);
 o_y_global = tmp_vel(:, 2);
 
-t_range = [2, 10];
+t_range = [2, 100];
 
 figure(1)
 clf;
 subplot(2,2,1)
 hold on
-plot(d.t, d.globalxdot)
+plot(d.t, d.xdot)
 plot(d.t, o_x_global)
 legend('t265', 'optitrack')
 ylabel('Vx')
@@ -35,7 +37,7 @@ xlim(t_range)
 
 subplot(2,2,2)
 hold on
-plot(d.t, d.globalydot)
+plot(d.t, d.ydot)
 plot(d.t, o_y_global)
 legend('t265', 'optitrack')
 ylabel('Vy')
@@ -43,7 +45,7 @@ xlim(t_range)
 
 subplot(2,2,3)
 hold on
-plot(d.t, d.globalzdot)
+plot(d.t, d.zdot)
 plot(d.t, d.optitrackzdot)
 ylabel('Vz')
 legend('t265', 'optitrack')
@@ -75,142 +77,136 @@ legend('t265', 'optitrack')
 ylabel('Z')
 xlim(t_range)
 
-% 
-figure(3)
-clf;
+
+
+%% Time to filter
+
+vx = d.xdot;
+vy = d.ydot;
+vz = d.zdot;
+
+yaw_0_opti = quat2yaw([d.optitrackqw(1), d.optitrackqx(1), d.optitrackqy(1), d.optitrackqz(1)]);
+yaw_0 = quat2yaw([d.qw(1), d.qx(1), d.qy(1), d.qz(1)]);
+
+yaw_off = 0;
+Ryaw = [
+    cos(yaw_off), sin(yaw_off);
+    -sin(yaw_off), cos(yaw_off)
+    ];
+
+tmp_pos = (Ryaw * [d.optitrackx d.optitracky]')';
+x_opt = tmp_pos(:, 1);
+y_opt = tmp_pos(:, 2);
+
+tmp_vel = (Ryaw * [d.optitrackxdot d.optitrackydot]')';
+vx_opt = tmp_vel(:, 1);
+vy_opt = tmp_vel(:, 2);
+
+window_len = 100;
+vx_opt_filter = conv(vx_opt, ones(1, window_len)/window_len, 'same');
+vy_opt_filter = conv(vy_opt, ones(1, window_len)/window_len, 'same');
+
+figure(1)
+clf
 subplot(2,2,1)
+hold on
+plot(d.t, vx_opt)
+plot(d.t, vx_opt_filter)
+legend('v_x Opti', 'v_x Opti filtered')
+
+subplot(2,2,2)
+hold on
+plot(d.t, vy_opt)
+plot(d.t, vy_opt_filter)
+legend('v_y Opti', 'v_y Opti filtered')
+
+vx_filt = zeros(size(vx));
+vy_filt = zeros(size(vy));
+vz_filt = zeros(size(vz));
+
+vx_running = vx(1);
+vy_running = vy(1);
+vz_running = vz(1);
+
+alpha = 0.95;
+
+for i = 1:size(d.t, 1)
+    vx_running = alpha * vx_running + (1 - alpha) * vx(i);
+    vy_running = alpha * vy_running + (1 - alpha) * vy(i);
+    vz_running = alpha * vz_running + (1 - alpha) * vz(i);
+
+    vx_filt(i) = vx_running;
+    vy_filt(i) = vy_running;
+    vz_filt(i) = vz_running;
+end
+
+subplot(2,2,3)
+hold on
+plot(d.t, vx)
+plot(d.t, vx_filt)
+plot(d.t, vx_opt_filter)
+legend('v_x', 'v_x filt', 'v_x Opti filtered')
+
+subplot(2,2,4)
+hold on
+plot(d.t, vy)
+plot(d.t, vy_filt)
+plot(d.t, vy_opt_filter)
+legend('v_y', 'v_y filt', 'v_y Opti filtered')
+
+%%
+figure(1)
+clf
+subplot(2,1,1)
+hold on
+plot(d.t, d.camxdot)
+plot(d.t, d.camxdotfilt)
+legend('cam xdot', 'cam xdot filtered')
+
+subplot(2,1,2)
+hold on
+plot(d.t, d.camydot)
+plot(d.t, d.camydotfilt)
+legend('cam ydot', 'cam ydot filtered')
+
+
+wx_filt = zeros(size(d.wx));
+wy_filt = zeros(size(d.wy));
+wx_running = d.wx(1);
+wy_running = d.wy(1);
+
+alpha = 0.9;
+
+for i = 1:size(d.t, 1)
+    wx_running = alpha * wx_running + (1 - alpha) * d.wx(i);
+    wy_running = alpha * wy_running + (1 - alpha) * d.wy(i);
+
+    wx_filt(i) = wx_running;
+    wy_filt(i) = wy_running;
+end
+
+B = 1/10*ones(10,1);
+wx_wind_filt = filter(B,1, d.wx);
+wy_wind_filt = filter(B,1, d.wy);
+
+
+figure(2)
+clf
+subplot(2,1,1)
 hold on
 plot(d.t, d.wx)
-legend('t265')
-ylabel('Vx')
-xlim(t_range)
+plot(d.t, wx_filt)
+plot(d.t, wx_wind_filt)
+legend('wx', 'wx filt', 'wx wind')
 
-subplot(2,2,2)
+subplot(2,1,2)
 hold on
 plot(d.t, d.wy)
-legend('t265')
-ylabel('Vy')
-xlim(t_range)
+plot(d.t, wy_filt)
+plot(d.t, wy_wind_filt)
+legend('wy', 'wy filt', 'wy wind')
 
-subplot(2,2,3)
-hold on
-plot(d.t, d.wz)
-ylabel('Vz')
-legend('t265')
-xlim(t_range)
-
-subplot(2,2,4)
-hold on
-plot(d.t, d.globalzdot)
-plot(d.t, d.optitrackzdot)
-ylabel('Vz')
-legend('t265', 'optitrack')
-xlim(t_range)
-
-figure(5)
-clf;
-subplot(2,2,1)
-hold on
-plot(d.t, d.globalxdot)
-plot(d.t, o_x_global)
-legend('t265', 'optitrack')
-ylabel('Vx')
-xlim(t_range)
-
-subplot(2,2,2)
-hold on
-plot(d.t, d.wy)
-ylabel('Wy')
-xlim(t_range)
-
-subplot(2,2,3)
-hold on
-plot(d.t, d.globalzdot)
-plot(d.t, d.optitrackzdot)
-ylabel('Vz')
-legend('t265', 'optitrack')
-xlim(t_range)
-
-subplot(2,2,4)
-hold on
-plot(d.t, d.wz)
-ylabel('Wz')
-xlim(t_range)
-
-%% 
-
-
-t_range = [11 11.5];
-inds = d.t > t_range(1) & d.t < t_range(2);
-
-order = 3; framelen = 25;
-% x_filt = sgolayfilt(o_x_global,order,framelen);
-% y_filt = sgolayfilt(o_y_global,order,framelen);
-% z_filt = sgolayfilt(d.optitrackzdot,order,framelen);
-x_filt = o_x_global;
-y_filt = o_y_global;
-z_filt = d.optitrackzdot;
-
-r_c2b_d = [-0.067, -0.05, 0.121];
-options = optimoptions('fmincon','Display','iter','Algorithm','sqp');
-
-% loss = @(r) norm([x_filt(inds) y_filt(inds) z_filt(inds)] - [d.camxdot(inds) + (d.camwy(inds) * r(3) - d.camwz(inds) * (r_c2b_d(2) + r(2))),...
-%              d.camydot(inds) + (d.camwz(inds) * r(1) - d.camwx(inds) * r(3)),...
-%              d.camzdot(inds) + (d.camwx(inds) * r(22) - d.camwy(inds) * r(1))],2);
-% [r_cam_to_body,fval] = fmincon(loss, [0 0 0],[],[],[],[],[],[],[],options);
-
-loss2 = @(r) sum(abs([x_filt(inds) y_filt(inds) z_filt(inds)] - [d.camxdot(inds) + (d.camwy(inds) * (r_c2b_d(3) + r(3)) - d.camwz(inds) * r(2)),...
-             d.camydot(inds) + (d.camwz(inds) * (r_c2b_d(1) + r(1)) - d.camwx(inds) * (r_c2b_d(3) + r(3))),...
-             d.camzdot(inds) + (d.camwx(inds) * (r_c2b_d(2) + r(2)) - d.camwy(inds) * (r_c2b_d(1) + r(1)))]), 'all');
-
-
-[dr,fval] = fmincon(loss2, [0 0 0],[],[],[],[],[],[],[],options);
-r_cam_to_body = r_c2b_d + dr;
-
-r_cam_to_body = [-0.04 -0.05, 0.14];
-fprintf("Default:\n")
-disp(r_c2b_d)
-fprintf("Optimized: \n")
-disp(r_cam_to_body)
-
-body_vel =  [d.camxdot + (d.camwy * r_cam_to_body(3) - d.camwz * r_cam_to_body(2)),...
-             d.camydot + (d.camwz * r_cam_to_body(1) - d.camwx * r_cam_to_body(3)),...
-             d.camzdot + (d.camwx * r_cam_to_body(2) - d.camwy * r_cam_to_body(1))];
-
-% [X,Y] = meshgrid(linspace(-0.5,0.5));
-% Z = X;
-% for i=1:numel(Z)
-%     i
-%     Z(i) = loss(r_cam_to_body + [X(i) Y(i) 0]);
-% end
-
-
-figure(4)
-clf;
-
-subplot(3,1,1)
-plot(d.t, body_vel(:,1));
-hold on
-plot(d.t, d.xdot);
-plot(d.t, x_filt);
-xlim(t_range)
-
-subplot(3,1,2)
-plot(d.t, body_vel(:,2));
-hold on
-plot(d.t, d.ydot);
-plot(d.t, y_filt);
-xlim(t_range)
-
-subplot(3,1,3)
-plot(d.t, body_vel(:,3));
-hold on
-plot(d.t, d.zdot);
-plot(d.t, z_filt);
-xlim(t_range)
-
-% eqn: opti_vel = cam_vel + R * cam_W
-
+%% Helper
 
 function yaw = quat2yaw(quat)
 qw = quat(1);

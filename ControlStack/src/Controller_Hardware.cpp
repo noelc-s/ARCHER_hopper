@@ -6,9 +6,10 @@ int main(int argc, char **argv)
   ESPstate.setZero();
   fileHandle.open(dataLog);
   fileHandle << "t,contact,legpos,legvel,x,y,z,xdot,ydot,zdot,"
-             << "qx,qy,qz,qw,wx,wy,wz,qxdes,qydes,qzdes,qwdes,taufoot,tau1,tau2,tau3,wheelvel1,wheelvel2,wheelvel3,"
+             << "qx,qy,qz,qw,wx,wy,wz,wxunfilt,wyunfilt,wzunfilt,qxdes,qydes,qzdes,qwdes,taufoot,tau1,tau2,tau3,wheelvel1,wheelvel2,wheelvel3,"
              << "camx,camy,camz,"
              << "camxdot,camydot,camzdot,"
+             << "camxdotfilt,camydotfilt,camzdotfilt,"
              << "camqx,camqy,camqz,camqw,camwx,camwy,camwz,"
              << "globalxdot,globalydot,globalzdot,"
              << "optitrackx,optitracky,optitrackz,optitrackxdot,optitrackydot,optitrackzdot,"
@@ -103,6 +104,8 @@ int main(int argc, char **argv)
   vector_3t global_vel;
   vector_3t body_vel;
   vector_3t body_omega;
+  vector_3t filt_vel, filt_omega;
+  bool init = false;
   scalar_t vn_yaw;
   vn_yaw = 0;
   global_vel.setZero();
@@ -133,10 +136,20 @@ int main(int argc, char **argv)
         
         std::lock_guard<std::mutex> lck(state_mtx);
         body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
+        if (!init) {
+          filt_vel << estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot;
+          filt_omega = body_omega;
+          init = true;
+        } else {
+          vector_3t unfilt_vel;
+          unfilt_vel << estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot;
+          filt_vel = p.filter_v_alpha * filt_vel + (1 - p.filter_v_alpha) * unfilt_vel;
+          filt_omega = p.filter_w_alpha * filt_omega + (1 - p.filter_w_alpha) * body_omega;
+        }
         // body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
-        body_vel << estimated_state.x_dot + (body_omega(1) * r_cam_to_body(2) - body_omega(2) * r_cam_to_body(1)),
-                    estimated_state.y_dot + (body_omega(2) * r_cam_to_body(0) - body_omega(0) * r_cam_to_body(2)),
-                    estimated_state.z_dot + (body_omega(0) * r_cam_to_body(1) - body_omega(1) * r_cam_to_body(0));
+        body_vel << filt_vel(0) + (filt_omega(1) * r_cam_to_body(2) - filt_omega(2) * r_cam_to_body(1)),
+                    filt_vel(1) + (filt_omega(2) * r_cam_to_body(0) - filt_omega(0) * r_cam_to_body(2)),
+                    filt_vel(2) + (filt_omega(0) * r_cam_to_body(1) - filt_omega(1) * r_cam_to_body(0));
 
         global_vel = yaw_corrected * body_vel;
 
@@ -150,7 +163,7 @@ int main(int argc, char **argv)
           // Linear velocity
             global_vel(0), global_vel(1), global_vel(2),                                                  // Corrected to global frame velocity
           // Angular velocity
-            body_omega(0), body_omega(1), body_omega(2),
+            filt_omega(0), filt_omega(1), filt_omega(2),
           // Wheel speeds and foot data?
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
@@ -237,11 +250,13 @@ int main(int argc, char **argv)
                    << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
+                   << "," << body_omega.transpose().format(CSVFormat)
                    << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
                    << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
                    << "," << estimated_state.x_dot << ", " << estimated_state.y_dot << ", " << estimated_state.z_dot
+                   << "," << filt_vel.transpose().format(CSVFormat)
                    << "," << estimated_state.q_x << "," << estimated_state.q_y << "," << estimated_state.q_z << "," <<  estimated_state.q_w
                    << "," << estimated_state.omega_x << ", " << estimated_state.omega_y << ", " << estimated_state.omega_z
                    << "," << global_vel(0) << "," << global_vel(1) << "," << global_vel(2)

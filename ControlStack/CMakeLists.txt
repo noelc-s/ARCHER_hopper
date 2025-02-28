@@ -16,7 +16,7 @@ option(HARDWARE "build with hardware support" ON)
 option(MPC "build with MPC controller" OFF)
 option(LEARNING "build with NN controller" OFF)
 option(MUJOCO "build with Mujoco sim/vis" OFF)
-option(OPTITRACK "build with mocap" OFF)
+option(OPTITRACK "build with mocap" ON)
 
 # Set pat dependencies (can be set manually if they are in different locations)
 SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
