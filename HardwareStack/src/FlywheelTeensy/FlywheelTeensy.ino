@@ -682,25 +682,7 @@ void loop() {
       }
       q_tmp = quat_a;
     }
-      // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
-      // VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
-      
-      // float initRoll = - r_offset;
-      // float initPitch = - p_offset;
-      // float initYaw = initEuler[2];
-
-      // quat_t initYawQuat;
-      
-      // if (quat_a.z() > 0) {
-      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-      //     * AngleAxisf(0, Vector3f::UnitY())
-      //     * AngleAxisf(initYaw-M_PI, Vector3f::UnitZ());
-      // } else {
-      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-      //     * AngleAxisf(0, Vector3f::UnitY())
-      //     * AngleAxisf(initYaw, Vector3f::UnitZ());
-      // }
-
+     
       // quat_init_inverse = initYawQuat.inverse();
       initialized = true;
       koios->setLogo('G');

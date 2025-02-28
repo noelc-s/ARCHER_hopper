@@ -41,7 +41,7 @@ float omega = 0;
 
 void setup() {
   Serial.begin(115200); //this is for the monitor
-  // Serial.println("Starting");
+  Serial.println("Starting");
   delay(500);
 
   //initBia1
@@ -59,7 +59,7 @@ void setup() {
   v0  = 100;
   Th = 2000000*numHops + 1000000;
 
-  // Serial.println("Starting Bia2");
+  Serial.println("Starting Bia2");
   //initBia2
   delay(250);
   bia.STO(1);
