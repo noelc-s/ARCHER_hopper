@@ -65,7 +65,7 @@ RaibertHeuristic:
   pos_clip: 0.25
   vel_clip: 1
   v_des_clip: 0.1
-  angle_max: 0.6
+  angle_max: 1.0
   yaw_damping: 0.004
 
 
