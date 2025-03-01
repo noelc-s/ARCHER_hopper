@@ -38,7 +38,6 @@ namespace Archer
       void STO(int val);              // status of 0 = Off, 1 = On
       void resetState(int encID);     // gets new values for the 'prev' T/C
       void updateState(int encID, float &x, float &v);  // gets new values for all T/C states
-      void findZero();
       void trackPID0(float d0,float &x,float &u0);
       void trackU0(float d0,float u0,float &xf,float &vf,float &u);
       void testPID0(float d0,float &x,float &u0,float &up,float &ud,float &ui);
