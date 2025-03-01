@@ -583,7 +583,7 @@ matrix_3t cross(vector_3t q) {
 }
 
 char oneAdded[6];
-quat_t quat_a;
+quat_t quat_a, quat_update;
 
 void getTorque(float* state, quat_t quat_d, vector_3t omega_d, vector_3t tau_ff, quat_t quat_a, vector_3t &torque) {
   vector_3t delta_omega;
@@ -685,6 +685,7 @@ void loop() {
      
       // quat_init_inverse = initYawQuat.inverse();
       initialized = true;
+      quat_update = quat_a;
       koios->setLogo('G');
     { Threads::Scope scope(state_mtx);
       // quat_a = quat_init_inverse * quat_a;
@@ -757,11 +758,18 @@ void loop() {
     state[11] = foot_state[1];
     state[12] = foot_state[2];
 
-    if (quat_a.norm() > 1.05 || quat_a.norm() < 0.95) {
-      Serial.print("Exiting because state norm was: ");
-      Serial.println(quat_a.norm());
-      exitProgram();
-    }      
+    if (quat_a.norm() < 1.05 && quat_a.norm() > 0.95) {
+      quat_update = quat_a;
+      koios->setLogo('G');
+    } else {
+      koios->setLogo('Y');
+      Serial.println("Measured quat norm is not in bounds.");
+    }
+    // if (quat_a.norm() > 1.05 || quat_a.norm() < 0.95) {
+    //   Serial.print("Exiting because state norm was: ");
+    //   Serial.println(quat_a.norm());
+    //   exitProgram();
+    // }      
   }
 
   ////////////// Print the desired state ////////////////////////////
@@ -791,7 +799,7 @@ void loop() {
   //for a range of -1.6Nm to 1.6 Nm
   vector_3t current;
   if (initialized && send_torque > 0) {
-    getTorque(state, quat_d, omega_d, tau_ff, quat_a, current);
+    getTorque(state, quat_d, omega_d, tau_ff, quat_update, current);
   } else {
     current[0] = 0;
     current[1] = 0;
@@ -825,10 +833,10 @@ void loop() {
   uint32_t Tc1 = micros();
   // Serial.println(Tc1); // timing
   data.print(Tc1);              data.print(",");
-  data.print(quat_a.w(),4);     data.print(",");
-  data.print(quat_a.x(),4);     data.print(",");
-  data.print(quat_a.y(),4);     data.print(",");
-  data.print(quat_a.z(),4);     data.print(",");
+  data.print(quat_update.w(),4);     data.print(",");
+  data.print(quat_update.x(),4);     data.print(",");
+  data.print(quat_update.y(),4);     data.print(",");
+  data.print(quat_update.z(),4);     data.print(",");
   data.print(quat_d.w(),4);     data.print(",");
   data.print(quat_d.x(),4);     data.print(",");
   data.print(quat_d.y(),4);     data.print(",");
