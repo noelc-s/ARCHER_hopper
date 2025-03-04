@@ -5,6 +5,7 @@
 #include <Bia.h>
 #include <TeensyThreads.h>
 #include <SPI.h>
+#include <SD.h>
 #include <ArduinoEigen.h>
 
 using namespace Archer;
@@ -27,10 +28,13 @@ volatile float rb, wb, xf, vf, u;
 float d0 = 0.015;  // spring deflection // 0.15
 float b0 = 0.75;   // deflection to consider impact
 // float u0 = 0.0; // offset torque
-float u0 = -15.5;  // offset torque
+float u0 = -10.;  // offset torque
 int h = 0;
 float rb0, v0;
 volatile bool initialized;
+
+File dataFile;
+String dFile = "foot_data.txt";
 
 volatile char contact = 0;
 char footStateToKoios[1 + 2 * 4 + 2 + 1];  // contact, foot_state, bitAdded, newline
@@ -57,12 +61,15 @@ void findZero() {
   uint32_t Ts0 = micros();
   uint32_t dTs;
   while (fsm < 1) {
-    u = -0.5;
+    u = -0.1;
     rt = elmo.sendTC(u, 4);
+    bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
+    bia.updateState(FOOT, x_foot, xdot_foot);
     dTs = micros() - Ts0;
     if (dTs > 1000000) {
       fsm = 1;
     }
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
   }
 
   bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
@@ -70,7 +77,7 @@ void findZero() {
 
   // Serial.println("Pulling in");
   while (fsm < 2) {
-    u = u - 0.0005;
+    u = u - 0.05;
     // Serial.print("U: ");
     // Serial.println(u);
     if (abs(u) > 10) {
@@ -88,13 +95,12 @@ void findZero() {
       fsm = 2;
       cBia.logZero(theta_pulley, 1);
     }
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.println(";        ");
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
   }
   // Serial.println("Deflection Registered.");
   // Serial.println("Releasing");
   while (fsm < 3) {
-    u = u + 0.0005;
+    u = u + 0.05;
     if (u > 6) {
       // Serial.println("Error. Torque went above 1. Exiting.");
       bia.exitProgram();
@@ -106,8 +112,7 @@ void findZero() {
       fsm = 3;
       cBia.logZero(theta_pulley, 2);
     }
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.println(";        ");
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
   }
   // Serial.println("Done.");
 }
@@ -116,6 +121,22 @@ void setup() {
   Serial.begin(115200);  //this is for the monitor
   Serial.println("Starting");
   delay(500);
+
+  // init SD card module, using built-in Teensy SD
+  Serial.println("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+  
+  if (SD.exists(dFile.c_str())) {
+    SD.remove(dFile.c_str());  // Delete the file if it exists
+  }
+  dataFile = SD.open(dFile.c_str(),FILE_WRITE);
+
+  T0 = micros();
+  T1 = T0;
 
   //initBia1
   bia.setLEDs("0100");
@@ -157,8 +178,6 @@ void setup() {
   bia.setRB0(rb0);
   bia.resetState(1);
   bia.resetState(2);
-  T0 = micros();
-  T1 = T0;
   bia.setLEDs("0001");
 
   rt = threads.setSliceMicros(50);
@@ -202,6 +221,27 @@ void KoiosCommThread() {
   }
 }
 
+void data_log(String s, int fsm, float x, float dx, float th, float dth, float u) {
+  dataFile.print((micros() - T0) / 1e6); dataFile.print(",");
+  dataFile.print(s);                     dataFile.print(",");
+  dataFile.print(fsm);                   dataFile.print(",");
+  dataFile.print(x, 6);                  dataFile.print(",");
+  dataFile.print(dx, 6);                 dataFile.print(",");
+  dataFile.print(th, 6);                 dataFile.print(",");
+  dataFile.print(dth, 6);                dataFile.print(",");
+  dataFile.println(u, 6);
+  dataFile.flush();
+
+  Serial.print((micros() - T0) / 1e6); Serial.print(", ");
+  Serial.print(s);                     Serial.print(", ");
+  Serial.print(fsm);                   Serial.print(", ");
+  Serial.print(x, 3);                  Serial.print(", ");
+  Serial.print(dx, 3);                 Serial.print(", ");
+  Serial.print(th, 3);                 Serial.print(", ");
+  Serial.print(dth, 3);                Serial.print(",");
+  Serial.println(u, 3);
+}
+
 void loop() {
 
   // threads.delay(100);
@@ -225,7 +265,6 @@ void loop() {
 
 void compPhase() {
   float xfs;
-  uint32_t Tc0 = micros();
   uint32_t Ts0, dTs;
   int fsm = 0;
   Serial.println("------------Comp Phase---------------");
@@ -251,14 +290,13 @@ void compPhase() {
     float x_star = 30;
     u = -kp * (x_foot - x_star) - kd * xdot_foot;
     //    Serial.println(x_foot);
-    if (theta_pulley - theta_pulley_0 >= 1.0) {
-      Serial.println("Exiting because t-t_0 deflection was too large");
-      bia.exitProgram();
-    }
+    // if (theta_pulley - theta_pulley_0 >= 1.0) {
+    //   Serial.println("Exiting because t-t_0 deflection was too large");
+    //   bia.exitProgram();
+    // }
     // rt = elmo.sendTC(-u + u0, 4);
     rt = bia.sendSafeTorque(theta_pulley, -u + u0);
-
-
+    // Serial.println(-u + u0);
 
     if (fsm == 0) {     // Waiting for compression
       if (x_foot > 8.0) {  // Check for enough deflection
@@ -275,7 +313,7 @@ void compPhase() {
       dTs = micros() - Ts0;
       if (abs(xdot_foot) > 20) {  // Check if it sped up
         fsm = 1;
-      } else if (dTs > 50000) {  // Check if settle time reached (50000)
+      } else if (dTs > 70000) {  // Check if settle time reached (50000)
         fsm = 3;
         xfs = x_foot;
       }
@@ -286,15 +324,11 @@ void compPhase() {
       }
     }
 
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.print(";        ");
-    Serial.print(theta_pulley); Serial.print("; ");
-    Serial.print(thetadot_pulley); Serial.println(";        ");
+    // data_log("Compression", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, -u + u0);
   }
 }
 
 void releasePhase() {
-  uint32_t Tr0 = micros();
   float up, ud;
   int fsm = 0;
   Serial.println("------------Release Phase---------------");
@@ -317,6 +351,7 @@ void releasePhase() {
     delayLoop(T1, 1000);
     T1 = micros();
     nF++;
+    // data_log("Release", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
   }
 }
 

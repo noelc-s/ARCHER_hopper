@@ -268,14 +268,21 @@ namespace Archer
   }
 
   int32_t Bia::sendSafeTorque(float theta, float u) {
-    if (theta - _rb0 > theta_max || theta - _rb0 < theta_min) {
-      Serial.print("theta was too large: theta ");
-      Serial.print(theta); Serial.print(" theta_0: "); Serial.print(_rb0);
+    if (theta - _rb0 > theta_max) {
+      Serial.print("theta too large: theta "); Serial.print(theta);
+      Serial.print(" theta_0: "); Serial.print(_rb0);
+      Serial.print(" theta_max: "); Serial.print(theta_max);
+      Serial.println(". Exiting");
+      exitProgram();
+    } else if (theta - _rb0 < theta_min) {
+      Serial.print("theta too small: theta "); Serial.print(theta);
+      Serial.print(" theta_0: "); Serial.print(_rb0);
+      Serial.print(" theta_min: "); Serial.print(theta_min);
       Serial.println(". Exiting");
       exitProgram();
     } 
     return elmo_.sendTC(u,IDX_BIA);
-  }
+  } 
 
   void Bia::trackPID0(float d0,float &x,float &u0){
     float rb,wb,u;

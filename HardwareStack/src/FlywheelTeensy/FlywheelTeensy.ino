@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <QNEthernet.h>   // Library for Ethernet Communication
 
@@ -36,6 +37,9 @@ float x_d[7];
 #define MIN_CURRENT -12 // -15
 
 #define TIMEOUT_INTERVAL 100 // ms to timeout
+
+#define WRITE_SERIAL true
+#define WRITE_FILE true
 
 using vector_3t = Eigen::Matrix<float, 3, 1>;
 using vector_4t = Eigen::Matrix<float, 4, 1>;
@@ -100,9 +104,11 @@ float foot_state[3];
 
 bool exit_state = false;
 File gainFile;
-File data;
+File dataFile;
+File logFile;
 String gain_config = "gain_config.txt";
-String dFile = "log.txt";
+String dFile = "data.txt";
+String lFile = "log.txt";
 
 // SD CARD Variables
 const byte NUMBER_OF_RECORDS = 10; // number of vars in gain_config.txt
@@ -137,17 +143,73 @@ void parseRecord(byte index){
   strcpy(parameterArray[index], ptr + 2); //skip 2 characters and copy to array
 }  
 
+
+void write_data(String s, bool newLine) {
+  if (WRITE_SERIAL && newLine) {
+    Serial.println(s);
+  } else if (WRITE_SERIAL) {
+    Serial.print(s);
+  }
+  if (WRITE_FILE && logFile && newLine) {
+    logFile.println(s);
+    logFile.flush();
+  } else if (WRITE_FILE && logFile) {
+    logFile.print(s);
+    logFile.flush();
+  } else if (WRITE_FILE) {
+    Serial.println("SD write_data to logFile failed.");
+  }
+}
+
+void write_fprintf(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  if (WRITE_SERIAL) {
+    vprintf(format, args);
+  }
+
+  if (WRITE_FILE && logFile) {
+    char buffer[256];  // Ensure this is large enough for your output
+
+    // Format the string using vsnprintf
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    // Write the formatted string to the SD file
+    logFile.print(buffer);
+    logFile.flush();
+  } else if (WRITE_FILE) {
+    Serial.println("SD write_fprintf to logFile failed.");
+  }
+  va_end(args);
+}
+
   // start a diode to be sure all is working
   // pinMode(LED_BUILTIN, OUTPUT);
   // digitalWrite(LED_BUILTIN, HIGH);
-
 void setup() {
   //====================WIFI==============
-  delay(100); //give time to open and print
+  // delay(100); //give time to open and print
   Serial.begin(115200); //this is for the monitor
+
+  // init SD card module, using built-in Teensy SD
+  Serial.println("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+  
+  if (SD.exists(dFile.c_str())) {
+    SD.remove(dFile.c_str());  // Delete the file if it exists
+  }
+  dataFile = SD.open(dFile.c_str(),FILE_WRITE);
+  if (SD.exists(lFile.c_str())) {
+    SD.remove(lFile.c_str());  // Delete the file if it exists
+  }
+  logFile = SD.open(lFile.c_str(),FILE_WRITE);
+  
   setupEthernet();      //Ethernet Setup
   readParams();         // read params from SD card
-  data = SD.open(dFile.c_str(),FILE_WRITE);
 
   //  //================Koios=============
   koios = new Koios(tENC, elmo);
@@ -156,12 +218,14 @@ void setup() {
   delay(250);
   koios->STO(1);
   koios->waitSwitch(1); //manual switch on robot
-  if (foot_on > 0) {koios->setSigB(1); // Turn on comms with Bia if foot_on is true
-    Serial.print("Foot is On");}
+  if (foot_on > 0) {
+    koios->setSigB(1); // Turn on comms with Bia if foot_on is true
+    write_data("Foot is On", true);
+  }
   // delay(250);
   rt = koios->motorsOn();
-  Serial.print("Motors on? (1 if true): ");
-  Serial.println(rt);
+  write_data("Motors on? (1 if true): ", false);
+  write_data(String(rt), true);
   // delay(5000);
   koios->waitSwitch(0);
   koios->resetStates();
@@ -189,15 +253,15 @@ void setup() {
 // ===========ETHERNET=================
 void setupEthernet(){
 
-  printf("Starting...\r\n");
+  write_data("Starting...\r\n", false);
 
   uint8_t mac[6];
   Ethernet.macAddress(mac);  // This is informative; it retrieves, not sets
-  printf("MAC = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+  write_fprintf("MAC = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   Ethernet.onLinkState([](bool state) {
-    printf("[Ethernet] Link %s\r\n", state ? "ON" : "OFF");
+    write_fprintf("[Ethernet] Link %s\r\n", state ? "ON" : "OFF");
   });
 
   IPAddress ip(10, 0, 0, 7);
@@ -205,21 +269,21 @@ void setupEthernet(){
   IPAddress gw{10,0,0,1};       // Default Gateway
 
   if (!Ethernet.begin(ip, sn, gw)) {
-    printf("Failed to start Ethernet\r\n");
+    write_data("Failed to start Ethernet\r\n", false);
     return;
   }
 
-  printf("Obtaining the IP, Subnet and Gateway\r\n");
+  write_data("Obtaining the IP, Subnet and Gateway\r\n", false);
   ip = Ethernet.localIP();
-  printf("    Local IP     = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  write_fprintf("    Local IP     = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
   ip = Ethernet.subnetMask();
-  printf("    Subnet mask  = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  write_fprintf("    Subnet mask  = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
   ip = Ethernet.broadcastIP();
-  printf("    Broadcast IP = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  write_fprintf("    Broadcast IP = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
   ip = Ethernet.gatewayIP();
-  printf("    Gateway      = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  write_fprintf("    Gateway      = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
   ip = Ethernet.dnsServerIP();
-  printf("    DNS          = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+  write_fprintf("    DNS          = %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
 
   // Start UDP listening on the port
   udp.begin(kPort);
@@ -229,20 +293,13 @@ void setupEthernet(){
 
 void readParams() {
   //==============LOAD IN FROM SD CARD=============
-  // init SD card module, using built-in Teensy SD
-  Serial.print("Initializing SD card... ");
-  if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("initialization failed!");
-    return;
-  }
-  Serial.println(" initialization done.");
 
   // open gain file config
   gainFile = SD.open(gain_config.c_str());
 
   // read gain config parameters
   if (gainFile) {
-    Serial.println("SD card opened succesfully. Reading now.");
+    write_data("SD card opened succesfully. Reading now.", true);
 
     while (gainFile.available())
     {
@@ -263,7 +320,7 @@ void readParams() {
     gainFile.close();
   }
   else {
-    Serial.print("Error opening "); Serial.println(gain_config);
+    write_data("Error opening ", false); write_data(gain_config, true);
   }
 
   // Assign gain_config values from SD card to actual values
@@ -278,24 +335,24 @@ void readParams() {
   send_torque  = atof(parameterArray[8]);
   pitch_offset  = atof(parameterArray[9]);
 
-  Serial.println("Loaded Parameters: ");
-  Serial.print("kp_y = ");     Serial.println(kp_y,2);
-  Serial.print("kp_rp = ");    Serial.println(kp_rp,2);
-  Serial.print("kd_y = ");     Serial.println(kd_y,2);
-  Serial.print("kd_rp = ");    Serial.println(kd_rp,2);
-  Serial.print("r_offset = "); Serial.println(r_offset,3);
-  Serial.print("p_offset = "); Serial.println(p_offset,3);
-  Serial.print("comms_on = ");  Serial.println(comms_on,0);
-  Serial.print("foot_on = ");  Serial.println(foot_on,0);
-  Serial.print("send_torque = "); Serial.println(send_torque,0);
-  Serial.print("pitch_offset = "); Serial.println(pitch_offset,0);
+  write_data("Loaded Parameters: ", true);
+  write_data("kp_y = ", false);         write_data(String(kp_y, 2), true);
+  write_data("kp_rp = ", false);        write_data(String(kp_rp, 2), true);
+  write_data("kd_y = ", false);         write_data(String(kd_y, 2), true);
+  write_data("kd_rp = ", false);        write_data(String(kd_rp, 2), true);
+  write_data("r_offset = ", false);     write_data(String(r_offset, 3), true);
+  write_data("p_offset = ", false);     write_data(String(p_offset, 3), true);
+  write_data("comms_on = ", false);     write_data(String(comms_on, 0), true);
+  write_data("foot_on = ", false);      write_data(String(foot_on, 0), true);
+  write_data("send_torque = ", false);  write_data(String(send_torque, 0), true);
+  write_data("pitch_offset = ", false); write_data(String(pitch_offset, 0), true);
 
   //=================================================
 }
 
 // Receives and prints chat packets.
 void receivePacket() {
-  // printf("receiving.. \n");
+  // write_data("receiving.. \n", false);
   
   int size = udp.parsePacket();
   if (size < 0) {
@@ -307,9 +364,9 @@ void receivePacket() {
   const uint8_t *data = udp.data();
   // IPAddress ip = udp.remoteIP();
 
-  //printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
+  //write_fprintf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
   
-  for(int i = 0; i < (sizeof(state_d)/sizeof(float)); i++){
+  for(uint i = 0; i < (sizeof(state_d)/sizeof(float)); i++){
     state_d[i] = 0.0;
   }
 
@@ -319,20 +376,20 @@ void receivePacket() {
     reset_cmd = 1;
   }
 
-  // printf("%u", sizeof(rcvdData));
-  // printf("%u", sizeof(float));
+  // write_fprintf("%u", sizeof(rcvdData));
+  // write_fprintf("%u", sizeof(float));
   // for(int i = 0; i<sizeof(rcvdData)/sizeof(float); i++){
-  //   printf("%f", rcvdData[i]);
+  //   write_fprintf("%f", rcvdData[i]);
   // }
 
-  // printf("\r\n");
+  // write_data("\r\n", false);
   read_packet = true;
   last_Ethernet_message = millis();
   ethernet_connected = true;
 }
 
 static void sendPacket() {
-  // printf("sending ..\n");
+  // write_data("sending ..\n", false);
 
   // float value[13] = {4.3, 4.2, -1, 9.12, 2.22, 3.64, 4.005,
   //                     0.44, 42.4, 222.33, 2232.3, 44.33, 31.11};
@@ -346,7 +403,7 @@ static void sendPacket() {
     if (!udp.send(ip_send, kPort,
                   reinterpret_cast<const uint8_t *>(line),
                   sizeof(float)*13)) {
-      printf("[Error sending]\r\n");
+      write_data("[Error sending]\r\n", false);
     }
   
   read_packet = false;
@@ -622,7 +679,10 @@ void exitProgram() {
   koios->motorsOff(0);
   if(foot_on)
     koios->setSigB(1);
-  data.close();
+  dataFile.flush();
+  dataFile.close();
+  logFile.flush();
+  logFile.close();
   threads.delay(100);
   koios->setLEDs("1000");
   koios->setLogo('R');
@@ -699,8 +759,8 @@ void loop() {
 
   if (comms_on > 0) {
     while (!ethernet_connected) {
-      Serial.println("Waiting for socket connection to the computer.");
-      threads.delay_us(100);
+      write_data("Waiting for socket connection to the computer.", true);
+      threads.delay_us(200000);
     }
   } else {
     state_d[0] = 1;
@@ -709,7 +769,7 @@ void loop() {
   //check if imu data is not corrupted
 //  int rt2 = koios->checkFrame(q0, q1, q2, q3, dY, dP, dR);
   bool rt2 = abs(q0) < 2 && abs(q1)<2 && abs(q2)<2 && abs(q3)<2 && abs(dY) < 1e5 && abs(dP) < 1e5 && abs(dR) < 1e5;
-  //  Serial.println(rt2);
+  //  write_data(String(rt2), true);
   //based on imu upadate states
   if (rt2 == 1) {
     Q0 = q0;
@@ -725,22 +785,21 @@ void loop() {
     // quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
     quat_a = q_installation.inverse() * q_measured;
 
-    Serial.print(quat_a.w());     Serial.print(",");
-    Serial.print(quat_a.x());     Serial.print(",");
-    Serial.print(quat_a.y());     Serial.print(",");
-    Serial.print(quat_a.z());     Serial.print(",    ");
+    write_data(String(quat_a.w()), false);     write_data(",", false);
+    write_data(String(quat_a.x()), false);     write_data(",", false);
+    write_data(String(quat_a.y()), false);     write_data(",", false);
+    write_data(String(quat_a.z()), false);     write_data(",    ", false);
 
-    Serial.print(dR);     Serial.print(",");
-    Serial.print(dP);     Serial.print(",");
-    Serial.print(dY);     Serial.print(",");
-    Serial.println();
+    write_data(String(dR), false);     write_data(",", false);
+    write_data(String(dP), false);     write_data(",", false);
+    write_data(String(dY), false);     write_data(",", true);
   }
   koios->updateStates(x1, v1, x2, v2, x3, v3);
   //  int new_contact = koios->getIntFromB();
   //  if (new_contact != -1) {
   //    contact = new_contact;
   //  }
-  //  Serial.println(contact);
+  //  write_data(String(contact), true);
   // Add step to get leg length from Bia here over serial
   { Threads::Scope scope(state_mtx);
     Threads::Scope scope2(foot_state_mtx);
@@ -763,36 +822,35 @@ void loop() {
       koios->setLogo('G');
     } else {
       koios->setLogo('Y');
-      Serial.println("Measured quat norm is not in bounds.");
+      write_data("Measured quat norm is not in bounds.", true);
     }
     // if (quat_a.norm() > 1.05 || quat_a.norm() < 0.95) {
-    //   Serial.print("Exiting because state norm was: ");
-    //   Serial.println(quat_a.norm());
+    //   write_data("Exiting because state norm was: ", false);
+    //   write_data(String(quat_a.norm()), true);
     //   exitProgram();
     // }      
   }
 
   ////////////// Print the desired state ////////////////////////////
-        // Serial.print(state_d[0]); Serial.print(", ");
-        // Serial.print(state_d[1]); Serial.print(", ");
-        // Serial.print(state_d[2]); Serial.print(", ");
-        // Serial.print(state_d[3]); Serial.print(", ");
-        // Serial.print(state_d[4]); Serial.print(", ");
-        // Serial.print(state_d[5]); Serial.print(", ");
-        // Serial.print(state_d[6]); Serial.print(", ");
-        // Serial.print(state_d[7]); Serial.print(", ");
-        // Serial.print(state_d[8]); Serial.print(", ");
-        // Serial.print(state_d[9]);
-        // Serial.println();
+        // write_data(String(state_d[0]), false); write_data(", ", false);
+        // write_data(String(state_d[1]), false); write_data(", ", false);
+        // write_data(String(state_d[2]), false); write_data(", ", false);
+        // write_data(String(state_d[3]), false); write_data(", ", false);
+        // write_data(String(state_d[4]), false); write_data(", ", false);
+        // write_data(String(state_d[5]), false); write_data(", ", false);
+        // write_data(String(state_d[6]), false); write_data(", ", false);
+        // write_data(String(state_d[7]), false); write_data(", ", false);
+        // write_data(String(state_d[8]), false); write_data(", ", false);
+        // write_data(String(state_d[9]), true);
 
 
   quat_t quat_d = quat_t(state_d[0], state_d[1], state_d[2], state_d[3]);
   vector_3t omega_d = vector_3t(state_d[4], state_d[5], state_d[6]);
   vector_3t tau_ff = vector_3t(state_d[7], state_d[8], state_d[9]);
   vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
-//  quat_t quat_d = quat_t(1,0,0,0);
-//  vector_3t omega_d = vector_3t(0,0,0);
-//  vector_3t tau_ff = vector_3t(0,0,0);
+  // quat_t quat_d = quat_t(1,0,0,0);
+  // vector_3t omega_d = vector_3t(0,0,0);
+  // vector_3t tau_ff = vector_3t(0,0,0);
 
   //use for the counication with the wheel motors
   //convert torques to amps with torque / 0.083 = currents [A]
@@ -827,44 +885,45 @@ void loop() {
         elmo.cmdTC(current[1],IDX_K2);
         elmo.cmdTC(current[2],IDX_K3);
   }
-
-//  vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
+  
+  //  vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
 
   uint32_t Tc1 = micros();
-  // Serial.println(Tc1); // timing
-  data.print(Tc1);              data.print(",");
-  data.print(quat_update.w(),4);     data.print(",");
-  data.print(quat_update.x(),4);     data.print(",");
-  data.print(quat_update.y(),4);     data.print(",");
-  data.print(quat_update.z(),4);     data.print(",");
-  data.print(quat_d.w(),4);     data.print(",");
-  data.print(quat_d.x(),4);     data.print(",");
-  data.print(quat_d.y(),4);     data.print(",");
-  data.print(quat_d.z(),4);     data.print(",");
-  data.print(omega_a[0],4);     data.print(",");
-  data.print(omega_a[1],4);     data.print(",");
-  data.print(omega_a[2],4);     data.print(",");
-  data.print(omega_d[0],4);     data.print(",");
-  data.print(omega_d[1],4);     data.print(",");
-  data.print(omega_d[2],4);     data.print(",");
-  data.print(foot_state[0],4);  data.print(",");
-  data.print(foot_state[1],4);  data.print(",");
-  data.print(foot_state[2],4);  data.print(",");
-  data.print(current[0],4);     data.print(",");
-  data.print(current[1],4);     data.print(",");
-  data.print(current[2],4);     data.println(); 
+  // write_data(String(Tc1), true); // timing
+  dataFile.print(Tc1);              dataFile.print(",");
+  dataFile.print(quat_update.w(),4);     dataFile.print(",");
+  dataFile.print(quat_update.x(),4);     dataFile.print(",");
+  dataFile.print(quat_update.y(),4);     dataFile.print(",");
+  dataFile.print(quat_update.z(),4);     dataFile.print(",");
+  dataFile.print(quat_d.w(),4);     dataFile.print(",");
+  dataFile.print(quat_d.x(),4);     dataFile.print(",");
+  dataFile.print(quat_d.y(),4);     dataFile.print(",");
+  dataFile.print(quat_d.z(),4);     dataFile.print(",");
+  dataFile.print(omega_a[0],4);     dataFile.print(",");
+  dataFile.print(omega_a[1],4);     dataFile.print(",");
+  dataFile.print(omega_a[2],4);     dataFile.print(",");
+  dataFile.print(omega_d[0],4);     dataFile.print(",");
+  dataFile.print(omega_d[1],4);     dataFile.print(",");
+  dataFile.print(omega_d[2],4);     dataFile.print(",");
+  dataFile.print(foot_state[0],4);  dataFile.print(",");
+  dataFile.print(foot_state[1],4);  dataFile.print(",");
+  dataFile.print(foot_state[2],4);  dataFile.print(",");
+  dataFile.print(current[0],4);     dataFile.print(",");
+  dataFile.print(current[1],4);     dataFile.print(",");
+  dataFile.print(current[2],4);     dataFile.println();
+  dataFile.flush();
 
 
   if (ethernet_connected) {
     current_Ethernet_message = millis();
     if (current_Ethernet_message - last_Ethernet_message > TIMEOUT_INTERVAL) {
-      Serial.print("Exiting because Ethernet message took: ");
-      Serial.println(current_Ethernet_message - last_Ethernet_message);
+      write_data("Exiting because Ethernet message took: ", false);
+      write_data(String(current_Ethernet_message - last_Ethernet_message), true);
       exitProgram();
     }
   }
    
-  //  Serial.println(Tc1-Tc0);
+  //  write_data(String(Tc1-Tc0), true);
 
   // send u4 current command to leg over serial RX/TX between teensy boards
   delay(1);
