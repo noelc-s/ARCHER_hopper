@@ -23,7 +23,7 @@ union num16_t
 #define CAN_BAUD 1000000
 #define TTL_BAUD 1000000
 #define ELMO_BAUD 115200
-#define R_TIMEOUT 5000 //us
+#define R_TIMEOUT 500000 //us
 
 // Koios_COMM_Options
 #define IDX_K1 1

@@ -21,6 +21,7 @@ namespace Archer
     uint16_t IDX_ = IDX_BIA;
     int32_t rt = 1;
     num16_t n16;
+
     n16.ui = static_cast<uint16_t>(0x6041);
     msgOut_.flags.extended = 0;
     msgOut_.id = 0x600 + IDX_;
@@ -38,7 +39,7 @@ namespace Archer
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           status4_ = ELMO_CANt4::STATUS::INIT;
           break;
         }
@@ -67,6 +68,108 @@ namespace Archer
     return rt;
   }
 
+    int32_t ELMO_CANt4::setMaxC(uint16_t IDX_){
+
+    num16_t n16_2;
+    n16_2.ui = static_cast<uint16_t>(0x6075);
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x2B;
+    msgOut_.buf[1] = n16_2.c[0];
+    msgOut_.buf[2] = n16_2.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0xac;
+    msgOut_.buf[5] = 0x26;
+    // msgOut_.buf[4] = 0x98;
+    // msgOut_.buf[5] = 0x3a;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+    Serial.println("Writing the max current.");
+    Serial.print(String(msgOut_.buf[0],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[1],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[2],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[3],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[4],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[5],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[6],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[7],HEX));
+    Serial.println("   ");
+    can1_.write(msgOut_);
+    uint32_t t00 = micros();
+    while (micros()-t00 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        Serial.println("Write Succesful.");
+      }
+    }
+
+
+
+    num16_t n16;
+    n16.ui = static_cast<uint16_t>(0x6075);
+
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x40;
+    msgOut_.buf[1] = n16.c[0];
+    msgOut_.buf[2] = n16.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0;
+    msgOut_.buf[5] = 0;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+
+    Serial.println("Reading max current.");
+    Serial.print(String(msgOut_.buf[0],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[1],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[2],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[3],HEX));
+    Serial.println("   ");
+
+    can1_.write(msgOut_);
+    uint32_t t0 = micros();
+    while (micros()-t0 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
+          num32_t n32;
+          n32.c[0] = msgIn_.buf[4];
+          n32.c[1] = msgIn_.buf[5];
+          n32.c[2] = msgIn_.buf[6];
+          n32.c[3] = msgIn_.buf[7];
+          maxC_ = n32.ui;
+          Serial.print("The max current for this motor is (in mA): ");
+          // TODO: REMOVE
+          Serial.print(String(n32.c[0],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[1],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[2],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[3],HEX));
+          Serial.print(" :  ");
+          Serial.println(n32.ui);
+          return 1;
+        }
+      }
+    }
+    return 0;
+  }
+
+  uint32_t ELMO_CANt4::getMaxC(void){
+    return maxC_;
+  }
+
   int32_t ELMO_CANt4::initK(void){
     can1_.begin();
     can1_.setBaudRate(baud_);
@@ -91,7 +194,7 @@ namespace Archer
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           status1_ = ELMO_CANt4::STATUS::INIT;
           break;
         }
@@ -124,7 +227,7 @@ namespace Archer
     t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           status2_ = ELMO_CANt4::STATUS::INIT;
           break;
         }
@@ -155,7 +258,7 @@ namespace Archer
     t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           status3_ = ELMO_CANt4::STATUS::INIT;
           break;
         }
@@ -203,7 +306,7 @@ namespace Archer
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           switch(IDX_){
             case 1:
               status1_ = ELMO_CANt4::STATUS::MOTOR_OFF;
@@ -247,7 +350,7 @@ namespace Archer
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           switch(IDX_){
             case 1:
               status1_ = ELMO_CANt4::STATUS::MOTOR_ON;
@@ -268,46 +371,6 @@ namespace Archer
       }
     }
     return 0;
-  }
-
-  int32_t ELMO_CANt4::setMaxC(uint16_t IDX_){
-    num16_t n16;
-    n16.ui = static_cast<uint16_t>(0x6075);
-
-    msgOut_.flags.extended = 0;
-    msgOut_.id = 0x600 + IDX_;
-    msgOut_.len = 8;
-    msgOut_.buf[0] = 0x40;
-    msgOut_.buf[1] = n16.c[0];
-    msgOut_.buf[2] = n16.c[1];
-    msgOut_.buf[3] = 0;
-    msgOut_.buf[4] = 0;
-    msgOut_.buf[5] = 0;
-    msgOut_.buf[6] = 0;
-    msgOut_.buf[7] = 0;
-
-    can1_.write(msgOut_);
-    uint32_t t0 = micros();
-    while (micros()-t0 < recTimeout_) {
-      if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
-          num32_t n32;
-          n32.c[0] = msgIn_.buf[4];
-          n32.c[1] = msgIn_.buf[5];
-          n32.c[2] = msgIn_.buf[6];
-          n32.c[3] = msgIn_.buf[7];
-          maxC_ = n32.ui;
-          Serial.print("The max current for this motor is (in mA): ");
-          Serial.println(n32.ui);
-          return 1;
-        }
-      }
-    }
-    return 0;
-  }
-
-  uint32_t ELMO_CANt4::getMaxC(void){
-    return maxC_;
   }
 
   int32_t ELMO_CANt4::sendTC(float amps, uint16_t IDX_){
@@ -333,6 +396,7 @@ namespace Archer
     if ((n16.i < -1000)) {
       n16.i = -1000;
     }
+    // Serial.println(n16.i);
     msgOut_.buf[3] = 0;
     msgOut_.buf[4] = n16.c[0];
     msgOut_.buf[5] = n16.c[1];
@@ -343,7 +407,7 @@ namespace Archer
     uint32_t T0 = micros();
     while (micros()-T0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           // num32_t n32;
           // n32.c[0] = msgIn_.buf[4];
           // n32.c[1] = msgIn_.buf[5];
@@ -407,7 +471,7 @@ namespace Archer
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           num32_t n32;
           n32.c[0] = msgIn_.buf[4];
           n32.c[1] = msgIn_.buf[5];
