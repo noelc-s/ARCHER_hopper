@@ -70,7 +70,7 @@ void findZero() {
 
   // Serial.println("Pulling in");
   while (fsm < 2) {
-    u = u - 0.0005;
+    u = u - 0.025;
     // Serial.print("U: ");
     // Serial.println(u);
     if (abs(u) > 10) {
@@ -88,13 +88,13 @@ void findZero() {
       fsm = 2;
       cBia.logZero(theta_pulley, 1);
     }
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.println(";        ");
+    // Serial.print(x_foot); Serial.print("; ");
+    // Serial.print(xdot_foot); Serial.println(";        ");
   }
   // Serial.println("Deflection Registered.");
   // Serial.println("Releasing");
   while (fsm < 3) {
-    u = u + 0.0005;
+    u = u + 0.025;
     if (u > 6) {
       // Serial.println("Error. Torque went above 1. Exiting.");
       bia.exitProgram();
@@ -106,8 +106,8 @@ void findZero() {
       fsm = 3;
       cBia.logZero(theta_pulley, 2);
     }
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.println(";        ");
+    // Serial.print(x_foot); Serial.print("; ");
+    // Serial.print(xdot_foot); Serial.println(";        ");
   }
   // Serial.println("Done.");
 }
@@ -286,10 +286,10 @@ void compPhase() {
       }
     }
 
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.print(";        ");
-    Serial.print(theta_pulley); Serial.print("; ");
-    Serial.print(thetadot_pulley); Serial.println(";        ");
+    // Serial.print(x_foot); Serial.print("; ");
+    // Serial.print(xdot_foot); Serial.print(";        ");
+    // Serial.print(theta_pulley); Serial.print("; ");
+    // Serial.print(thetadot_pulley); Serial.println(";        ");
   }
 }
 

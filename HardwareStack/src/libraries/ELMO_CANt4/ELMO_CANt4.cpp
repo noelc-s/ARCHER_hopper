@@ -270,7 +270,65 @@ namespace Archer
     return 0;
   }
 
-  int32_t ELMO_CANt4::setMaxC(uint16_t IDX_){
+      int32_t ELMO_CANt4::setMaxC(uint16_t IDX_){
+
+    num16_t n16_2;
+    n16_2.ui = static_cast<uint16_t>(0x6075);
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x2B;
+    msgOut_.buf[1] = n16_2.c[0];
+    msgOut_.buf[2] = n16_2.c[1];
+    msgOut_.buf[3] = 0;
+    // 9.9 Amps
+    // msgOut_.buf[4] = 0xac;
+    // msgOut_.buf[5] = 0x26;
+    // 11 Amps
+    msgOut_.buf[4] = 0xf8;
+    msgOut_.buf[5] = 0x2a;
+    // 15 Amps
+    // msgOut_.buf[4] = 0x98;
+    // msgOut_.buf[5] = 0x3a;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+    Serial.println("Writing the max current.");
+    Serial.print(String(msgOut_.buf[0],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[1],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[2],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[3],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[4],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[5],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[6],HEX));
+    Serial.print("   ");
+    Serial.print(String(msgOut_.buf[7],HEX));
+    Serial.println("   ");
+    can1_.write(msgOut_);
+    uint32_t t00 = micros();
+    while (micros()-t00 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        Serial.println("Write Succesful.");
+      }
+    }
+    Serial.println("Writing the max torque.");
+    n16_2.ui = static_cast<uint16_t>(0x6076);
+    msgOut_.buf[1] = n16_2.c[0];
+    msgOut_.buf[2] = n16_2.c[1];
+    can1_.write(msgOut_);
+    t00 = micros();
+    while (micros()-t00 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        Serial.println("Write Succesful.");
+      }
+    }
+
+
     num16_t n16;
     n16.ui = static_cast<uint16_t>(0x6075);
 
@@ -286,18 +344,147 @@ namespace Archer
     msgOut_.buf[6] = 0;
     msgOut_.buf[7] = 0;
 
+    Serial.println("Reading max current.");
+    Serial.print(String(msgOut_.buf[0],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[1],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[2],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[3],HEX));
+    Serial.println("   ");
+
     can1_.write(msgOut_);
     uint32_t t0 = micros();
     while (micros()-t0 < recTimeout_) {
       if (can1_.read(msgIn_)) {
-        if (msgIn_.id == IDX_ + 0x580) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
           num32_t n32;
           n32.c[0] = msgIn_.buf[4];
           n32.c[1] = msgIn_.buf[5];
           n32.c[2] = msgIn_.buf[6];
           n32.c[3] = msgIn_.buf[7];
           maxC_ = n32.ui;
+          Serial.print("The motor rated current for this motor is (in mA): ");
+          // TODO: REMOVE
+          Serial.print(String(n32.c[0],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[1],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[2],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[3],HEX));
+          Serial.print(" :  ");
+          Serial.println(n32.ui);
+        }
+      }
+    }
+
+    n16.ui = static_cast<uint16_t>(0x6073);
+
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x40;
+    msgOut_.buf[1] = n16.c[0];
+    msgOut_.buf[2] = n16.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0;
+    msgOut_.buf[5] = 0;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+
+    can1_.write(msgOut_);
+    t0 = micros();
+    while (micros()-t0 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
+          n16.c[0] = msgIn_.buf[4];
+          n16.c[1] = msgIn_.buf[5];
+          n16.c[2] = msgIn_.buf[6];
+          n16.c[3] = msgIn_.buf[7];
           Serial.print("The max current for this motor is (in mA): ");
+          Serial.println(n16.ui);
+        }
+      }
+    }
+
+    n16.ui = static_cast<uint16_t>(0x6072);
+
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x40;
+    msgOut_.buf[1] = n16.c[0];
+    msgOut_.buf[2] = n16.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0;
+    msgOut_.buf[5] = 0;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+
+    can1_.write(msgOut_);
+    t0 = micros();
+    while (micros()-t0 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
+          n16.c[0] = msgIn_.buf[4];
+          n16.c[1] = msgIn_.buf[5];
+          n16.c[2] = msgIn_.buf[6];
+          n16.c[3] = msgIn_.buf[7];
+          Serial.print("The max torque for this motor is (in mA): ");
+          Serial.println(n16.ui);
+        }
+      }
+    }
+
+
+
+
+    n16.ui = static_cast<uint16_t>(0x6076);
+
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x40;
+    msgOut_.buf[1] = n16.c[0];
+    msgOut_.buf[2] = n16.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0;
+    msgOut_.buf[5] = 0;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+
+    Serial.println("Reading max torque.");
+    Serial.print(String(msgOut_.buf[0],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[1],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[2],HEX));
+    Serial.print(" ");
+    Serial.print(String(msgOut_.buf[3],HEX));
+    Serial.println("   ");
+
+    can1_.write(msgOut_);
+    t0 = micros();
+    while (micros()-t0 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        if (msgIn_.id == IDX_ + (uint) 0x580) {
+          num32_t n32;
+          n32.c[0] = msgIn_.buf[4];
+          n32.c[1] = msgIn_.buf[5];
+          n32.c[2] = msgIn_.buf[6];
+          n32.c[3] = msgIn_.buf[7];
+          Serial.print("The motor rated torque for this motor is (in mNm): ");
+          // TODO: REMOVE
+          Serial.print(String(n32.c[0],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[1],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[2],HEX));
+          Serial.print(" ");
+          Serial.print(String(n32.c[3],HEX));
+          Serial.print(" :  ");
           Serial.println(n32.ui);
           return 1;
         }
@@ -355,10 +542,67 @@ namespace Archer
           // uint32_t retU = n32.ui;
           // Serial.print("response U is: ");
           // Serial.println(retU);
-          return 1;
+          // return 1;
+          break;
         }
       }
     }
+
+    num16_t n16_2;
+    n16_2.ui = static_cast<uint16_t>(0x6078);
+    msgOut_.flags.extended = 0;
+    msgOut_.id = 0x600 + IDX_;
+    msgOut_.len = 8;
+    msgOut_.buf[0] = 0x40;
+    msgOut_.buf[1] = n16_2.c[0];
+    msgOut_.buf[2] = n16_2.c[1];
+    msgOut_.buf[3] = 0;
+    msgOut_.buf[4] = 0;
+    msgOut_.buf[5] = 0;
+    msgOut_.buf[6] = 0;
+    msgOut_.buf[7] = 0;
+    can1_.write(msgOut_);
+    uint32_t t00 = micros();
+    while (micros()-t00 < recTimeout_) {
+      if (can1_.read(msgIn_)) {
+        n16_2.c[0] = msgIn_.buf[4];
+        n16_2.c[1] = msgIn_.buf[5];
+        n16_2.c[2] = msgIn_.buf[6];
+        n16_2.c[3] = msgIn_.buf[7];
+        Serial.print("Commanded current: ");
+        Serial.print(nomVal);
+        Serial.print("; Actual current: ");
+        Serial.println(n16_2.i);
+        // break;
+        return 1;
+      }
+    }
+
+    // n16_2.ui = static_cast<uint16_t>(0x1001);
+    // msgOut_.flags.extended = 0;
+    // msgOut_.id = 0x600 + IDX_;
+    // msgOut_.len = 8;
+    // msgOut_.buf[0] = 0x40;
+    // msgOut_.buf[1] = n16_2.c[0];
+    // msgOut_.buf[2] = n16_2.c[1];
+    // msgOut_.buf[3] = 0;
+    // msgOut_.buf[4] = 0;
+    // msgOut_.buf[5] = 0;
+    // msgOut_.buf[6] = 0;
+    // msgOut_.buf[7] = 0;
+    // can1_.write(msgOut_);
+    // t00 = micros();
+    // while (micros()-t00 < recTimeout_) {
+    //   if (can1_.read(msgIn_)) {
+    //     uint8_t n8;
+    //     n8 = msgIn_.buf[4];
+    //     Serial.print("; Error code: ");
+    //     Serial.println(n8);
+    //     return 1;
+    //   }
+    // }
+
+
     return 0;
   }
 
