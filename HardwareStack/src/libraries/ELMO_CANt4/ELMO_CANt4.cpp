@@ -321,8 +321,8 @@ namespace Archer
 
     // Write motor rated current
     // uint32_t rated_curr = static_cast<uint32_t>(0x26ac);  // 9.9A
-    uint16_t rated_curr = static_cast<uint16_t>(0x2af8); // 11A
-    // uint16_t rated_curr = static_cast<uint16_t>(0x3a98);  // 15A
+    // uint16_t rated_curr = static_cast<uint16_t>(0x2af8); // 11A
+    uint16_t rated_curr = static_cast<uint16_t>(0x3a98);  // 15A
 
     Serial.print("\nWriting motor rated current: ");
     Serial.print(rated_curr);
@@ -441,76 +441,76 @@ namespace Archer
       }
     }
 
-    // Report difference between commanded and actual currents
-    uint32_t cmd_curr;
-    bool read_cmd_curr = read_data(
-        IDX_,
-        static_cast<uint16_t>(0x6078),
-        0,
-        cmd_curr);
-    Serial.print("\nCommanded current: ");
-    Serial.print(nomVal);
-    Serial.print("; Actual current: ");
-    Serial.println(read_cmd_curr ? String((int16_t)cmd_curr) : "Failure.");
+    // // Report difference between commanded and actual currents
+    // uint32_t cmd_curr;
+    // bool read_cmd_curr = read_data(
+    //     IDX_,
+    //     static_cast<uint16_t>(0x6078),
+    //     0,
+    //     cmd_curr);
+    // Serial.print("\nCommanded current: ");
+    // Serial.print(nomVal);
+    // Serial.print("; Actual current: ");
+    // Serial.println(read_cmd_curr ? String((int16_t)cmd_curr) : "Failure.");
 
-    // Try reading 0x1001 - error codes
-    //    0x22A2, 0x22A3, 0x22A4 - temperatures
+    // // Try reading 0x1001 - error codes
+    // //    0x22A2, 0x22A3, 0x22A4 - temperatures
 
-    // Report error codes
-    uint32_t err_code;
-    bool read_err_code = read_data(
-        IDX_,
-        static_cast<uint16_t>(0x1001),
-        0,
-        err_code);
-    Serial.print("Error Code: ");
-    Serial.println(read_err_code ? String(err_code) : "Failure.");
+    // // Report error codes
+    // uint32_t err_code;
+    // bool read_err_code = read_data(
+    //     IDX_,
+    //     static_cast<uint16_t>(0x1001),
+    //     0,
+    //     err_code);
+    // Serial.print("Error Code: ");
+    // Serial.println(read_err_code ? String(err_code) : "Failure.");
 
-        // Report error codes
-    uint32_t stat_code;
-    bool read_stat_code = read_data(
-        IDX_,
-        static_cast<uint16_t>(0x1002),
-        0,
-        stat_code);
-    Serial.print("Status Register: ");
-    Serial.println(read_stat_code ? String(stat_code, HEX) : "Failure.");
+    //     // Report error codes
+    // uint32_t stat_code;
+    // bool read_stat_code = read_data(
+    //     IDX_,
+    //     static_cast<uint16_t>(0x1002),
+    //     0,
+    //     stat_code);
+    // Serial.print("Status Register: ");
+    // Serial.println(read_stat_code ? String(stat_code, HEX) : "Failure.");
 
-    // Report temperatures
-    uint32_t temp1;
-    bool read_temp1 = read_data(
-        IDX_,
-        static_cast<uint16_t>(0x22a2),
-        0,
-        temp1);
-    // uint32_t temp2;
-    // bool read_temp2 = read_data(
-    //   IDX_,
-    //   static_cast<uint16_t>(0x22a3),
-    //   0,
-    //   temp2
-    // );
-    // uint32_t temp3;
-    // bool read_temp3 = read_data(
-    //   IDX_,
-    //   static_cast<uint16_t>(0x22a4),
-    //   0,
-    //   temp3
-    // );
-    Serial.print("Temp 1: ");
-    Serial.println(read_temp1 ? String(temp1) : "Failure.");
-    // Serial.print("  Temp 2: "); Serial.print(read_temp2 ? String(temp2) : "Failure.");
-    // Serial.print("  Temp 3: "); Serial.println(read_temp3 ? String(temp3) : "Failure.");
+    // // Report temperatures
+    // uint32_t temp1;
+    // bool read_temp1 = read_data(
+    //     IDX_,
+    //     static_cast<uint16_t>(0x22a2),
+    //     0,
+    //     temp1);
+    // // uint32_t temp2;
+    // // bool read_temp2 = read_data(
+    // //   IDX_,
+    // //   static_cast<uint16_t>(0x22a3),
+    // //   0,
+    // //   temp2
+    // // );
+    // // uint32_t temp3;
+    // // bool read_temp3 = read_data(
+    // //   IDX_,
+    // //   static_cast<uint16_t>(0x22a4),
+    // //   0,
+    // //   temp3
+    // // );
+    // Serial.print("Temp 1: ");
+    // Serial.println(read_temp1 ? String(temp1) : "Failure.");
+    // // Serial.print("  Temp 2: "); Serial.print(read_temp2 ? String(temp2) : "Failure.");
+    // // Serial.print("  Temp 3: "); Serial.println(read_temp3 ? String(temp3) : "Failure.");
 
-    // Report error codes
-    uint32_t bus_voltage;
-    bool read_voltage = read_data(
-        IDX_,
-        static_cast<uint16_t>(0x6079),
-        0,
-        bus_voltage);
-    Serial.print("Voltage: ");
-    Serial.println(read_voltage ? String(bus_voltage) : "Failure.");
+    // // Report error codes
+    // uint32_t bus_voltage;
+    // bool read_voltage = read_data(
+    //     IDX_,
+    //     static_cast<uint16_t>(0x6079),
+    //     0,
+    //     bus_voltage);
+    // Serial.print("Voltage: ");
+    // Serial.println(read_voltage ? String(bus_voltage) : "Failure.");
 
     return !sendTC_succ;
   }

@@ -118,6 +118,7 @@ void findZero() {
     // Serial.print(x_foot); Serial.print("; ");
     // Serial.print(xdot_foot); Serial.println(";        ");
   }
+  bia.sendSafeTorque(theta_pulley, 0);
   // Serial.println("Done.");
 }
 
@@ -193,39 +194,25 @@ void setup() {
 
 std::mutex state_mtx;
 
+
 void KoiosCommThread() {
-  while (1) {
-    {
-      std::lock_guard<std::mutex> lck(state_mtx);
-      footStateToKoios[0] = contact;
-      x_meters = x_foot / 1000;
-      v_meters = xdot_foot / 1000;
-      memcpy(footStateToKoios + 1, &x_meters, 4);
-      memcpy(footStateToKoios + 5, &v_meters, 4);
-    }
-    // Serial.print((float)footStateToKoios[0]); Serial.print(";  ");
-    // Serial.print(x_foot); Serial.print("; ");
-    // Serial.print(xdot_foot); Serial.println(";        ");
-    // Serial.print(theta_pulley); Serial.print("; ");
-    // Serial.print(thetadot_pulley); Serial.println(";  ");
 
-    for (int i = 0; i < 2; i++) {
-      byte oneAdded = 0b00000001;
-      for (int j = 1; j < 8; j++) {
-        if (footStateToKoios[i * 7 + (j - 1)] == 0b00000000) {
-          footStateToKoios[i * 7 + (j - 1)] = 0b00000001;
-          oneAdded += (1 << (8 - j));
-        }
-      }
-      memcpy(&footStateToKoios[9 + i], &oneAdded, 1);
-    }
-    footStateToKoios[11] = 0b0;
+  while (true) {
 
-    K_PORT.write(footStateToKoios);
+    float x_meters = x_foot / 1000.0f;
+    float v_meters = xdot_foot / 1000.0f;
+
+    byte bitByte = contact ? 1 : 0;
+    K_PORT.write(bitByte);
+    K_PORT.write((byte*)&x_meters, sizeof(x_meters));
+    K_PORT.write((byte*)&v_meters, sizeof(v_meters));
     K_PORT.flush();
+
     threads.delay_us(1000);
   }
 }
+
+bool first_hop = false;
 
 void loop() {
 
@@ -235,16 +222,23 @@ void loop() {
   // {std::lock_guard<std::mutex> lck(state_mtx);
   // bia.updateState(2,x_foot, xdot_foot); // x_foot and xdot_foot are spring deflection in mm
   // }
+  while(!first_hop) {
+    initializationPhase();
+    first_hop = true;
+  }
+
+  releasePhase();  // control to rb = 0, end at xf = 0
+  {
+    std::lock_guard<std::mutex> lck(state_mtx);
+    contact = 0;
+  }
+
+  threads.delay_us(130000);
 
   compPhase();  //
   {
     std::lock_guard<std::mutex> lck(state_mtx);
     contact = 1;
-  }
-  releasePhase();  // control to rb = 0, end at xf = 0
-  {
-    std::lock_guard<std::mutex> lck(state_mtx);
-    contact = 0;
   }
 }
 
@@ -276,10 +270,10 @@ void compPhase() {
     float x_star = 30;
     u = -kp * (x_foot - x_star) - kd * xdot_foot;
     //    Serial.println(x_foot);
-    if (theta_pulley - theta_pulley_0 >= 1.0) {
-      Serial.println("Exiting because t-t_0 deflection was too large");
-      bia.exitProgram();
-    }
+    // if (theta_pulley - theta_pulley_0 >= 1.0) {
+    //   Serial.println("Exiting because t-t_0 deflection was too large");
+    //   bia.exitProgram();
+    // }
     // rt = elmo.sendTC(-u + u0, 4);
     rt = bia.sendSafeTorque(theta_pulley, -u + u0);
 
@@ -321,6 +315,31 @@ void compPhase() {
     // Serial.print(theta_pulley); Serial.print("; ");
     // Serial.print(thetadot_pulley); Serial.println(";        ");
   }
+}
+
+void initializationPhase() {
+  // uint32_t Tr0 = micros();
+  float up, ud;
+  int fsm = 0;
+  Serial.println("------------Initialization Phase---------------");
+  while (fsm < 1) {
+    // WIFI ESTOP:
+    if (bia.checkSigK() == 1) {
+      bia.exitProgram();
+    }
+    {
+      std::lock_guard<std::mutex> lck(state_mtx);
+      bia.testPDb(theta_pulley, thetadot_pulley, x_foot, xdot_foot, up, ud);
+    }
+    rb = theta_pulley;
+    wb = thetadot_pulley;
+    vf = xdot_foot;
+    u = up + ud;
+    if (x_foot > 0.5) {
+      fsm = 1;
+    }
+  }
+
 }
 
 void releasePhase() {

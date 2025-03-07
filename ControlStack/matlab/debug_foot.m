@@ -7,6 +7,7 @@ figure(1)
 clf;
 subplot(2,2,1)
 plot(d.t, d.legpos)
+ylim([0 0.05])
 ylabel('Foot Pos')
 subplot(2,2,2)
 plot(d.t, d.legvel)

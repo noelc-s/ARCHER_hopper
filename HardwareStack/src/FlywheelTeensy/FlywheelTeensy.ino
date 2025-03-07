@@ -386,45 +386,52 @@ Threads::Mutex serial_mtx;
 //ThreadWrap(IMU_PORT, SerialXtra3);
 //#define IMU_PORT ThreadClone(SerialXtra3)
 
+
 void BiaThread() {
-  while (1) {
-//    #ifdef TEST_TEENSY
-//    { Threads::Scope scope(foot_state_mtx);
-//    foot_state[0] = 3;
-//    foot_state[1] = 4;
-//    foot_state[2] = 5;
-//    }
-//    #else
-    int index = 0;
-    char receivedCharsBia[11];
-//    {
-//    Threads::Scope scope(serial_mtx);
-    if (B_PORT.available() > 0) {
-      while (index < 11) {
-        { 
-        if (B_PORT.available() > 0) {
-          receivedCharsBia[index] = B_PORT.read();
-          index++;
-        }
-        }
+
+  while (true) {
+    // if (B_PORT.available() >= FRAME_SIZE) {
+    //   B_PORT.readBytes(frame, FRAME_SIZE);
+
+    //   byte checksum[2] = {frame[9], frame[10]};
+
+    //   for (int i = 0; i < 6; i++) {
+    //     decodeByte(frame[i], checksum[0], i);
+    //   }
+    //   for (int i = 7; i < 13; i++) {
+    //     decodeByte(frame[i], checksum[1], i - 7);
+    //   }
+
+    //   {
+    //     Threads::Scope scope(foot_state_mtx);
+    //     foot_state[0] = frame[0];
+
+    //     memcpy(foot_state + 1, frame + 1, 4);
+    //     memcpy(foot_state + 2, frame + 5, 4);
+    //   }
+    // }
+    if (B_PORT.available() >= sizeof(byte) + sizeof(float) * 2) {
+      // Read the bit (1 byte)
+      byte receivedBit = B_PORT.read();
+      bool bitReceived = receivedBit != 0;  // Convert byte to bool
+      
+      // Read the first float (4 bytes)
+      float float1;
+      B_PORT.readBytes((char*)&float1, sizeof(float1));
+
+      // Read the second float (4 bytes)
+      float float2;
+      B_PORT.readBytes((char*)&float2, sizeof(float2));
+
+      foot_state[0] = bitReceived;
+      foot_state[1] = float1;
+      foot_state[2] = float2;
+
+      while (B_PORT.available()) {
+        B_PORT.read();
       }
     }
-//    }
-    char oneAddedBia[2];
-    memcpy(oneAddedBia, receivedCharsBia + 9, 2 * sizeof(char));
-    for (int i = 0; i < 2; i++) {
-      for (int j = 1; j < 8; j++) {
-        if (oneAddedBia[i] & (1 << (8 - j))) {
-          receivedCharsBia[i * 7 + (j - 1)] = 0;
-        }
-      }
-    }
-    { Threads::Scope scope(foot_state_mtx);
-    foot_state[0] = (float) receivedCharsBia[0];
-    memcpy(foot_state+1, receivedCharsBia + 1, 2 * 4);
-    }
-//    #endif
-    threads.delay_us(500);
+    // threads.delay_us(500);
   }
 }
 
@@ -711,8 +718,8 @@ void loop() {
   }
 
   if (comms_on > 0) {
+    Serial.println("Waiting for socket connection to the computer.");
     while (!ethernet_connected) {
-      Serial.println("Waiting for socket connection to the computer.");
       threads.delay_us(100);
     }
   } else {

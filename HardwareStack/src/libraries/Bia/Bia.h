@@ -71,8 +71,8 @@ namespace Archer
       int _Y2       = 36;
       int _G        = 37;
 
-      double theta_max = 1.2;
-      double theta_min = -5.0;
+      double theta_max = 3;
+      double theta_min = -7.0;
 
       uint32_t _prevTb;
       uint32_t _nextTb;
