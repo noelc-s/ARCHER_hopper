@@ -100,9 +100,11 @@ float foot_state[3];
 
 bool exit_state = false;
 File gainFile;
-File data;
+File dataFile;
+File logFile;
 String gain_config = "gain_config.txt";
-String dFile = "log.txt";
+String dFile = "data.txt";
+String lFile = "log.txt";
 
 // SD CARD Variables
 const byte NUMBER_OF_RECORDS = 10; // number of vars in gain_config.txt
@@ -145,9 +147,26 @@ void setup() {
   //====================WIFI==============
   delay(100); //give time to open and print
   Serial.begin(115200); //this is for the monitor
+
+  // init SD card module, using built-in Teensy SD
+  Serial.println("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+  
+  if (SD.exists(dFile.c_str())) {
+    SD.remove(dFile.c_str());  // Delete the file if it exists
+  }
+  dataFile = SD.open(dFile.c_str(),FILE_WRITE);
+  if (SD.exists(lFile.c_str())) {
+    SD.remove(lFile.c_str());  // Delete the file if it exists
+  }
+  logFile = SD.open(lFile.c_str(),FILE_WRITE);
+
   setupEthernet();      //Ethernet Setup
   readParams();         // read params from SD card
-  data = SD.open(dFile.c_str(),FILE_WRITE);
 
   //  //================Koios=============
   koios = new Koios(tENC, elmo);
@@ -228,15 +247,6 @@ void setupEthernet(){
 }
 
 void readParams() {
-  //==============LOAD IN FROM SD CARD=============
-  // init SD card module, using built-in Teensy SD
-  Serial.print("Initializing SD card... ");
-  if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("initialization failed!");
-    return;
-  }
-  Serial.println(" initialization done.");
-
   // open gain file config
   gainFile = SD.open(gain_config.c_str());
 
@@ -622,7 +632,10 @@ void exitProgram() {
   koios->motorsOff(0);
   if(foot_on)
     koios->setSigB(1);
-  data.close();
+  dataFile.flush();
+  dataFile.close();
+  logFile.flush();
+  logFile.close();
   threads.delay(100);
   koios->setLEDs("1000");
   koios->setLogo('R');
@@ -725,15 +738,15 @@ void loop() {
     // quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
     quat_a = q_installation.inverse() * q_measured;
 
-    Serial.print(quat_a.w());     Serial.print(",");
-    Serial.print(quat_a.x());     Serial.print(",");
-    Serial.print(quat_a.y());     Serial.print(",");
-    Serial.print(quat_a.z());     Serial.print(",    ");
+    // Serial.print(quat_a.w());     Serial.print(",");
+    // Serial.print(quat_a.x());     Serial.print(",");
+    // Serial.print(quat_a.y());     Serial.print(",");
+    // Serial.print(quat_a.z());     Serial.print(",    ");
 
-    Serial.print(dR);     Serial.print(",");
-    Serial.print(dP);     Serial.print(",");
-    Serial.print(dY);     Serial.print(",");
-    Serial.println();
+    // Serial.print(dR);     Serial.print(",");
+    // Serial.print(dP);     Serial.print(",");
+    // Serial.print(dY);     Serial.print(",");
+    // Serial.println();
   }
   koios->updateStates(x1, v1, x2, v2, x3, v3);
   //  int new_contact = koios->getIntFromB();
@@ -830,29 +843,30 @@ void loop() {
 
 //  vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
 
-  uint32_t Tc1 = micros();
-  // Serial.println(Tc1); // timing
-  data.print(Tc1);              data.print(",");
-  data.print(quat_update.w(),4);     data.print(",");
-  data.print(quat_update.x(),4);     data.print(",");
-  data.print(quat_update.y(),4);     data.print(",");
-  data.print(quat_update.z(),4);     data.print(",");
-  data.print(quat_d.w(),4);     data.print(",");
-  data.print(quat_d.x(),4);     data.print(",");
-  data.print(quat_d.y(),4);     data.print(",");
-  data.print(quat_d.z(),4);     data.print(",");
-  data.print(omega_a[0],4);     data.print(",");
-  data.print(omega_a[1],4);     data.print(",");
-  data.print(omega_a[2],4);     data.print(",");
-  data.print(omega_d[0],4);     data.print(",");
-  data.print(omega_d[1],4);     data.print(",");
-  data.print(omega_d[2],4);     data.print(",");
-  data.print(foot_state[0],4);  data.print(",");
-  data.print(foot_state[1],4);  data.print(",");
-  data.print(foot_state[2],4);  data.print(",");
-  data.print(current[0],4);     data.print(",");
-  data.print(current[1],4);     data.print(",");
-  data.print(current[2],4);     data.println(); 
+  // uint32_t Tc1 = micros();
+  // // Serial.println(Tc1); // timing
+  // dataFile.print(Tc1);              dataFile.print(",");
+  // dataFile.print(quat_update.w(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.x(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.y(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.z(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.w(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.x(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.y(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.z(),4);     dataFile.print(",");
+  // dataFile.print(omega_a[0],4);     dataFile.print(",");
+  // dataFile.print(omega_a[1],4);     dataFile.print(",");
+  // dataFile.print(omega_a[2],4);     dataFile.print(",");
+  // dataFile.print(omega_d[0],4);     dataFile.print(",");
+  // dataFile.print(omega_d[1],4);     dataFile.print(",");
+  // dataFile.print(omega_d[2],4);     dataFile.print(",");
+  // dataFile.print(foot_state[0],4);  dataFile.print(",");
+  // dataFile.print(foot_state[1],4);  dataFile.print(",");
+  // dataFile.print(foot_state[2],4);  dataFile.print(",");
+  // dataFile.print(current[0],4);     dataFile.print(",");
+  // dataFile.print(current[1],4);     dataFile.print(",");
+  // dataFile.print(current[2],4);     dataFile.println();
+  // dataFile.flush();
 
 
   if (ethernet_connected) {

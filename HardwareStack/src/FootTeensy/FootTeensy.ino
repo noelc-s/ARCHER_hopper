@@ -6,6 +6,7 @@
 #include <TeensyThreads.h>
 #include <SPI.h>
 #include <ArduinoEigen.h>
+#include <SD.h>
 
 using namespace Archer;
 using namespace Eigen;
@@ -31,6 +32,9 @@ float u0 = -15.5;  // offset torque
 int h = 0;
 float rb0, v0;
 volatile bool initialized;
+
+File dataFile;
+String dFile = "foot_data.txt";
 
 volatile char contact = 0;
 char footStateToKoios[1 + 2 * 4 + 2 + 1];  // contact, foot_state, bitAdded, newline
@@ -59,10 +63,13 @@ void findZero() {
   while (fsm < 1) {
     u = -0.5;
     rt = elmo.sendTC(u, 4);
+    bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
+    bia.updateState(FOOT, x_foot, xdot_foot);
     dTs = micros() - Ts0;
     if (dTs > 1000000) {
       fsm = 1;
     }
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
   }
 
   bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
@@ -88,6 +95,7 @@ void findZero() {
       fsm = 2;
       cBia.logZero(theta_pulley, 1);
     }
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
     // Serial.print(x_foot); Serial.print("; ");
     // Serial.print(xdot_foot); Serial.println(";        ");
   }
@@ -106,6 +114,7 @@ void findZero() {
       fsm = 3;
       cBia.logZero(theta_pulley, 2);
     }
+    // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
     // Serial.print(x_foot); Serial.print("; ");
     // Serial.print(xdot_foot); Serial.println(";        ");
   }
@@ -116,6 +125,22 @@ void setup() {
   Serial.begin(115200);  //this is for the monitor
   Serial.println("Starting");
   delay(500);
+
+  // init SD card module, using built-in Teensy SD
+  Serial.println("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+  
+  if (SD.exists(dFile.c_str())) {
+    SD.remove(dFile.c_str());  // Delete the file if it exists
+  }
+  dataFile = SD.open(dFile.c_str(),FILE_WRITE);
+
+  T0 = micros();
+  T1 = T0;
 
   //initBia1
   bia.setLEDs("0100");
@@ -225,7 +250,7 @@ void loop() {
 
 void compPhase() {
   float xfs;
-  uint32_t Tc0 = micros();
+  // uint32_t Tc0 = micros();
   uint32_t Ts0, dTs;
   int fsm = 0;
   Serial.println("------------Comp Phase---------------");
@@ -286,6 +311,11 @@ void compPhase() {
       }
     }
 
+    // auto T_pre_log = micros();
+    // data_log("Compression", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, -u + u0);
+    // auto T_post_log = micros();
+    // Serial.println((T_post_log - T_pre_log) / 1e6, 4);
+
     // Serial.print(x_foot); Serial.print("; ");
     // Serial.print(xdot_foot); Serial.print(";        ");
     // Serial.print(theta_pulley); Serial.print("; ");
@@ -294,7 +324,7 @@ void compPhase() {
 }
 
 void releasePhase() {
-  uint32_t Tr0 = micros();
+  // uint32_t Tr0 = micros();
   float up, ud;
   int fsm = 0;
   Serial.println("------------Release Phase---------------");
@@ -314,10 +344,33 @@ void releasePhase() {
     if (x_foot < 0.5) {
       fsm = 1;
     }
+
+    // data_log("Release", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
     delayLoop(T1, 1000);
     T1 = micros();
     nF++;
   }
+}
+
+void data_log(String s, int fsm, float x, float dx, float th, float dth, float u) {
+  dataFile.print((micros() - T0) / 1e6, 4); dataFile.print(",");
+  // dataFile.print(s);                        dataFile.print(",");
+  // dataFile.print(fsm);                      dataFile.print(",");
+  dataFile.print(x, 6);                     dataFile.print(",");
+  dataFile.println(dx, 6);                   
+  // dataFile.print(th, 6);                    dataFile.print(",");
+  // dataFile.print(dth, 6);                   dataFile.print(",");
+  // dataFile.println(u, 6);
+  // dataFile.flush();
+
+  // Serial.print((micros() - T0) / 1e6); Serial.print(", ");
+  // Serial.print(s);                     Serial.print(", ");
+  // Serial.print(fsm);                   Serial.print(", ");
+  // Serial.print(x, 3);                  Serial.print(", ");
+  // Serial.print(dx, 3);                 Serial.print(", ");
+  // Serial.print(th, 3);                 Serial.print(", ");
+  // Serial.print(dth, 3);                Serial.print(",");
+  // Serial.println(u, 3);
 }
 
 void delayLoop(uint32_t T1, uint32_t dT) {

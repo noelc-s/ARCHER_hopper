@@ -220,9 +220,9 @@ int main(int argc, char **argv)
         desstate[4] = omega_des(0);
         desstate[5] = omega_des(1);
         desstate[6] = omega_des(2);
-        desstate[7] = hopper->torque[1];
-        desstate[8] = hopper->torque[2];
-        desstate[9] = hopper->torque[3];
+        // desstate[7] = hopper->torque[1];
+        // desstate[8] = hopper->torque[2];
+        // desstate[9] = hopper->torque[3];
         // desstate[0] = 1;
         // desstate[1] = 0;
         // desstate[2] = 0;
@@ -230,9 +230,9 @@ int main(int argc, char **argv)
         // desstate[4] = 0;
         // desstate[5] = 0;
         // desstate[6] = 0;
-        // desstate[7] = 0;
-        // desstate[8] = 0;
-        // desstate[9] = 0;
+        desstate[7] = 0;
+        desstate[8] = 0;
+        desstate[9] = 0;
       }
 
       // Log data
