@@ -62,18 +62,18 @@ void findZero() {
   uint32_t dTs;
   while (fsm < 1) {
     u = -0.5;
-    // rt = elmo.sendTC(u, 4);
+    rt = elmo.sendTC(u, 4);
     bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
     bia.updateState(FOOT, x_foot, xdot_foot);
-    // dTs = micros() - Ts0;
-    // if (dTs > 1000000) {
-    //   fsm = 1;
-    // }
+    dTs = micros() - Ts0;
+    if (dTs > 1000000) {
+      fsm = 1;
+    }
     // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
-    Serial.print(theta_pulley); Serial.print("; ");
-    Serial.print(thetadot_pulley); Serial.print(";        ");
-    Serial.print(x_foot); Serial.print("; ");
-    Serial.print(xdot_foot); Serial.println(";        ");
+    // Serial.print(theta_pulley); Serial.print("; ");
+    // Serial.print(thetadot_pulley); Serial.print(";        ");
+    // Serial.print(x_foot); Serial.print("; ");
+    // Serial.print(xdot_foot); Serial.println(";        ");
   }
 
   bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
@@ -269,24 +269,24 @@ void loop() {
   //   }
   // }
   /////////
-  // if(!first_hop) {
-  //   initializationPhase();
-  //   first_hop = true;
-  // }
+  if(!first_hop) {
+    initializationPhase();
+    first_hop = true;
+  }
 
-  // releasePhase();  // control to rb = 0, end at xf = 0
-  // {
-  //   std::lock_guard<std::mutex> lck(state_mtx);
-  //   contact = 0;
-  // }
+  releasePhase();  // control to rb = 0, end at xf = 0
+  {
+    std::lock_guard<std::mutex> lck(state_mtx);
+    contact = 0;
+  }
 
-  // // threads.delay_us(130000);
+  threads.delay_us(100000);
 
-  // compPhase();  //
-  // {
-  //   std::lock_guard<std::mutex> lck(state_mtx);
-  //   contact = 1;
-  // }
+  compPhase();  //
+  {
+    std::lock_guard<std::mutex> lck(state_mtx);
+    contact = 1;
+  }
 
   //  if(!first_hop) {
   //   initializationPhase();
@@ -395,10 +395,17 @@ void initializationPhase() {
     if (bia.checkSigK() == 1) {
       bia.exitProgram();
     }
+    // {
+    //   std::lock_guard<std::mutex> lck(state_mtx);
+    //   bia.testPDb(theta_pulley, thetadot_pulley, x_foot, xdot_foot, up, ud);
+    // }
+    bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);  // theta_pulley and thetadot_pulley are motor angle and vel
     {
       std::lock_guard<std::mutex> lck(state_mtx);
-      bia.testPDb(theta_pulley, thetadot_pulley, x_foot, xdot_foot, up, ud);
+      bia.updateState(FOOT, x_foot, xdot_foot);  // x_foot and xdot_foot are spring deflection in mm
     }
+    Serial.print(x_foot); Serial.print("; ");
+    Serial.print(xdot_foot); Serial.println(";        ");
     rb = theta_pulley;
     wb = thetadot_pulley;
     vf = xdot_foot;
