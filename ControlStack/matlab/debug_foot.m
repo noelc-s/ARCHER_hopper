@@ -11,6 +11,7 @@ ylim([0 0.05])
 ylabel('Foot Pos')
 subplot(2,2,2)
 plot(d.t, d.legvel)
+ylim([-1 1])
 ylabel('Foot Vel')
 
 subplot(2,2,3)

@@ -62,14 +62,18 @@ void findZero() {
   uint32_t dTs;
   while (fsm < 1) {
     u = -0.5;
-    rt = elmo.sendTC(u, 4);
+    // rt = elmo.sendTC(u, 4);
     bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
     bia.updateState(FOOT, x_foot, xdot_foot);
-    dTs = micros() - Ts0;
-    if (dTs > 1000000) {
-      fsm = 1;
-    }
+    // dTs = micros() - Ts0;
+    // if (dTs > 1000000) {
+    //   fsm = 1;
+    // }
     // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
+    Serial.print(theta_pulley); Serial.print("; ");
+    Serial.print(thetadot_pulley); Serial.print(";        ");
+    Serial.print(x_foot); Serial.print("; ");
+    Serial.print(xdot_foot); Serial.println(";        ");
   }
 
   bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);
@@ -96,8 +100,11 @@ void findZero() {
       cBia.logZero(theta_pulley, 1);
     }
     // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
-    // Serial.print(x_foot); Serial.print("; ");
-    // Serial.print(xdot_foot); Serial.println(";        ");
+    // Serial.print(theta_pulley); Serial.print("; ");
+    // Serial.print(thetadot_pulley); Serial.print(";        ");
+    Serial.print(u); Serial.print("; ");
+    Serial.print(x_foot); Serial.print("; ");
+    Serial.print(xdot_foot); Serial.println(";        ");
   }
   // Serial.println("Deflection Registered.");
   // Serial.println("Releasing");
@@ -114,12 +121,16 @@ void findZero() {
       fsm = 3;
       cBia.logZero(theta_pulley, 2);
     }
+    // Serial.println(x_foot);
     // data_log("FindZero", fsm, x_foot, xdot_foot, theta_pulley, thetadot_pulley, u);
-    // Serial.print(x_foot); Serial.print("; ");
-    // Serial.print(xdot_foot); Serial.println(";        ");
+    // Serial.print(theta_pulley); Serial.print("; ");
+    // Serial.print(thetadot_pulley); Serial.print(";        ");
+    Serial.print(u); Serial.print("; ");
+    Serial.print(x_foot); Serial.print("; ");
+    Serial.print(xdot_foot); Serial.println(";        ");
   }
   bia.sendSafeTorque(theta_pulley, 0);
-  // Serial.println("Done.");
+  Serial.println("Zero Found.");
 }
 
 void setup() {
@@ -214,32 +225,89 @@ void KoiosCommThread() {
 
 bool first_hop = false;
 
+int fsm = 0;
+float up, ud;
+
 void loop() {
 
-  // threads.delay(100);
-  //   // Update states:
-  // bia.updateState(PULLEYMOTOR,theta_pulley, thetadot_pulley); // theta_pulley and thetadot_pulley are motor angle and vel
-  // {std::lock_guard<std::mutex> lck(state_mtx);
-  // bia.updateState(2,x_foot, xdot_foot); // x_foot and xdot_foot are spring deflection in mm
+  // if (bia.checkSigK() == 1) {
+  //   bia.exitProgram();
   // }
-  while(!first_hop) {
-    initializationPhase();
-    first_hop = true;
-  }
+  // // Be where you initialized
+  // if (fsm == 0)
+  // {
+  //   bia.testPDb(theta_pulley, thetadot_pulley, x_foot, xdot_foot, up, ud);
+  //   // update state.
+  //   rb = theta_pulley;
+  //   wb = thetadot_pulley;
+  //   vf = xdot_foot;
+  //   u = up + ud;
+  //   // if deflection measured
+  //   if (x_foot > 0.5) {
+  //     fsm = 1;
+  //   }
+  // }
+  // if (fsm == 1) {
+  //   bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);  // theta_pulley and thetadot_pulley are motor angle and vel
+  //   bia.updateState(FOOT, x_foot, xdot_foot);  // x_foot and xdot_foot are spring deflection in mm
+  //   rt = bia.sendSafeTorque(theta_pulley, -25);
+  //   // If we slow down
+  //   if (abs(xdot_foot) < 20) {
+  //     fsm = 2;
+  //   }
+  // }
+  // if (fsm == 2) {
+  //   bia.testPDb(theta_pulley, thetadot_pulley, x_foot, xdot_foot, up, ud);
+  //   // update state.
+  //   rb = theta_pulley;
+  //   wb = thetadot_pulley;
+  //   vf = xdot_foot;
+  //   u = up + ud;
+  //   // if deflection goes back down
+  //   if (x_foot < 0.3) {
+  //     fsm = 0;
+  //   }
+  // }
+  /////////
+  // if(!first_hop) {
+  //   initializationPhase();
+  //   first_hop = true;
+  // }
 
-  releasePhase();  // control to rb = 0, end at xf = 0
-  {
-    std::lock_guard<std::mutex> lck(state_mtx);
-    contact = 0;
-  }
+  // releasePhase();  // control to rb = 0, end at xf = 0
+  // {
+  //   std::lock_guard<std::mutex> lck(state_mtx);
+  //   contact = 0;
+  // }
 
-  threads.delay_us(130000);
+  // // threads.delay_us(130000);
 
-  compPhase();  //
-  {
-    std::lock_guard<std::mutex> lck(state_mtx);
-    contact = 1;
-  }
+  // compPhase();  //
+  // {
+  //   std::lock_guard<std::mutex> lck(state_mtx);
+  //   contact = 1;
+  // }
+
+  //  if(!first_hop) {
+  //   initializationPhase();
+  //   first_hop = true;
+  // }
+/////////
+// bia.updateState(FOOT, x_foot, xdot_foot);  // x_foot and xdot_foot are spring deflection in mm
+// bia.updateState(PULLEYMOTOR, theta_pulley, thetadot_pulley);  // theta_pulley and thetadot_pulley are motor angle and vel
+
+  // compPhase();  //
+  // {
+  //   std::lock_guard<std::mutex> lck(state_mtx);
+  //   contact = 1;
+  // }
+
+  // releasePhase();  // control to rb = 0, end at xf = 0
+  // {
+  //   std::lock_guard<std::mutex> lck(state_mtx);
+  //   contact = 0;
+  // }
+
 }
 
 void compPhase() {
@@ -335,7 +403,7 @@ void initializationPhase() {
     wb = thetadot_pulley;
     vf = xdot_foot;
     u = up + ud;
-    if (x_foot > 0.5) {
+    if (x_foot > 2) {
       fsm = 1;
     }
   }

@@ -238,9 +238,13 @@ namespace Archer
     if(encID==1){
       _nextTb = tmp;
       _nextCb = -tcnt;      // This was inverted
-      
-      _x = (_nextCb*2*M_PI)/_resB;
-      pX = (_prevCb*2*M_PI)/_resB;
+
+      _filtCb = filter_alpha * _filtCb + (1-filter_alpha) * (_nextCb*2*M_PI)/_resB;
+
+      _x = _filtCb;
+      pX = _prevFiltCb;
+      // _x = (_nextCb*2*M_PI)/_resB;
+      // pX = (_prevCb*2*M_PI)/_resB;
       dt = (_nextTb-_prevTb)/1000000.0;
       _v = (_x-pX)/dt;
 
@@ -248,14 +252,19 @@ namespace Archer
       v = _v;
 
       _prevTb = _nextTb;
-      _prevCb = _nextCb;
+      _prevFiltCb = _filtCb;
+      // _prevCb = _nextCb;
     }
     if(encID==2){
       _nextTf = tmp;
       _nextCf = tcnt;
-      
-      _xF = _nextCf/_resF;
-      pX  = _prevCf/_resF;
+
+      _filtCf = filter_alpha * _filtCf + (1-filter_alpha) * _nextCf/_resF;
+
+      _xF = _filtCf;
+      pX = _prevFiltCf;
+      // _xF = _nextCf/_resF;
+      // pX  = _prevCf/_resF;
       dt  = (_nextTf-_prevTf)/1000000.0;
       _vF = (_xF-pX)/dt;
 
@@ -263,7 +272,8 @@ namespace Archer
       v = _vF;
 
       _prevTf = _nextTf;
-      _prevCf = _nextCf;
+      _prevFiltCf = _filtCf;
+      // _prevCf = _nextCf;
     }
   }
 

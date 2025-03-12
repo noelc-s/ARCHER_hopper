@@ -74,14 +74,18 @@ namespace Archer
       double theta_max = 3;
       double theta_min = -7.0;
 
-      uint32_t _prevTb;
+      uint32_t _prevTb = 0;
       uint32_t _nextTb;
-      long     _prevCb;
+      long     _prevCb = 0;
       long     _nextCb;
-      uint32_t _prevTf;
+      uint32_t _prevTf = 0;
       uint32_t _nextTf;
-      long     _prevCf;
+      long     _prevCf = 0;
       long     _nextCf;
+      float _filtCb = 0;    
+      float _prevFiltCb = 0;   
+      float _filtCf = 0;    
+      float _prevFiltCf = 0;      
 
       float _resB = 102400.0; // Counts per revolution
       float _x;
@@ -92,6 +96,7 @@ namespace Archer
       float _KpB = 1;
       float _KdB = 1;
       float _rb0;
+      float filter_alpha = 0;
   };
 }
 
