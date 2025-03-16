@@ -280,7 +280,7 @@ void loop() {
     contact = 0;
   }
 
-  threads.delay_us(100000);
+  // threads.delay_us(100000);
 
   compPhase();  //
   {

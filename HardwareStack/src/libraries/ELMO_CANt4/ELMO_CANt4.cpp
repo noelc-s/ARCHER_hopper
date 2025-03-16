@@ -320,9 +320,9 @@ namespace Archer
     bool read_rated_curr, read_rated_torque, read_max_curr, read_max_torque;
 
     // Write motor rated current
-    // uint32_t rated_curr = static_cast<uint32_t>(0x26ac);  // 9.9A
+    uint32_t rated_curr = static_cast<uint32_t>(0x26ac);  // 9.9A
     // uint16_t rated_curr = static_cast<uint16_t>(0x2af8); // 11A
-    uint16_t rated_curr = static_cast<uint16_t>(0x3a98);  // 15A
+    // uint16_t rated_curr = static_cast<uint16_t>(0x3a98);  // 15A
 
     Serial.print("\nWriting motor rated current: ");
     Serial.print(rated_curr);
