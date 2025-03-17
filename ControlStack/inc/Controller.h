@@ -24,6 +24,8 @@
 #include "../inc/UserInput.h"
 #include "../inc/rom.h"
 
+#include "../inc/planner/planner_interface.h"
+
 
 using namespace Eigen;
 using namespace Hopper_t;

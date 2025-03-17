@@ -6,7 +6,7 @@ project(hopper)
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "-O3 -pthread")
+set(CMAKE_CXX_FLAGS "-O3 -pthread -fopenmp")
 
 set(PATH_TO_REPOS /home/noelcs/repos CACHE PATH "Path to repos")
 message("Looking for dependecies in: ${PATH_TO_REPOS}")
@@ -15,8 +15,10 @@ message("Looking for dependecies in: ${PATH_TO_REPOS}")
 option(HARDWARE "build with hardware support" ON)
 option(MPC "build with MPC controller" OFF)
 option(LEARNING "build with NN controller" OFF)
-option(MUJOCO "build with Mujoco sim/vis" OFF)
+option(MUJOCO "build with Mujoco sim/vis" ON)
+option(PINOCCHIO "build with pinocchio" OFF)
 option(OPTITRACK "build with mocap" OFF)
+option(PATHPLANNING "build with high level path planner" ON)
 
 # Set pat dependencies (can be set manually if they are in different locations)
 SET(MUJOCO_DIR ${PATH_TO_REPOS}/mujoco_install CACHE PATH "Path to Mujoco dir")
@@ -41,11 +43,40 @@ include_directories(${PATH_TO_REPOS}/librealsense-2.53.1/include)
 add_library(realsense2 SHARED IMPORTED)
 set_property(TARGET realsense2 PROPERTY IMPORTED_LOCATION ${PATH_TO_REPOS}/librealsense-2.53.1/build/librealsense2.so)
 
-if(MPC)
+if (PATHPLANNING)
+    # SET(MPC ON)
+    SET(PLANNER_DIR ${PATH_TO_REPOS}/PathPlanner CACHE PATH "Path to PathPlanner dir")
+    set(bezier_DIR ${PATH_TO_REPOS}/BezierTubes/cpp)
+    include_directories(bezier INTERFACE ${bezier_DIR}/inc)
+    include_directories(${PLANNER_DIR}/inc)
+
+    include(FetchContent)
+    FetchContent_Declare(
+        graph
+        SOURCE_DIR ${PLANNER_DIR}
+    )
+    FetchContent_MakeAvailable(graph)
+
+    add_library(PLANNER SHARED src/planner/planner_wrapper.cpp)
+    target_link_libraries(PLANNER graph)
+else()
+    add_library(PLANNER SHARED src/planner/planner_dummy.cpp)
+endif()
+target_link_libraries(PLANNER Eigen3::Eigen)
+
+if(PINOCCHIO)
     SET(PINOCCHIO_DIR ${PATH_TO_REPOS}/pinocchio_install CACHE PATH "Path to pinocchio dir")
     list(APPEND CMAKE_PREFIX_PATH ${PINOCCHIO_DIR} ${PATH_TO_REPOS}/eigenpy_install)
     find_package(pinocchio REQUIRED HINTS ${PINOCCHIO_DIR}/lib)
+    add_library(PINOCCHIO SHARED src/pinocchio/pinocchio_wrapper.cpp)
+    target_link_libraries(PINOCCHIO pinocchio::pinocchio)
+    target_compile_definitions(PINOCCHIO PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
+else()
+    add_library(PINOCCHIO SHARED src/pinocchio/pinocchio_dummy.cpp)
+endif()
+target_link_libraries(PINOCCHIO Eigen3::Eigen)
 
+if(MPC)
     ### OSQP
     find_package(osqp)
     if (NOT TARGET osqpstatic)  # This is what osqp-cpp looks for
@@ -69,10 +100,10 @@ if(MPC)
     FetchContent_MakeAvailable(osqp-cpp)
     ###
 
-    add_library(MPC SHARED src/mpc/mpc_wrapper.cpp src/pinocchio/pinocchio_wrapper.cpp)
+    add_library(MPC SHARED src/mpc/mpc_wrapper.cpp)
     target_link_libraries(MPC osqp-cpp)
-    target_link_libraries(MPC pinocchio::pinocchio)
-    target_compile_definitions(MPC PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
+    target_link_libraries(MPC PINOCCHIO)
+    
     target_include_directories(MPC PUBLIC ${manif_INCLUDE_DIRS})
 
     # target_compile_definitions(hopper_ctrl PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
@@ -87,14 +118,14 @@ if(MPC)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
 
-    # Enable testing
-    enable_testing()
-    # Add subdirectory for tests
-    add_subdirectory(tests)
-    add_subdirectory(auto_diff)
+    # # Enable testing
+    # enable_testing()
+    # # Add subdirectory for tests
+    # add_subdirectory(tests)
+    # add_subdirectory(auto_diff)
 
 else()
-    add_library(MPC STATIC src/mpc/mpc_dummy.cpp src/pinocchio/pinocchio_dummy.cpp)
+    add_library(MPC STATIC src/mpc/mpc_dummy.cpp)
 endif()
 target_link_libraries(MPC Eigen3::Eigen)
 
@@ -105,7 +136,6 @@ if(LEARNING)
     target_include_directories(hopper_ctrl PUBLIC ${onnxruntime_DIR}/include)
 
     add_library(NN SHARED src/nn/nn_wrapper.cpp)
-    target_link_libraries(hopper_ctrl NN)
 
 else()
     add_library(NN SHARED src/nn/nn_dummy.cpp)
@@ -118,6 +148,8 @@ target_include_directories(hopper_ctrl PUBLIC ${manif_INCLUDE_DIRS})
 target_link_libraries(hopper_ctrl PUBLIC yaml-cpp Eigen3::Eigen)
 target_link_libraries(hopper_ctrl PUBLIC NN)
 target_link_libraries(hopper_ctrl PUBLIC MPC)
+target_link_libraries(hopper_ctrl PUBLIC PINOCCHIO)
+target_link_libraries(hopper_ctrl PUBLIC PLANNER)
 
 if(MUJOCO)
 add_executable(hopper_sim src/Simulator.cpp)
@@ -133,7 +165,6 @@ if(HARDWARE)
     target_link_libraries(hopper_ctrl_hardware PUBLIC yaml-cpp)
     target_link_libraries(hopper_ctrl_hardware PUBLIC Eigen3::Eigen)
     target_include_directories(hopper_ctrl_hardware PUBLIC ${manif_INCLUDE_DIRS})
-    target_compile_definitions(hopper_ctrl_hardware PUBLIC PINOCCHIO_CXX_COMPILER=\"${CMAKE_CXX_COMPILER}\")
     if(MUJOCO)
       add_executable(hopper_sim_hardware src/SimVisHardware.cpp)
       target_link_libraries(hopper_sim_hardware PUBLIC Eigen3::Eigen)
@@ -145,6 +176,8 @@ if(HARDWARE)
 
     target_link_libraries(hopper_ctrl_hardware PUBLIC NN)
     target_link_libraries(hopper_ctrl_hardware PUBLIC MPC)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC PINOCCHIO)
+    target_link_libraries(hopper_ctrl_hardware PUBLIC PLANNER)
 
     target_link_libraries(hopper_ctrl_hardware PUBLIC realsense2)
 

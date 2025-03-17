@@ -11,16 +11,16 @@ int main(int argc, char **argv)
     // Data Logging
     fileHandle.open(dataLog);
     fileHandle << "t,contact,"
-            << "x,y,z,"
-            << "legpos,"
-            << "vx,vy,vz,"
-            << "legvel,"
-            << "q_x,q_y,q_z,q_w,"
-            << "qd_x,qd_y,qd_z,qd_w,"
-            << "w_x,w_y,w_z,"
-            << "tau_foot,tau1,tau2,tau3,"
-            << "wheel_vel1,wheel_vel2,wheel_vel3,"
-            << "des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
+               << "x,y,z,"
+               << "legpos,"
+               << "vx,vy,vz,"
+               << "legvel,"
+               << "q_x,q_y,q_z,q_w,"
+               << "qd_x,qd_y,qd_z,qd_w,"
+               << "w_x,w_y,w_z,"
+               << "tau_foot,tau1,tau2,tau3,"
+               << "wheel_vel1,wheel_vel2,wheel_vel3,"
+               << "des_cmd1,des_cmd2,des_cmd3,des_cmd4,des_cmd5" << std::endl;
     fileHandleDebug.open(predictionLog);
     fileHandleDebug << "t,x,y,z,q_x,q_y,q_z,q_w,x_dot,y_dot,z_dot,w_1,w_2,w_3,contact,l,l_dot,wheel_vel1,wheel_vel2,wheel_vel3,z_acc";
 
@@ -40,7 +40,8 @@ int main(int argc, char **argv)
     {
         command = std::make_unique<DoubleIntCommand>(p.horizon, p.dt_replan, p.v_max, p.a_max);
     }
-    else if (p.rom_type == "position") {
+    else if (p.rom_type == "position")
+    {
         command = std::make_unique<V5Command>(p.x0, p.y0);
     }
     else
@@ -60,6 +61,16 @@ int main(int argc, char **argv)
     // Thread for user input
     std::thread getUserInput(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(reset_pos), std::ref(cv), std::ref(m));
     // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(cv), std::ref(m));
+
+    vector_t IC, EC;
+    bool planner_initialized = false;
+    scalar_t time = 0;
+    IC.resize(4);
+    IC.setZero();
+    EC.resize(4);
+    EC.setZero();
+    std::unique_ptr<PlannerInterface> planner = createPlannerInstance();
+    std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
     // Thread for updating reduced order model
     std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
@@ -82,7 +93,11 @@ int main(int argc, char **argv)
         dt_planner_elapsed = state(0) - t_planner_last;
         dt_print_elapsed = state(0) - t_print_last;
 
+        time = state(0);
         hopper->updateState(state);
+
+        IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
+        EC << desired_command(0), desired_command(1), 0, 0;
 
         ///////     SIMULATING DRIFT /////////////////
         // scalar_t yaw_drift = state(0) * p.yaw_drift;
@@ -112,7 +127,16 @@ int main(int argc, char **argv)
         if (dt_elapsed > p.dt)
         {
             desired_command = command->getCommand();
-            quat_des = policy.DesiredQuaternion(hopper->state_, desired_command.col(0));
+            if (planner_initialized)
+            {
+                vector_t path_command;
+                path_command = planner->getPath(time, desired_command(4, 0));
+                quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
+            }
+            else
+            {
+                quat_des = policy.DesiredQuaternion(hopper->state_, desired_command.col(0));
+            }
             // Add initial yaw to desired signal
             // quat_des = plus(quat_des, initial_yaw_quat);
             omega_des = policy.DesiredOmega();
@@ -131,7 +155,7 @@ int main(int argc, char **argv)
         if (fileWrite)
         {
             // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
-                            // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
+            // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
             fileHandle << state[0] << "," << hopper->state_.contact
                        << "," << hopper->state_.pos.transpose().format(CSVFormat)
                        << "," << hopper->state_.leg_pos

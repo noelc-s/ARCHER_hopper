@@ -28,6 +28,7 @@
 #include "../inc/rom.h"
 
 #include "../inc/optitrack/ot_interface.h"
+#include "../inc/planner/planner_interface.h"
 
 using namespace Eigen;
 using namespace Hopper_t;

@@ -69,6 +69,14 @@ int main(int argc, char **argv)
   // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
   //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
+  vector_t IC, EC;
+  bool planner_initialized = false;
+  scalar_t time = 0;
+  IC.resize(4); IC.setZero();
+  EC.resize(4); EC.setZero();
+  std::unique_ptr<PlannerInterface> planner = createPlannerInstance();
+  std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
+
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
   desired_command = command->getCommand();
@@ -169,9 +177,14 @@ int main(int argc, char **argv)
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
 
+      time = state(0);
       // Update the state
       hopper->updateState(state);
       contact = hopper->state_.contact;
+
+      IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
+      EC << desired_command(0), desired_command(1), 0, 0;
+
       // quat_t IMU_quat = hopper->state_.quat;
 
       // // Measure the initial absolute yaw (from optitrack)
@@ -191,7 +204,13 @@ int main(int argc, char **argv)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
-        quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+        if (planner_initialized) {
+          vector_t path_command;
+          path_command = planner->getPath(time, desired_command(4));
+          quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
+        } else {
+          quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
+        }
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
         quat_des = plus(quat_des, rollPitch);
