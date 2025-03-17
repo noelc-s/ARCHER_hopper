@@ -43,10 +43,18 @@ public:
 
         vector_t obst(8);
         obst.setZero();
-        obst << 0.5, -0.5,
-            1.5, -0.5,
-            1.5, 0.5,
-            0.5, 0.5;
+
+        // obs.occType = OBST;
+        // obst << 0.5, -0.5,
+        //     1.5, -0.5,
+        //     1.5, 0.5,
+        //     0.5, 0.5;
+
+        obs.occType = FREE;
+        obst << -0.5, -0.5,
+            0.5, -0.5,
+            0.5, 0.5,
+            -0.5, 0.5;
 
         obs.v << obst[0], obst[1],
                 obst[2], obst[3],

@@ -5,7 +5,7 @@ use_planner: true
 MPC:
   N: 50
   dt: 0.1
-  SQP_iters: 1
+  SQP_iters: 0
   stateRefScaling: [1, 1, 1, 1]
   stateGoalScaling: [1, 1, 1, 1]
   path_length_cost: [10, 10, 100, 100]
@@ -16,7 +16,7 @@ MPC:
 
 Planner:
   bez_dt: 0.5
-  buffer: 0.05
+  buffer: 0.0
   x_bounds: [-6, 6, -4, 4] # min_x, max_x, min_y, max_y
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
