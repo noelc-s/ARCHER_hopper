@@ -1,5 +1,5 @@
 #include "../../inc/planner/planner_interface.h"
-#include "pathPlanner.h"
+#include "../../inc/planner/ros_subscriber.h"
 
 class PlannerWrapper : public PlannerInterface
 {
@@ -16,6 +16,7 @@ public:
 
     std::unique_ptr<PathPlanner> planner;
     ObstacleCollector O_;
+    std::shared_ptr<FreePolytopeSubscriber> freePolySubscriber_;
 
     std::deque<double> cutTimingWindow;
     std::deque<double> pathTimingWindow;
@@ -25,7 +26,32 @@ public:
     vector_t planned_command_;
     scalar_t t_planner_last_ = 0;
 
-    ObstacleCollector generateObstacle()
+    PlannerWrapper()
+    {
+        Params params;
+        MPC_Params mpc_params;
+        Planner_Params planner_params;
+        loadPlannerParams("../config/planner_params.yaml", params, mpc_params, planner_params);
+
+        planned_command_.resize(4 * mpc_params.N);
+        planned_command_.setZero();
+
+        const int state_size = 4;
+        const int input_size = 2;
+
+        planner = std::make_unique<PathPlanner>(state_size, input_size, mpc_params, planner_params);
+        O_ = generateObstacle();
+        planner->initialize(O_);
+
+        int argc;
+        char** argv;
+        rclcpp::init(argc, argv);  // Ensure ROS 2 is initialized
+
+        freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>();
+        startRosNode(freePolySubscriber_);
+    }
+
+     ObstacleCollector generateObstacle()
     {
         ObstacleCollector O = ObstacleCollector();
 
@@ -55,20 +81,14 @@ public:
             0.5, -0.5,
             0.5, 0.5,
             -0.5, 0.5;
-
         obs.v << obst[0], obst[1],
                 obst[2], obst[3],
                 obst[4], obst[5],
                 obst[6], obst[7];
-
         std::vector<Eigen::Vector2d> edgeVectors(4);
         std::vector<Eigen::Vector2d> normals(4);
-
         // Compute edge vectors
-        // 0,1
-        // 2,3
-        // 4,5
-        // 6,7
+        // 0,1 -- 2,3 -- 4,5 -- 6,7
         edgeVectors[0] = Eigen::Vector2d(obst[6] - obst[0], obst[7] - obst[1]);
         edgeVectors[1] = Eigen::Vector2d(obst[0] - obst[2], obst[1] - obst[3]);
         edgeVectors[2] = Eigen::Vector2d(obst[2] - obst[4], obst[3] - obst[5]);
@@ -77,7 +97,6 @@ public:
         edgeVectors[1].normalize();
         edgeVectors[2].normalize();
         edgeVectors[3].normalize();
-
         // Construct A and b
         vector_t tmp(4);
         tmp.setZero();
@@ -88,26 +107,9 @@ public:
         }
         std::vector<Obstacle> obstacles;
         obstacles.push_back(obs);
+
         O.obstacles = obstacles;
         return O;
-    }
-
-    PlannerWrapper()
-    {
-        Params params;
-        MPC_Params mpc_params;
-        Planner_Params planner_params;
-        loadPlannerParams("../config/planner_params.yaml", params, mpc_params, planner_params);
-
-        planned_command_.resize(4 * mpc_params.N);
-        planned_command_.setZero();
-
-        const int state_size = 4;
-        const int input_size = 2;
-
-        planner = std::make_unique<PathPlanner>(state_size, input_size, mpc_params, planner_params);
-        O_ = generateObstacle();
-        planner->initialize(O_);
     }
 
     // Function to compute mean
@@ -154,6 +156,9 @@ public:
         vector_t graph_sol;
         int max_graph_sol_length = planner->params_.max_graph_sol_length;
         graph_sol.resize(4 * max_graph_sol_length);
+
+        // update obstacles from ros topic
+        O_ = freePolySubscriber_->getFreePolytopePositions();
 
         // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, double&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
         //             planner.get(), std::ref(O), std::ref(output_file), std::ref(plannerTiming.cut), std::ref(cv2), std::ref(m2));
