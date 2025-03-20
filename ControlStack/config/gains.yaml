@@ -80,7 +80,7 @@ RL:
   model_name: ..
   horizon: 1
   dt_replan : 0.02
-  v_max: 0.2
+  v_max: 0.8
   a_max: 1.0
 
 dt_planner: 0.2

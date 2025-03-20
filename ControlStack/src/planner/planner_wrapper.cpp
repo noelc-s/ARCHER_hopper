@@ -61,11 +61,6 @@ public:
         obs.v.resize(4, 2);
         obs.A.resize(4, 4);
         obs.b.resize(4);
-        obs.Adjacency.resize(4, 4);
-        obs.Adjacency << 1, 0, 0, 1,
-            1, 1, 0, 0,
-            0, 1, 1, 0,
-            0, 0, 1, 1;
 
         vector_t obst(8);
         obst.setZero();
