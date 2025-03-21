@@ -17,6 +17,7 @@ public:
     std::unique_ptr<PathPlanner> planner;
     ObstacleCollector O_;
     std::shared_ptr<FreePolytopeSubscriber> freePolySubscriber_;
+    std::shared_ptr<EstimateSubscriber> estimateSubscriber_;
 
     std::deque<double> cutTimingWindow;
     std::deque<double> pathTimingWindow;
@@ -48,7 +49,12 @@ public:
         rclcpp::init(argc, argv);  // Ensure ROS 2 is initialized
 
         freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>();
-        startRosNode(freePolySubscriber_);
+        estimateSubscriber_ = std::make_shared<EstimateSubscriber>();
+        startRosNode(freePolySubscriber_, estimateSubscriber_);
+    }
+
+    bool isEstimateInitialized() {
+	return estimateSubscriber_->initialized_;
     }
 
      ObstacleCollector generateObstacle()

@@ -74,11 +74,48 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
 }
 
 // Function to start ROS node in a separate thread
-void startRosNode(std::shared_ptr<FreePolytopeSubscriber> freePolySubscriber)
+void startRosNode(std::shared_ptr<FreePolytopeSubscriber> freePolySubscriber, std::shared_ptr<EstimateSubscriber> estimateSubscriber)
 {
     std::thread([freePolySubscriber]()
     {
         rclcpp::spin(freePolySubscriber);
         rclcpp::shutdown(); 
     }).detach();
+    std::thread([estimateSubscriber]()
+    {
+        rclcpp::spin(estimateSubscriber);
+        rclcpp::shutdown(); 
+    }).detach();
+
+}
+
+EstimatedState EstimateSubscriber::getEstimatedState() {
+	return estimated_state_;
+}
+
+void EstimateSubscriber::Callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+	estimated_state_.x = msg->pose.pose.position.x;
+	estimated_state_.y = msg->pose.pose.position.y;
+	estimated_state_.z = msg->pose.pose.position.z;
+	estimated_state_.x_dot = msg->twist.twist.linear.x;
+	estimated_state_.y_dot = msg->twist.twist.linear.y;
+	estimated_state_.z_dot = msg->twist.twist.linear.z;
+
+	estimated_state_.q_x = msg->pose.pose.orientation.x;
+	estimated_state_.q_y = msg->pose.pose.orientation.y;
+	estimated_state_.q_z = msg->pose.pose.orientation.z;
+	estimated_state_.q_w = msg->pose.pose.orientation.w;
+	estimated_state_.omega_x = msg->twist.twist.angular.x;
+	estimated_state_.omega_y = msg->twist.twist.angular.y;
+	estimated_state_.omega_z = msg->twist.twist.angular.z;
+	initialized_ = true;
+}
+
+EstimateSubscriber::EstimateSubscriber() : Node("estimate_subscriber")
+{
+    subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        "rs_t265/odom", 200,
+        std::bind(&EstimateSubscriber::Callback, this, std::placeholders::_1));
+
+    RCLCPP_INFO(this->get_logger(), "Subscriber node started, waiting for messages...");
 }

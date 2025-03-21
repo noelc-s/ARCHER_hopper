@@ -23,6 +23,8 @@ volatile bool ESP_initialized = false;
 const vector_3t r_cam_to_body = {-0.067, -0.05, 0.121};
 // const vector_3t r_cam_to_body = {-0.134, -0.086, 0.066};
 
+bool contact = false;
+
 struct HardwareParameters
 {
   std::vector<scalar_t> orientation_kp;

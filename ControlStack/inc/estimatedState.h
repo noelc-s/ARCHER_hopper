@@ -15,5 +15,5 @@ struct EstimatedState
 };
 
 // Kalman Filter gain
-bool contact = false;
-scalar_t alpha; // filtering alpha
+//bool contact = false;
+//scalar_t alpha; // filtering alpha

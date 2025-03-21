@@ -82,8 +82,7 @@ int main(int argc, char **argv)
   desired_command = command->getCommand();
 
   EstimatedState estimated_state = {};
-  bool realsense_connected = false;
-  std::thread realsense(&realSenseLoop, std::ref(yaw), std::ref(estimated_state), std::ref(realsense_connected), std::ref(reset_pos));
+  // std::thread realsense(&realSenseLoop, std::ref(yaw), std::ref(estimated_state), std::ref(realsense_connected), std::ref(reset_pos));
 
   int size = 11 + 2;
   float *TX_torques = new float[size](); // Dynamically allocate array
@@ -119,7 +118,8 @@ int main(int argc, char **argv)
   vn_yaw = 0;
   global_vel.setZero();
 
-  while (!realsense_connected) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
+  while (!planner->isEstimateInitialized()) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
+  std::cout << "Recieving T265 messages" << std::endl;
   sleep(1);
 
 

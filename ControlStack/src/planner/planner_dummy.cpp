@@ -12,6 +12,10 @@ public:
         return;
     }
 
+    bool isEstimateInitialied() {
+	    return false;
+    }
+
     vector_t getPath(scalar_t time, scalar_t des_yaw) {
         vector_t empty;
         return empty;
