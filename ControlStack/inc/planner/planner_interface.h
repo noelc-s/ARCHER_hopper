@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Types.h"
+#include "../estimatedState.h"
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -18,6 +19,8 @@ public:
     virtual vector_t getPath(scalar_t time, scalar_t des_yaw) = 0;
 
     virtual bool isEstimateInitialized() = 0;
+
+    virtual EstimatedState getEstimatedState() = 0;
 };
 
 // Factory function for creating the implementation

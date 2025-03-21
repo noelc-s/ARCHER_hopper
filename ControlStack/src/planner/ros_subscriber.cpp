@@ -114,7 +114,7 @@ void EstimateSubscriber::Callback(const nav_msgs::msg::Odometry::SharedPtr msg) 
 EstimateSubscriber::EstimateSubscriber() : Node("estimate_subscriber")
 {
     subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "rs_t265/odom", 200,
+        "rs_t265/odom", 1,
         std::bind(&EstimateSubscriber::Callback, this, std::placeholders::_1));
 
     RCLCPP_INFO(this->get_logger(), "Subscriber node started, waiting for messages...");

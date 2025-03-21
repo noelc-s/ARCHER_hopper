@@ -53,6 +53,10 @@ public:
         startRosNode(freePolySubscriber_, estimateSubscriber_);
     }
 
+    EstimatedState getEstimatedState() {
+	return estimateSubscriber_->getEstimatedState();
+    }
+
     bool isEstimateInitialized() {
 	return estimateSubscriber_->initialized_;
     }

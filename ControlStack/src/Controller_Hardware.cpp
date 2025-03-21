@@ -131,6 +131,7 @@ int main(int argc, char **argv)
       t_lowlevel = t_loop;
 
       {
+	estimated_state = planner->getEstimatedState();
         // Extract the yaw of the realsense
         scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
         

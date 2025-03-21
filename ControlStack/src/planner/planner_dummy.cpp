@@ -16,6 +16,11 @@ public:
 	    return false;
     }
 
+    estimatedState getEstimatedState() {
+	EstiamtedState est = {};
+	return est;
+    }
+
     vector_t getPath(scalar_t time, scalar_t des_yaw) {
         vector_t empty;
         return empty;
