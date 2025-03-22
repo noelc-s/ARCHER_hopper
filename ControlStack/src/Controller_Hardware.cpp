@@ -70,12 +70,15 @@ int main(int argc, char **argv)
   //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
   vector_t IC, EC;
-  std::shared_ptr<vector_3t> shared_goal_pos = std::make_shared<vector_3t>();
+  std::shared_ptr<vector_3t> shared_goal_pose = std::make_shared<vector_3t>();
+  std::shared_ptr<vector_3t> shared_initial_pose = std::make_shared<vector_3t>();
+  (*shared_goal_pose).setZero();
+  (*shared_initial_pose).setZero();
   bool planner_initialized = false;
   scalar_t time = 0;
   IC.resize(4); IC.setZero();
   EC.resize(4); EC.setZero();
-  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pos);
+  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose);
   std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
   // Thread for updating reduced order model
@@ -110,6 +113,8 @@ int main(int argc, char **argv)
   t_lowlevel = tstart;
   t_policy = tstart;
 
+  matrix_2t initial_rot;
+  scalar_t initial_yaw;
   vector_3t global_vel;
   vector_3t body_vel;
   vector_3t body_omega;
@@ -132,7 +137,7 @@ int main(int argc, char **argv)
       t_lowlevel = t_loop;
 
       {
-	estimated_state = planner->getEstimatedState();
+	      estimated_state = planner->getEstimatedState();
         // Extract the yaw of the realsense
         scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
 
@@ -148,6 +153,7 @@ int main(int argc, char **argv)
         std::lock_guard<std::mutex> lck(state_mtx);
         body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
         if (!init) {
+          // Initialize velocity filter
           filt_vel << estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot;
           filt_omega = body_omega;
           init = true;
@@ -206,14 +212,7 @@ int main(int argc, char **argv)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
-        matrix_2t initial_rot;
-        initial_rot << cos(-estimated_state.initial_yaw),sin(-estimated_state.initial_yaw),
-              -sin(-estimated_state.initial_yaw),cos(-estimated_state.initial_yaw);
-        // std::cout << desired_command.rows()  << "< " << desired_command.cols() << std::endl;
-        // desired_command.block(0,0,1,2) << initial_rot * desired_command.block(0,0,1,2).transpose();
-        // desired_command.block(0,2,1,2) << initial_rot * desired_command.block(0,2,1,2).transpose();
-        desired_command.block(0,0,2,1) << initial_rot * desired_command.block(0,0,2,1);
-        desired_command.block(2,0,2,1) << initial_rot * desired_command.block(2,0,2,1);
+        
         if (planner_initialized) {
           vector_t path_command;
           path_command = planner->getPath(time, desired_command(4));
@@ -221,7 +220,8 @@ int main(int argc, char **argv)
         } else {
           quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
         }
-        *shared_goal_pos <<  desired_command(0), desired_command(1), extract_yaw(quat_des) + estimated_state.initial_yaw;
+        *shared_goal_pose <<  desired_command(0), desired_command(1), extract_yaw(quat_des) + initial_yaw;
+
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
         quat_des = plus(quat_des, rollPitch);

@@ -40,7 +40,7 @@ class FreePolytopeSubscriber : public rclcpp::Node
 class EstimateSubscriber : public rclcpp::Node
 {
   public:
-    EstimateSubscriber();
+    EstimateSubscriber(std::shared_ptr<vector_3t> initial_pose);
     EstimatedState getEstimatedState();
     bool initialized_ = false;
     tf2::Quaternion Rc2h;
@@ -51,6 +51,8 @@ class EstimateSubscriber : public rclcpp::Node
     EstimatedState estimated_state_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
+    std::shared_ptr<vector_3t> initial_pose_;
+    matrix_2t initial_rot_;
 
     // vector_3t realsense_pos{0,0,0};
     vector_3t realsense_vel{0,0,0};
@@ -67,15 +69,17 @@ class EstimateSubscriber : public rclcpp::Node
 
 class GoalPublisher : public rclcpp::Node {
 public:
-    GoalPublisher(std::shared_ptr<vector_3t> goal_pos);
+    GoalPublisher(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose);
     vector_t graph_sol_;
     void setGraphSol(vector_t graph_sol);
 
 private:
-    std::shared_ptr<vector_3t> goal_pos_;
+    std::shared_ptr<vector_3t> goal_pose_;
+    std::shared_ptr<vector_3t> initial_pose_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goalPublisher_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pathPublisher_;
     rclcpp::TimerBase::SharedPtr timer_;
+    matrix_2t initial_rot_;
 
     void send_goal();
 };
