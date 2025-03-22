@@ -25,7 +25,7 @@ Planner:
   use_zed: false
   use_random_grid: false
   num_points: 500
-  max_graph_sol_length: 900
-  max_num_obstacles: 900
+  max_graph_sol_length: 400
+  max_num_obstacles: 90
   # use_random_grid: true
   # num_points: 4000

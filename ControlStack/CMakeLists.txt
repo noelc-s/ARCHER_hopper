@@ -56,7 +56,11 @@ if (PATHPLANNING)
     find_package(tf2 REQUIRED)
     find_package(tf2_ros REQUIRED)
     find_package(tf2_geometry_msgs REQUIRED)
-    include_directories(${rclcpp_INCLUDE_DIRS} ${std_msgs_INCLUDE_DIRS} ${nav_msgs_INCLUDE_DIRS} ${tf2_INCLUDE_DIRS} ${tf2_ros_INCLUDE_DIRS} ${tf2_geometry_msgs_INCLUDE_DIRS})
+    find_package(visualization_msgs REQUIRED)
+    include_directories(${rclcpp_INCLUDE_DIRS} ${std_msgs_INCLUDE_DIRS} 
+                        ${nav_msgs_INCLUDE_DIRS} ${tf2_INCLUDE_DIRS}
+                        ${tf2_ros_INCLUDE_DIRS} ${tf2_geometry_msgs_INCLUDE_DIRS}
+                        ${visualization_msgs_INCLUDE_DIRS})
     find_package(local_mapper_interfaces REQUIRED)
 
     include(FetchContent)
@@ -68,7 +72,10 @@ if (PATHPLANNING)
 
     add_library(PLANNER SHARED src/planner/planner_wrapper.cpp src/planner/ros_subscriber.cpp)
     target_link_libraries(PLANNER graph)
-    target_link_libraries(PLANNER ${rclcpp_LIBRARIES} ${std_msgs_LIBRARIES} ${nav_msgs_LIBRARIES} ${tf2_LIBRARIES} ${tf2_ros_LIBRARIES} ${tf2_geometry_msgs_LIBRARIES})
+    target_link_libraries(PLANNER ${rclcpp_LIBRARIES} ${std_msgs_LIBRARIES} 
+                                    ${nav_msgs_LIBRARIES} ${tf2_LIBRARIES} 
+                                    ${tf2_ros_LIBRARIES} ${tf2_geometry_msgs_LIBRARIES}
+                                    ${visualization_msgs_LIBRARIES})
     ament_target_dependencies(PLANNER local_mapper_interfaces)
 else()
     add_library(PLANNER SHARED src/planner/planner_dummy.cpp)

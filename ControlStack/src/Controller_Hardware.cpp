@@ -206,6 +206,14 @@ int main(int argc, char **argv)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
+        matrix_2t initial_rot;
+        initial_rot << cos(-estimated_state.initial_yaw),sin(-estimated_state.initial_yaw),
+              -sin(-estimated_state.initial_yaw),cos(-estimated_state.initial_yaw);
+        // std::cout << desired_command.rows()  << "< " << desired_command.cols() << std::endl;
+        // desired_command.block(0,0,1,2) << initial_rot * desired_command.block(0,0,1,2).transpose();
+        // desired_command.block(0,2,1,2) << initial_rot * desired_command.block(0,2,1,2).transpose();
+        desired_command.block(0,0,2,1) << initial_rot * desired_command.block(0,0,2,1);
+        desired_command.block(2,0,2,1) << initial_rot * desired_command.block(2,0,2,1);
         if (planner_initialized) {
           vector_t path_command;
           path_command = planner->getPath(time, desired_command(4));
@@ -214,11 +222,6 @@ int main(int argc, char **argv)
           quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
         }
         *shared_goal_pos <<  desired_command(0), desired_command(1), extract_yaw(quat_des) + estimated_state.initial_yaw;
-        matrix_2t initial_rot;
-        initial_rot << cos(-estimated_state.initial_yaw),sin(-estimated_state.initial_yaw),
-                      -sin(-estimated_state.initial_yaw),cos(-estimated_state.initial_yaw);
-        std::cout << estimated_state.initial_yaw << std::endl;
-        (*shared_goal_pos).segment(0,2) << initial_rot * (*shared_goal_pos).segment(0,2);
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
         quat_des = plus(quat_des, rollPitch);

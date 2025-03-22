@@ -27,6 +27,7 @@ public:
 
     vector_t planned_command_;
     scalar_t t_planner_last_ = 0;
+    vector_t graph_sol;
 
     PlannerWrapper(std::shared_ptr<vector_3t> goal_pos)
     {
@@ -160,7 +161,6 @@ public:
         std::condition_variable cv2;
         std::mutex m2;
 
-        vector_t graph_sol;
         int max_graph_sol_length = planner->params_.max_graph_sol_length;
         graph_sol.resize(4 * max_graph_sol_length);
 
@@ -223,6 +223,8 @@ public:
             }
             planner_initialized = true;
             t_planner_last_ = time;
+
+            goalPublisher_->setGraphSol(graph_sol);
         }
     }
 };

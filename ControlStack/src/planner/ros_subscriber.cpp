@@ -290,7 +290,8 @@ EstimateSubscriber::EstimateSubscriber() : Node("estimate_subscriber"), tf_buffe
 
 
 GoalPublisher::GoalPublisher(std::shared_ptr<vector_3t> goal_pos) : Node("goal_publisher"), goal_pos_(goal_pos) {
-    publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/goal_pose", 10);
+    goalPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/goal_pose", 10);
+    pathPublisher_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_solve", 10);
     timer_ = this->create_wall_timer(
         std::chrono::milliseconds(100),
         std::bind(&GoalPublisher::send_goal, this)
@@ -309,6 +310,45 @@ void GoalPublisher::send_goal() {
     goal.pose.orientation.z = quat.z();
     goal.pose.orientation.w = quat.w();
 
-    publisher_->publish(goal);
+
+    goalPublisher_->publish(goal);
     // RCLCPP_INFO(this->get_logger(), "Goal sent: [%.2f, %.2f]", goal.pose.position.x, goal.pose.position.y);
+
+    // Create the marker message
+    auto marker = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "odom";  // Adjust frame as needed
+    marker.header.stamp = this->get_clock()->now();
+    marker.ns = "graph_solve";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+
+    // Set marker properties
+    marker.scale.x = 0.05;  // Point size
+    // marker.scale.y = 0.05;
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+
+    // Convert Eigen vector to marker points'
+    for (int i  = 0; i < graph_sol_.size()/4; i++) {
+        if (i > 0 && graph_sol_(i*4) == 0 && graph_sol_(i*4 + 1) == 0 && 
+                    graph_sol_(i*4 + 2) == 0 && graph_sol_(i*4 + 3) == 0) {
+            break;
+        }
+        geometry_msgs::msg::Point ros_point;
+        ros_point.x = graph_sol_(i*4);
+        ros_point.y = graph_sol_(i*4+1);
+        marker.points.push_back(ros_point);
+    }
+
+    // Publish the marker
+    pathPublisher_->publish(marker);
+    // RCLCPP_INFO(this->get_logger(), "Published marker with %ld points", marker.points.size());
+
+}
+
+void GoalPublisher::setGraphSol(vector_t graph_sol) {
+    graph_sol_ = graph_sol;
 }

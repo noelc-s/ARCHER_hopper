@@ -13,6 +13,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
@@ -67,10 +68,13 @@ class EstimateSubscriber : public rclcpp::Node
 class GoalPublisher : public rclcpp::Node {
 public:
     GoalPublisher(std::shared_ptr<vector_3t> goal_pos);
+    vector_t graph_sol_;
+    void setGraphSol(vector_t graph_sol);
 
 private:
     std::shared_ptr<vector_3t> goal_pos_;
-    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goalPublisher_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pathPublisher_;
     rclcpp::TimerBase::SharedPtr timer_;
 
     void send_goal();
