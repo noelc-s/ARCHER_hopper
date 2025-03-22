@@ -97,7 +97,7 @@ RL:
   model_name: ..
   horizon: 1
   dt_replan: 0.02
-  v_max: 0.15
+  v_max: 0.5
   a_max: 1.0
 
 filter_v_alpha: 0.95

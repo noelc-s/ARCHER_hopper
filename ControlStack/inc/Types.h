@@ -74,6 +74,8 @@ using row_vector_t = Eigen::Matrix<scalar_t, 1, Eigen::Dynamic>;
 using matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, Eigen::Dynamic>;
 /** Static-size Matrix type. */
 using matrix_3t = Eigen::Matrix<scalar_t, 3, 3>;
+/** Static-size Matrix type. */
+using matrix_2t = Eigen::Matrix<scalar_t, 2, 2>;
 /** Dynamic matrix's trajectory type. */
 using matrix_array_t = std::vector<matrix_t>;
 /** Array of dynamic matrix's trajectory type. */

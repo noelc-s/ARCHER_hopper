@@ -70,11 +70,12 @@ int main(int argc, char **argv)
   //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
 
   vector_t IC, EC;
+  std::shared_ptr<vector_3t> shared_goal_pos = std::make_shared<vector_3t>();
   bool planner_initialized = false;
   scalar_t time = 0;
   IC.resize(4); IC.setZero();
   EC.resize(4); EC.setZero();
-  std::unique_ptr<PlannerInterface> planner = createPlannerInstance();
+  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pos);
   std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
   // Thread for updating reduced order model
@@ -134,7 +135,7 @@ int main(int argc, char **argv)
 	estimated_state = planner->getEstimatedState();
         // Extract the yaw of the realsense
         scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
-        
+
         // Remove yaw from the vector nav
         quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
 	      vn_yaw = extract_yaw(vector_nav);
@@ -212,6 +213,12 @@ int main(int argc, char **argv)
         } else {
           quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
         }
+        *shared_goal_pos <<  desired_command(0), desired_command(1), extract_yaw(quat_des) + estimated_state.initial_yaw;
+        matrix_2t initial_rot;
+        initial_rot << cos(-estimated_state.initial_yaw),sin(-estimated_state.initial_yaw),
+                      -sin(-estimated_state.initial_yaw),cos(-estimated_state.initial_yaw);
+        std::cout << estimated_state.initial_yaw << std::endl;
+        (*shared_goal_pos).segment(0,2) << initial_rot * (*shared_goal_pos).segment(0,2);
         // Add roll pitch offset to body frame
         quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
         quat_des = plus(quat_des, rollPitch);
@@ -262,9 +269,10 @@ int main(int argc, char **argv)
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
         // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
 
-        std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(0) - desired_command(0) << " ";
-        std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(1) - desired_command(1) << std::endl;
-	      // std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
+        // std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(0) - desired_command(0) << " ";
+        // std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(1) - desired_command(1) << std::endl;
+	      
+        // std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
 
         fileHandle << state[0] 
                    << "," << hopper->state_.contact

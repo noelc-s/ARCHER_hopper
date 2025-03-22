@@ -69,7 +69,8 @@ int main(int argc, char **argv)
     IC.setZero();
     EC.resize(4);
     EC.setZero();
-    std::unique_ptr<PlannerInterface> planner = createPlannerInstance();
+    std::shared_ptr<vector_3t> goal_pos = std::make_shared<vector_3t>();
+    std::unique_ptr<PlannerInterface> planner = createPlannerInstance(goal_pos);
     std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
     // Thread for updating reduced order model
@@ -137,6 +138,7 @@ int main(int argc, char **argv)
             {
                 quat_des = policy.DesiredQuaternion(hopper->state_, desired_command.col(0));
             }
+            *goal_pos <<  desired_command(0), desired_command(1), extract_yaw(quat_des);
             // Add initial yaw to desired signal
             // quat_des = plus(quat_des, initial_yaw_quat);
             omega_des = policy.DesiredOmega();

@@ -27,7 +27,7 @@ public:
     }
 };
 
-std::unique_ptr<PlannerInterface> createPlannerInstance()
+std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pos)
 {
     return std::make_unique<PlannerDummy>();
 }

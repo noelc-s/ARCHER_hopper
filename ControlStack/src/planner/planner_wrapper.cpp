@@ -18,6 +18,7 @@ public:
     ObstacleCollector O_;
     std::shared_ptr<FreePolytopeSubscriber> freePolySubscriber_;
     std::shared_ptr<EstimateSubscriber> estimateSubscriber_;
+    std::shared_ptr<GoalPublisher> goalPublisher_;
 
     std::deque<double> cutTimingWindow;
     std::deque<double> pathTimingWindow;
@@ -27,7 +28,7 @@ public:
     vector_t planned_command_;
     scalar_t t_planner_last_ = 0;
 
-    PlannerWrapper()
+    PlannerWrapper(std::shared_ptr<vector_3t> goal_pos)
     {
         Params params;
         MPC_Params mpc_params;
@@ -50,7 +51,8 @@ public:
 
         freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>();
         estimateSubscriber_ = std::make_shared<EstimateSubscriber>();
-        startRosNode(freePolySubscriber_, estimateSubscriber_);
+        goalPublisher_ = std::make_shared<GoalPublisher>(goal_pos);
+        startRosNode(freePolySubscriber_, estimateSubscriber_, goalPublisher_);
     }
 
     EstimatedState getEstimatedState() {
@@ -225,7 +227,7 @@ public:
     }
 };
 
-std::unique_ptr<PlannerInterface> createPlannerInstance()
+std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pos)
 {
-    return std::make_unique<PlannerWrapper>();
+    return std::make_unique<PlannerWrapper>(goal_pos);
 }

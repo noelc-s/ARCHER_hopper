@@ -24,4 +24,4 @@ public:
 };
 
 // Factory function for creating the implementation
-std::unique_ptr<PlannerInterface> createPlannerInstance();
+std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pos);

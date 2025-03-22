@@ -178,7 +178,6 @@ rs2_pose predict_pose(rs2_pose & pose, float dt_s)
 void realSenseLoop(scalar_t& yaw, EstimatedState& estimated_state, bool& realsense_connected, bool& reset_pos) {
 
     Eigen::Quaternion<double> q;  
-    Eigen::Matrix<double, 3, 1> v;
     Eigen::Matrix<double, 3, 3> R_RS_to_RS_aligned;
     Eigen::Matrix<double, 3, 3> R_RS_aligned_to_H;
     Eigen::Matrix<double, 3, 3> R_H_to_RS;

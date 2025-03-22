@@ -12,6 +12,7 @@ struct EstimatedState
   scalar_t q_w, q_x, q_y, q_z;
   scalar_t cam_q_w, cam_q_x, cam_q_y, cam_q_z;
   scalar_t omega_x, omega_y, omega_z;
+  scalar_t initial_yaw;
 };
 
 // Kalman Filter gain
