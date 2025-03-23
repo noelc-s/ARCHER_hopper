@@ -46,21 +46,11 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
             }
             obs.b(i) = polytope.b[i];
         } 
-        std::cout << obs.v.col(0).transpose().format(CSVFormat) << ","
-                  << obs.v.col(1).transpose().format(CSVFormat) << ","
-                  << obs.A.col(0).transpose().format(CSVFormat) << ","
-                  << obs.A.col(1).transpose().format(CSVFormat) << ","
-                  << obs.b.transpose().format(CSVFormat) << ",";
         obs.v = obs.v * initial_rot;
         obs.v.col(0).array() -= (*initial_pose_)(0);
         obs.v.col(1).array() -= (*initial_pose_)(1);
         obs.A.block(0,0,num_pts,2) = obs.A.block(0,0,num_pts,2) * initial_rot;
         obs.b -= obs.A.block(0,0,num_pts,2)*((*initial_pose_).segment(0,2));
-        std::cout << obs.v.col(0).transpose().format(CSVFormat) << ","
-                  << obs.v.col(1).transpose().format(CSVFormat) << ","
-                  << obs.A.col(0).transpose().format(CSVFormat) << ","
-                  << obs.A.col(1).transpose().format(CSVFormat) << ","
-                  << obs.b.transpose().format(CSVFormat) << std::endl;
 
         // std::cout << obs.v << std::endl << std::endl;
 
@@ -309,8 +299,8 @@ void GoalPublisher::send_goal() {
 
     // Convert Eigen vector to marker points'
     for (int i  = 0; i < graph_sol_.size()/4; i++) {
-        if (i > 0 && graph_sol_(i*4) == 0 && graph_sol_(i*4 + 1) == 0 && 
-                    graph_sol_(i*4 + 2) == 0 && graph_sol_(i*4 + 3) == 0) {
+        if (i > 0 && graph_sol_(i*4) == graph_sol_((i-1)*4) && graph_sol_(i*4 + 1) == graph_sol_((i-1)*4+1) && 
+                    graph_sol_(i*4 + 2) == graph_sol_((i-1)*4+2) && graph_sol_(i*4 + 3) == graph_sol_((i-1)*4+3)) {
             break;
         }
         geometry_msgs::msg::Point ros_point;
