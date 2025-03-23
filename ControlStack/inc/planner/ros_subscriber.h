@@ -25,8 +25,9 @@
 class FreePolytopeSubscriber : public rclcpp::Node
 {
     public:
-        FreePolytopeSubscriber();
+        FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose);
         ObstacleCollector getFreePolytopePositions();
+        std::shared_ptr<vector_3t> initial_pose_;
 
     private:
         rclcpp::Subscription<local_mapper_interfaces::msg::PolytopeArray>::SharedPtr subscription_;

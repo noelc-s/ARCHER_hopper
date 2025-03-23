@@ -1,6 +1,6 @@
 #include "../../inc/planner/ros_subscriber.h"
 
-FreePolytopeSubscriber::FreePolytopeSubscriber() : Node("free_polytopes_subscriber")
+FreePolytopeSubscriber::FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose) : Node("free_polytopes_subscriber"), initial_pose_(initial_pose)
 {
     subscription_ = this->create_subscription<local_mapper_interfaces::msg::PolytopeArray>(
         "free_polytopes", 1,
@@ -19,6 +19,10 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
 {
     std::lock_guard<std::mutex> lock(free_polytope_mutex_);
     O_.obstacles.clear();
+
+    matrix_2t initial_rot;
+    initial_rot << cos((*initial_pose_)(2)), -sin((*initial_pose_)(2)),
+                    sin((*initial_pose_)(2)), cos((*initial_pose_)(2));
 
     Obstacle obs;
     obs.center.resize(2);
@@ -41,7 +45,22 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
                 obs.A(i, j) = polytope.normals[i * 2 + j];
             }
             obs.b(i) = polytope.b[i];
-        }
+        } 
+        std::cout << obs.v.col(0).transpose().format(CSVFormat) << ","
+                  << obs.v.col(1).transpose().format(CSVFormat) << ","
+                  << obs.A.col(0).transpose().format(CSVFormat) << ","
+                  << obs.A.col(1).transpose().format(CSVFormat) << ","
+                  << obs.b.transpose().format(CSVFormat) << ",";
+        obs.v = obs.v * initial_rot;
+        obs.v.col(0).array() -= (*initial_pose_)(0);
+        obs.v.col(1).array() -= (*initial_pose_)(1);
+        obs.A.block(0,0,num_pts,2) = obs.A.block(0,0,num_pts,2) * initial_rot;
+        obs.b -= obs.A.block(0,0,num_pts,2)*((*initial_pose_).segment(0,2));
+        std::cout << obs.v.col(0).transpose().format(CSVFormat) << ","
+                  << obs.v.col(1).transpose().format(CSVFormat) << ","
+                  << obs.A.col(0).transpose().format(CSVFormat) << ","
+                  << obs.A.col(1).transpose().format(CSVFormat) << ","
+                  << obs.b.transpose().format(CSVFormat) << std::endl;
 
         // std::cout << obs.v << std::endl << std::endl;
 

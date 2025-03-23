@@ -51,7 +51,7 @@ public:
         char** argv;
         rclcpp::init(argc, argv);  // Ensure ROS 2 is initialized
 
-        freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>();
+        freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>(initial_pose);
         estimateSubscriber_ = std::make_shared<EstimateSubscriber>(initial_pose);
         goalPublisher_ = std::make_shared<GoalPublisher>(goal_pose, initial_pose);
         startRosNode(freePolySubscriber_, estimateSubscriber_, goalPublisher_);
