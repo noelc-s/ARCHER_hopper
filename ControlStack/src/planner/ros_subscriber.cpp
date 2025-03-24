@@ -24,13 +24,12 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
     initial_rot << cos((*initial_pose_)(2)), -sin((*initial_pose_)(2)),
                     sin((*initial_pose_)(2)), cos((*initial_pose_)(2));
 
-    Obstacle obs;
-    obs.center.resize(2);
-    obs.center.setZero();
-    obs.occType = FREE;
-
     for (auto &polytope : msg->polytopes)
     {
+        Obstacle obs;
+        obs.center.resize(2);
+        obs.center.setZero();
+        obs.occType = FREE;
         int num_pts = polytope.vertices.size() / 2;
         obs.v.resize(num_pts, 2);
         obs.A.resize(num_pts, 4);

@@ -21,7 +21,7 @@ Planner:
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy
-  log_edges: true
+  log_edges: false
   use_zed: false
   use_random_grid: false
   num_points: 500

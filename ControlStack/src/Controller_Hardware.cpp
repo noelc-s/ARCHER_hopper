@@ -79,6 +79,11 @@ int main(int argc, char **argv)
   IC.resize(4); IC.setZero();
   EC.resize(4); EC.setZero();
   std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose);
+  
+  while (!planner->isEstimateInitialized()) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
+  std::cout << "Recieving T265 messages" << std::endl;
+  sleep(1);
+
   std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
   // Thread for updating reduced order model
@@ -123,10 +128,6 @@ int main(int argc, char **argv)
   scalar_t vn_yaw;
   vn_yaw = 0;
   global_vel.setZero();
-
-  while (!planner->isEstimateInitialized()) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
-  std::cout << "Recieving T265 messages" << std::endl;
-  sleep(1);
 
 
   while (1)

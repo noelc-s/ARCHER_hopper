@@ -165,15 +165,14 @@ public:
         int max_graph_sol_length = planner->params_.max_graph_sol_length;
         graph_sol.resize(4 * max_graph_sol_length);
 
-        // update obstacles from ros topic
-        O_ = freePolySubscriber_->getFreePolytopePositions();
-
         // std::thread cutGraph(static_cast<void (PathPlanner::*)(ObstacleCollector&, std::ofstream&, double&, std::condition_variable&, std::mutex&)>(&PathPlanner::cutGraphLoop),
         //             planner.get(), std::ref(O), std::ref(output_file), std::ref(plannerTiming.cut), std::ref(cv2), std::ref(m2));
         // sleep(1);
 
         while (running)
         {
+            // update obstacles from ros topic
+            O_ = freePolySubscriber_->getFreePolytopePositions();
             timer.start();
             if (planner->params_.log_edges)
             {
