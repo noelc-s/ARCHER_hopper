@@ -29,8 +29,13 @@ public:
     scalar_t t_planner_last_ = 0;
     vector_t graph_sol;
 
+    scalar_t getGraphDisc() {
+        return (planner->params_.x_bounds[1] - planner->params_.x_bounds[0]) / ((int) (sqrt(planner->params_.num_points)));
+    }
+
     PlannerWrapper(std::shared_ptr<vector_3t> goal_pose, 
-                   std::shared_ptr<vector_3t> initial_pose)
+                   std::shared_ptr<vector_3t> initial_pose,
+                   std::shared_ptr<vector_2t> graph_center)
     {
         Params params;
         MPC_Params mpc_params;
@@ -51,9 +56,9 @@ public:
         char** argv;
         rclcpp::init(argc, argv);  // Ensure ROS 2 is initialized
 
-        freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>(initial_pose);
+        freePolySubscriber_ = std::make_shared<FreePolytopeSubscriber>(initial_pose, graph_center);
         estimateSubscriber_ = std::make_shared<EstimateSubscriber>(initial_pose);
-        goalPublisher_ = std::make_shared<GoalPublisher>(goal_pose, initial_pose);
+        goalPublisher_ = std::make_shared<GoalPublisher>(goal_pose, initial_pose, graph_center);
         startRosNode(freePolySubscriber_, estimateSubscriber_, goalPublisher_);
     }
 
@@ -229,7 +234,7 @@ public:
     }
 };
 
-std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose)
+std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose, std::shared_ptr<vector_2t> graph_center)
 {
-    return std::make_unique<PlannerWrapper>(goal_pose, initial_pose);
+    return std::make_unique<PlannerWrapper>(goal_pose, initial_pose, graph_center);
 }

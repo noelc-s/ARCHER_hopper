@@ -71,9 +71,11 @@ int main(int argc, char **argv)
     EC.setZero();
     std::shared_ptr<vector_3t> shared_goal_pose = std::make_shared<vector_3t>();
     std::shared_ptr<vector_3t> shared_initial_pose = std::make_shared<vector_3t>();
-  (*shared_goal_pose).setZero();
-  (*shared_initial_pose).setZero();
-    std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose);
+    std::shared_ptr<vector_2t> shared_graph_center = std::make_shared<vector_2t>();
+    (*shared_goal_pose).setZero();
+    (*shared_initial_pose).setZero();
+    (*shared_graph_center).setZero();
+    std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose, shared_graph_center);
     std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
     // Thread for updating reduced order model

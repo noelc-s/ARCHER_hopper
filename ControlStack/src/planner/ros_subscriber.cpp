@@ -1,6 +1,10 @@
 #include "../../inc/planner/ros_subscriber.h"
 
-FreePolytopeSubscriber::FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose) : Node("free_polytopes_subscriber"), initial_pose_(initial_pose)
+FreePolytopeSubscriber::FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose,
+                                               std::shared_ptr<vector_2t> graph_center):
+                                               Node("free_polytopes_subscriber"),
+                                               initial_pose_(initial_pose),
+                                               graph_center_(graph_center)
 {
     subscription_ = this->create_subscription<local_mapper_interfaces::msg::PolytopeArray>(
         "free_polytopes", 1,
@@ -49,7 +53,7 @@ void FreePolytopeSubscriber::freePolytopeCallback(const local_mapper_interfaces:
         obs.v.col(0).array() -= (*initial_pose_)(0);
         obs.v.col(1).array() -= (*initial_pose_)(1);
         obs.A.block(0,0,num_pts,2) = obs.A.block(0,0,num_pts,2) * initial_rot;
-        obs.b -= obs.A.block(0,0,num_pts,2)*((*initial_pose_).segment(0,2));
+        obs.b -= obs.A.block(0,0,num_pts,2)*((*initial_pose_).segment(0,2) + *graph_center_);
 
         // std::cout << obs.v << std::endl << std::endl;
 
@@ -248,8 +252,8 @@ EstimateSubscriber::EstimateSubscriber(std::shared_ptr<vector_3t> initial_pose):
 
 
 
-GoalPublisher::GoalPublisher(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose) :
-                             Node("goal_publisher"), goal_pose_(goal_pose), initial_pose_(initial_pose) {
+GoalPublisher::GoalPublisher(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose, std::shared_ptr<vector_2t> graph_center) :
+                             Node("goal_publisher"), goal_pose_(goal_pose), initial_pose_(initial_pose), graph_center_(graph_center) {
     goalPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("/goal_pose", 10);
     pathPublisher_ = this->create_publisher<visualization_msgs::msg::Marker>("/graph_solve", 10);
     timer_ = this->create_wall_timer(
@@ -304,7 +308,7 @@ void GoalPublisher::send_goal() {
         }
         geometry_msgs::msg::Point ros_point;
         vector_2t point = graph_sol_.segment(i*4, 2);
-        point << initial_rot_ * (point + (*initial_pose_).segment(0, 2));
+        point << initial_rot_ * (point + (*initial_pose_).segment(0, 2) + *graph_center_);
         ros_point.x = point(0);
         ros_point.y = point(1);
         marker.points.push_back(ros_point);

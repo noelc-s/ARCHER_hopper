@@ -21,8 +21,11 @@ public:
     virtual bool isEstimateInitialized() = 0;
 
     virtual EstimatedState getEstimatedState() = 0;
+
+    virtual scalar_t getGraphDisc() = 0;
 };
 
 // Factory function for creating the implementation
 std::unique_ptr<PlannerInterface> createPlannerInstance(std::shared_ptr<vector_3t> goal_pose, 
-                                                        std::shared_ptr<vector_3t> initial_pose);
+                                                        std::shared_ptr<vector_3t> initial_pose,
+                                                        std::shared_ptr<vector_2t> graph_center);

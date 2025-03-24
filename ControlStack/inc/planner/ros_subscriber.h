@@ -25,9 +25,10 @@
 class FreePolytopeSubscriber : public rclcpp::Node
 {
     public:
-        FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose);
+        FreePolytopeSubscriber(std::shared_ptr<vector_3t> initial_pose, std::shared_ptr<vector_2t> graph_center);
         ObstacleCollector getFreePolytopePositions();
         std::shared_ptr<vector_3t> initial_pose_;
+        std::shared_ptr<vector_2t> graph_center_;
 
     private:
         rclcpp::Subscription<local_mapper_interfaces::msg::PolytopeArray>::SharedPtr subscription_;
@@ -70,13 +71,14 @@ class EstimateSubscriber : public rclcpp::Node
 
 class GoalPublisher : public rclcpp::Node {
 public:
-    GoalPublisher(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose);
+    GoalPublisher(std::shared_ptr<vector_3t> goal_pose, std::shared_ptr<vector_3t> initial_pose, std::shared_ptr<vector_2t> graph_center);
     vector_t graph_sol_;
     void setGraphSol(vector_t graph_sol);
 
 private:
     std::shared_ptr<vector_3t> goal_pose_;
     std::shared_ptr<vector_3t> initial_pose_;
+    std::shared_ptr<vector_2t> graph_center_;
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr goalPublisher_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pathPublisher_;
     rclcpp::TimerBase::SharedPtr timer_;

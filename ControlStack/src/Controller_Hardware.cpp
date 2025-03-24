@@ -72,13 +72,18 @@ int main(int argc, char **argv)
   vector_t IC, EC;
   std::shared_ptr<vector_3t> shared_goal_pose = std::make_shared<vector_3t>();
   std::shared_ptr<vector_3t> shared_initial_pose = std::make_shared<vector_3t>();
+  std::shared_ptr<vector_2t> shared_graph_center = std::make_shared<vector_2t>();
+  scalar_t graph_move_thresh = 0.25;
   (*shared_goal_pose).setZero();
   (*shared_initial_pose).setZero();
+  (*shared_graph_center).setZero();
+
   bool planner_initialized = false;
   scalar_t time = 0;
   IC.resize(4); IC.setZero();
   EC.resize(4); EC.setZero();
-  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose);
+  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose, shared_graph_center);
+  scalar_t graph_disc = planner->getGraphDisc();
   
   while (!planner->isEstimateInitialized()) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
   std::cout << "Recieving T265 messages" << std::endl;
@@ -191,8 +196,15 @@ int main(int argc, char **argv)
       hopper->updateState(state);
       contact = hopper->state_.contact;
 
-      IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
-      EC << desired_command(0), desired_command(1), 0, 0;
+      // update the graph_center if move exceeds threshold
+      vector_2t graph_center_error = hopper->state_.pos.segment(0, 2) - (*shared_graph_center);
+      if (graph_center_error.norm() > graph_move_thresh) {
+        (*shared_graph_center)(0) += ((int)(graph_center_error(0) / graph_disc)) * graph_disc;
+        (*shared_graph_center)(1) += ((int)(graph_center_error(1) / graph_disc)) * graph_disc;
+      }
+      IC << hopper->state_.pos(0) - (*shared_graph_center)(0), hopper->state_.pos(1) - (*shared_graph_center)(1),
+            hopper->state_.vel(0), hopper->state_.vel(1);
+      EC << desired_command(0) - (*shared_graph_center)(0), desired_command(1) - (*shared_graph_center)(1), 0, 0;
 
       // quat_t IMU_quat = hopper->state_.quat;
 
