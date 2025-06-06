@@ -1,6 +1,7 @@
 clear; clc;
 
-d = readtable('../data/data_hardware.csv');
+% d = readtable('../data/data_hardware.csv');
+d = readtable('../data/data_orin.csv');
 
 %%
 figure(1)

@@ -1,10 +1,12 @@
 clear;
 
-d = readtable('../data/data.csv');
+d = readtable('../data/data_hardware.csv');
 
 %% Positions
-q = [d.q_w d.q_x d.q_y d.q_z];
+q = [d.qw d.qx d.qy d.qz];
+camq = [d.camqw d.camqx d.camqy d.camqz];
 yaw = quat2yaw(q);
+camyaw = quat2yaw(camq);
 
 figure(1)
 clf;

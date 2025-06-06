@@ -11,22 +11,22 @@ MPC:
   path_length_cost: [10, 10, 100, 100]
   terminalScaling: [1, 1, 1, 1]
   inputScaling: [.1, .1]
-  tau_max: 5
-  vel_max: 0.2
+  tau_max: 3
+  vel_max: 0.1
 
 Planner:
   bez_dt: 0.5
   buffer: 0.0
-  x_bounds: [-1, 1, -1, 1] # min_x, max_x, min_y, max_y
-  # x_bounds: [-4, 4, -4, 4] # min_x, max_x, min_y, max_y
+  # x_bounds: [-1, 1, -1, 1] # min_x, max_x, min_y, max_y
+  x_bounds: [-2, 2, -2, 2] # min_x, max_x, min_y, max_y
   # bez_dt: 0.5
   # x_bounds: [-2.5, 2.5, -1.5, 1.5] # min_x, max_x, min_y, max_y
   dx_bounds: [0, 0, 0, 0] # min_dx, max_dx, min_dy, max_dy
-  log_edges: false
+  log_edges: true
   use_zed: false
   use_random_grid: false
-  num_points: 500
-  # num_points: 8000
+  # num_points: 500
+  num_points: 8000
   max_graph_sol_length: 400
   max_num_obstacles: 90
   # use_random_grid: true
