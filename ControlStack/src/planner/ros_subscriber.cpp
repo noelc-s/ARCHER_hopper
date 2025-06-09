@@ -211,26 +211,26 @@ EstimateSubscriber::EstimateSubscriber(std::shared_ptr<vector_3t> initial_pose):
 
 
     // Lookup the transform from camera frame to body frame
-    while (!tf_buffer_.canTransform("t265_frame", "hopper", rclcpp::Time(0), rclcpp::Duration::from_seconds(1.0))) {
-	    std::cout <<  "Transform from t265_frame to hopper not available yet." << std::endl;
-        sleep(0.001);
-    }
-    geometry_msgs::msg::TransformStamped cam_to_hopper =
-    tf_buffer_.lookupTransform("t265_frame", "hopper", rclcpp::Time(0));
-    while (!tf_buffer_.canTransform("hopper", "odom", this->get_clock()->now(), rclcpp::Duration::from_seconds(1.0))) {
-	    std::cout <<  "Transform from hopper to odom not available yet." << std::endl;
-        sleep(0.001);
-    }
+    //while (!tf_buffer_.canTransform("t265_frame", "hopper", rclcpp::Time(0), rclcpp::Duration::from_seconds(1.0))) {
+    //        std::cout <<  "Transform from t265_frame to hopper not available yet." << std::endl;
+    //    sleep(0.001);
+    //}
+    //geometry_msgs::msg::TransformStamped cam_to_hopper =
+    //tf_buffer_.lookupTransform("t265_frame", "hopper", rclcpp::Time(0));
+    //while (!tf_buffer_.canTransform("hopper", "odom", this->get_clock()->now(), rclcpp::Duration::from_seconds(1.0))) {
+    //        std::cout <<  "Transform from hopper to odom not available yet." << std::endl;
+    //    sleep(0.001);
+    //}
 
-    Rc2h = tf2::Quaternion(cam_to_hopper.transform.rotation.x,
-                         cam_to_hopper.transform.rotation.y,
-                         cam_to_hopper.transform.rotation.z,
-                         cam_to_hopper.transform.rotation.w);
-    pc2h = tf2::Vector3(cam_to_hopper.transform.translation.x,
-                      cam_to_hopper.transform.translation.y,
-                      cam_to_hopper.transform.translation.z);
-
-
+//    Rc2h = tf2::Quaternion(cam_to_hopper.transform.rotation.x,
+//                         cam_to_hopper.transform.rotation.y,
+//                         cam_to_hopper.transform.rotation.z,
+//                         cam_to_hopper.transform.rotation.w);
+//    pc2h = tf2::Vector3(cam_to_hopper.transform.translation.x,
+//                      cam_to_hopper.transform.translation.y,
+//                      cam_to_hopper.transform.translation.z);
+//
+//
 
 
     // Magic numbers from solidworks macro

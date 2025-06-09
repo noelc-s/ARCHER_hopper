@@ -15,7 +15,7 @@ message("Looking for dependecies in: ${PATH_TO_REPOS}")
 option(HARDWARE "build with hardware support" ON)
 option(MPC "build with MPC controller" OFF)
 option(LEARNING "build with NN controller" OFF)
-option(MUJOCO "build with Mujoco sim/vis" OFF)
+option(MUJOCO "build with Mujoco sim/vis" ON)
 option(PINOCCHIO "build with pinocchio" OFF)
 option(OPTITRACK "build with mocap" OFF)
 option(PATHPLANNING "build with high level path planner" ON)
@@ -61,6 +61,8 @@ if (PATHPLANNING)
                         ${nav_msgs_INCLUDE_DIRS} ${tf2_INCLUDE_DIRS}
                         ${tf2_ros_INCLUDE_DIRS} ${tf2_geometry_msgs_INCLUDE_DIRS}
                         ${visualization_msgs_INCLUDE_DIRS})
+    message(${tf2_INCLUDE_DIRS})
+    message(${tf2_geometry_msgs_INCLUDE_DIRS})
     find_package(local_mapper_interfaces REQUIRED)
 
     include(FetchContent)
@@ -77,6 +79,7 @@ if (PATHPLANNING)
                                     ${nav_msgs_LIBRARIES} ${tf2_LIBRARIES} 
                                     ${tf2_ros_LIBRARIES} ${tf2_geometry_msgs_LIBRARIES}
                                     ${visualization_msgs_LIBRARIES})
+    target_include_directories(PLANNER PUBLIC ${manif_INCLUDE_DIRS})
     ament_target_dependencies(PLANNER local_mapper_interfaces)
 else()
     add_library(PLANNER SHARED src/planner/planner_dummy.cpp)

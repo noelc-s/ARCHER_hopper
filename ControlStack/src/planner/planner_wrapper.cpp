@@ -1,6 +1,8 @@
 #include "../../inc/planner/planner_interface.h"
 #include "../../inc/planner/ros_subscriber.h"
 
+#include <cmath>
+
 class PlannerWrapper : public PlannerInterface
 {
 public:
@@ -145,11 +147,15 @@ public:
 
     vector_t getPath(scalar_t time, scalar_t des_yaw) {
         vector_t x1_x2(8);
-        int index = 1;
+
+        int start_index = 1;
+        scalar_t bez_t = time - t_planner_last_;
+        int index = start_index + floor(bez_t / planner->params_.bez_dt);
+        bez_t = std::fmod(bez_t, planner->params_.bez_dt);
+
         x1_x2 << planned_command_.segment(4 * index,8);
         matrix_t mul = planner->Bez_*x1_x2;
         matrix_t controlPoints = Eigen::Map<matrix_t>(mul.data(),4,4).transpose();
-        scalar_t bez_t = time - t_planner_last_;
 
         vector_t path_command(5);
         path_command << planner->B->b(bez_t, controlPoints).transpose(), des_yaw;

@@ -1,15 +1,17 @@
 clear; clc;
 
-d = readtable('../data/data_hardware_yaw_test3.csv');
-q = [d.qw, d.qx, d.qy, d.qz];
-cam_q = [d.camqw, d.camqx, d.camqy, d.camqz];
-q_des = [d.qwdes, d.qxdes, d.qydes, d.qzdes];
-q = q .* sign(q(:, 1));
-cam_q = cam_q .* sign(cam_q(:, 1));
-q_des = q_des .* sign(q_des(:, 1));
-
-imu_yaw = quat2yaw(q);
-cam_yaw = quat2yaw(cam_q);
+% d = readtable('../data/data_hardware_yaw_test3.csv');
+% q = [d.qw, d.qx, d.qy, d.qz];
+% cam_q = [d.camqw, d.camqx, d.camqy, d.camqz];
+% q_des = [d.qwdes, d.qxdes, d.qydes, d.qzdes];
+% q = q .* sign(q(:, 1));
+% cam_q = cam_q .* sign(cam_q(:, 1));
+% q_des = q_des .* sign(q_des(:, 1));
+% 
+% imu_yaw = quat2yaw(q);
+% cam_yaw = quat2yaw(cam_q);
+% d = readtable('../data/data_hardware.csv');
+d = readtable('../data/data_orin.csv');
 
 %%
 figure(1)
