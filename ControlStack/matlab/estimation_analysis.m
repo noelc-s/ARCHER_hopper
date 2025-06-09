@@ -3,6 +3,10 @@ clear;clc;
 % d_ns = readtable("../data/data_hardware_no_standoff.csv");
 % d_ws = readtable("../data/data_hardware_standoff.csv");
 d = readtable("../data/data_hardware.csv");
+%%
+for i = 1:size(d.t)
+yaw(i) = quat2yaw([d.qw(i), d.qx(i), d.qy(i), d.qz(i)]);
+end
 
 %%
 
@@ -77,6 +81,7 @@ legend('t265', 'optitrack')
 ylabel('Z')
 xlim(t_range)
 
+% <<<<<<< Updated upstream
 
 
 %% Time to filter
@@ -123,6 +128,68 @@ legend('v_y Opti', 'v_y Opti filtered')
 vx_filt = zeros(size(vx));
 vy_filt = zeros(size(vy));
 vz_filt = zeros(size(vz));
+% =======
+% 
+% figure(3)
+% clf;
+% subplot(2,2,1)
+% hold on
+% plot(d.t, d.wx)
+% legend('t265')
+% ylabel('Vx')
+% xlim(t_range)
+% 
+% subplot(2,2,2)
+% hold on
+% plot(d.t, d.wy)
+% legend('t265')
+% ylabel('Vy')
+% xlim(t_range)
+% 
+% subplot(2,2,3)
+% hold on
+% plot(d.t, d.wz)
+% ylabel('Vz')
+% legend('t265')
+% xlim(t_range)
+% 
+% subplot(2,2,4)
+% hold on
+% plot(d.t, d.globalzdot)
+% plot(d.t, d.optitrackzdot)
+% ylabel('Vz')
+% legend('t265', 'optitrack')
+% xlim(t_range)
+% 
+% figure(5)
+% clf;
+% subplot(2,2,1)
+% hold on
+% plot(d.t, d.globalxdot)
+% plot(d.t, o_x_global)
+% legend('t265', 'optitrack')
+% ylabel('Vx')
+% xlim(t_range)
+% 
+% subplot(2,2,2)
+% hold on
+% plot(d.t, d.wy)
+% ylabel('Wy')
+% xlim(t_range)
+% 
+% subplot(2,2,3)
+% hold on
+% plot(d.t, d.globalzdot)
+% plot(d.t, d.optitrackzdot)
+% ylabel('Vz')
+% legend('t265', 'optitrack')
+% xlim(t_range)
+% 
+% subplot(2,2,4)
+% hold on
+% plot(d.t, d.wz)
+% ylabel('Wz')
+% xlim(t_range)
 
 vx_running = vx(1);
 vy_running = vy(1);

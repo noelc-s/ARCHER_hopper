@@ -72,6 +72,7 @@ if (PATHPLANNING)
 
     add_library(PLANNER SHARED src/planner/planner_wrapper.cpp src/planner/ros_subscriber.cpp)
     target_link_libraries(PLANNER graph)
+    target_include_directories(PLANNER PUBLIC ${manif_INCLUDE_DIRS})
     target_link_libraries(PLANNER ${rclcpp_LIBRARIES} ${std_msgs_LIBRARIES} 
                                     ${nav_msgs_LIBRARIES} ${tf2_LIBRARIES} 
                                     ${tf2_ros_LIBRARIES} ${tf2_geometry_msgs_LIBRARIES}
