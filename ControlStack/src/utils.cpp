@@ -122,32 +122,112 @@ quat_t plus(quat_t q_1, quat_t q_2) { return q_1 * q_2; }
 scalar_t extract_yaw(quat_t q) { return atan2(2 * (q.w() * q.z() + q.x() * q.y()), 1 - 2 * (pow(q.y(), 2) + pow(q.z(), 2))); }
 
 
-void print_block(scalar_t cutTiming, scalar_t pathTiming, scalar_t refinementTiming, 
-            scalar_t meancutTiming, scalar_t meanpathTiming, scalar_t meanrefinementTiming, 
-            scalar_t stdcutTiming, scalar_t stdpathTiming, scalar_t stdrefinementTiming, 
-            int numberOfEdges, scalar_t edgeRemoval, bool optimalPath) {
-    // Clear screen using ANSI escape codes
-    printf("\033[2J");  // Clear entire screen
-    printf("\033[H");   // Move cursor to the top left
+matrix_3t cross(vector_3t q)
+{
+    matrix_3t c;
+    c << 0, -q(2), q(1),
+        q(2), 0, -q(0),
+        -q(1), q(0), 0;
+    return c;
+}
 
-    printf("-----------------------------------------------------------------\n");
-    printf("|                         STATISTICS                            |\n");
-    printf("-----------------------------------------------------------------\n");
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Total number of edges: %-36d  |\n", numberOfEdges);
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Percentage of edges removed with heuristic: %-15.4f  |\n", edgeRemoval*100);
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Optimal path found: %-39d  |\n", optimalPath);
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("-----------------------------------------------------------------\n");
-    printf("|                           TIMING                              |\n");
-    printf("-----------------------------------------------------------------\n");
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Cut the graph [ms]: %-10.2f  µ: %-10.2f  σ: %-9.2f  |\n", cutTiming, meancutTiming, stdcutTiming);
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Plan the Path [ms]: %-10.2f  µ: %-10.2f  σ: %-9.2f  |\n", pathTiming, meanpathTiming, stdpathTiming);
-    printf("|  %-59s  |\n", ""); // Empty line for spacing
-    printf("|  Refine with MPC [ms]: %-8.2f  µ: %-10.2f  σ: %-9.2f  |\n", refinementTiming, meanrefinementTiming, stdrefinementTiming);
-    printf("-----------------------------------------------------------------\n");
+matrix_3t quat2Rot(quat_t q)
+{
+    scalar_t qw, qx, qy, qz;
+    matrix_3t Rq;
+    qw = q.w();
+    qx = q.x();
+    qy = q.y();
+    qz = q.z();
+    Rq << pow(qw, 2) + pow(qx, 2) - pow(qy, 2) - pow(qz, 2), 2 * (qx * qy - qw * qz), 2 * (qx * qz + qw * qy),
+        2 * (qx * qy + qw * qz), pow(qw, 2) - pow(qx, 2) + pow(qy, 2) - pow(qz, 2), 2 * (qy * qz - qw * qx),
+        2 * (qx * qz - qw * qy), 2 * (qy * qz + qw * qx), pow(qw, 2) - pow(qx, 2) - pow(qy, 2) + pow(qz, 2);
+    return Rq;
+}
+
+vector_t Log(vector_t x) {
+  vector_t g_frak(20);
+  quat_t quat(x(6), x(3), x(4), x(5));
+  auto quat_ = manif::SO3<scalar_t>(quat);
+  manif::SO3Tangent<scalar_t> xi = quat_.log();
+  g_frak << x.segment(0,3),xi.coeffs(),x.segment(7,4),x.segment(11,10);
+  return g_frak;
+}
+
+vector_t Exp(vector_t xi) {
+  vector_t g(21);
+  manif::SO3Tangent<scalar_t> xi_;
+  xi_ << xi(3),xi(4),xi(5);
+  quat_t quat = xi_.exp().quat();
+  g << xi.segment(0,3), quat.coeffs(), xi.segment(6,14);
+  return g;
+}
+
+vector_t qk_to_xik(vector_t qk, vector_t q0) {
+  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
+  quat_t quatk(qk(6), qk(3), qk(4), qk(5));
+
+  vector_t tmp(21);
+  tmp << qk.segment(0,3), (quat0.inverse()*quatk).coeffs(), qk.segment(7,14);
+  vector_t xik(20);
+  xik = Log(tmp);
+  return xik;
+}
+
+vector_t xik_to_qk(vector_t xik, vector_t q0) {
+  vector_t tmp(21);
+  tmp = Exp(xik);
+  quat_t quat0(q0(6), q0(3), q0(4), q0(5));
+  quat_t quatk(tmp(6), tmp(3), tmp(4), tmp(5));
+  vector_t qk(21);
+  qk << tmp.segment(0,3), (quat0*quatk).coeffs(), tmp.segment(7,14);
+  //qk << tmp.segment(0,3), (quatk).coeffs(), tmp.segment(7,14);
+  return qk;
+}
+
+vector_t global2local(vector_t x_g) {
+	vector_t q(11);
+	vector_t v(10);
+	vector_t q_local(11);
+	vector_t v_local(10);
+	vector_t x_l(21);
+
+	q << x_g.head(11);
+	v << x_g.tail(10);
+        quat_t quat(q(6), q(3), q(4), q(5));
+        auto quat_ = manif::SO3<scalar_t>(quat);
+        matrix_3t Rq = quat2Rot(quat);
+        q_local << quat.inverse()._transformVector(q.segment(0,3)), quat.coeffs(),q.segment(7,4);
+        v_local << quat.inverse()._transformVector(v.segment(0,3)), quat.inverse()._transformVector(v.segment(3,3)),v.segment(6,4);
+	// Both of these below formulations are wrong but are left as posterity
+	// Murray Notes
+	//v_local << quat.inverse()._transformVector(v.segment(0,3)) - quat.inverse()._transformVector(Hopper::cross(q.segment(0,3))*v.segment(3,3)), quat.inverse()._transformVector(v.segment(3,3)),v.segment(6,4);
+	// Hacky right trivialization instead of left, needed to transform the omega instead
+        //v_local << quat.inverse()._transformVector(v.segment(0,3)) + quat.inverse()._transformVector(Hopper::cross(q_local.segment(0,3))*v.segment(3,3)), v.segment(3,7);
+	x_l << q_local, v_local;
+        return x_l;
+}
+
+vector_t local2global(vector_t x_l) {
+	vector_t q(11);
+	vector_t v(10);
+	vector_t q_global(11);
+	vector_t v_global(10);
+	vector_t x_g(21);
+
+	q << x_l.head(11);
+	v << x_l.tail(10);
+	vector_3t w = v.segment(3,3);
+	vector_3t p = q.segment(0,3);
+        quat_t quat(q(6), q(3), q(4), q(5));
+        matrix_3t Rq = quat2Rot(quat);
+        q_global << quat._transformVector(q.segment(0,3)), quat.coeffs(), q.segment(7,4);
+        v_global << quat._transformVector(v.segment(0,3)), quat._transformVector(v.segment(3,3)),v.segment(6,4);
+	// Both of these below formulations are wrong but are left as posterity
+        // Murray notes:
+	//v_global << quat._transformVector(v.segment(0,3)) + Hopper::cross(q_global.segment(0,3))*quat._transformVector(w), quat._transformVector(w),v.segment(6,4);
+	// Hacky right trivialization instead of left, needed to transform the omega instead
+        //v_global << quat._transformVector(v.segment(0,3)) - quat._transformVector(Hopper::cross(p)*w), quat._transformVector(w), v.segment(6,4);
+	x_g << q_global, v_global;
+        return x_g;
 }

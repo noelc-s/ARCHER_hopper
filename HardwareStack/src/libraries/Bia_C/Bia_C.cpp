@@ -225,34 +225,6 @@ namespace Archer
     }
   }
 
-  void Bia_C::findZero(){
-    float xb,vb,xf,vf;
-    float th1 = 0.02;
-    float th2 = 0.01;
-    float u   = 0.0;
-    int i = 0;
-    while(i<1){
-      u = u - 0.001;
-      updateState(1,xb,vb);
-      updateState(2,xf,vf);
-      elmo_.sendTC(u,IDX_BIA);
-      if(xf>th1){
-        i = 1;
-        cBia_.logZero(xb,1);
-      }
-    }
-    while(i<2){
-      u = u + 0.001;
-      updateState(1,xb,vb);
-      updateState(2,xf,vf);
-      elmo_.sendTC(u,IDX_BIA);
-      if(xf<th2){
-        i = 2;
-        cBia_.logZero(xb,2);
-      }
-    }
-  }
-
   void Bia_C::trackPID0(float d0,float &x,float &u0){
     float rb,wb,u;
     updateState(1,rb,wb);

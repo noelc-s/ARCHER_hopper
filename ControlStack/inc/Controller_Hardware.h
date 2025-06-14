@@ -24,12 +24,11 @@
 // #include "../inc/MPC.h"
 #include "../inc/utils.h"
 #include "../inc/UserInput.h"
-#include "../src/utils_hardware.cpp"
+#include "../inc/utils_hardware.h"
 #include "../inc/rom.h"
 
-#include "../inc/Planner.h"
-
-#include "../inc/ros_subscriber.hpp"
+#include "../inc/optitrack/ot_interface.h"
+#include "../inc/planner/planner_interface.h"
 
 using namespace Eigen;
 using namespace Hopper_t;
@@ -81,6 +80,8 @@ quat_t e;
 manif::SO3Tangent<scalar_t> xi;
 
 scalar_t reset;
+
+scalar_t yaw;
 
 
 

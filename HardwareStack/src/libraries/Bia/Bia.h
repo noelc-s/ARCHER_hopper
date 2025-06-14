@@ -33,7 +33,6 @@ namespace Archer
       int32_t initComm(int MC);
       void initSD();
       void initBia1(int MC);
-      void initBia2();
       void setLEDs(String val);
       void flashR(int Rep);
       void flashA1(int Rep);
@@ -48,7 +47,6 @@ namespace Archer
       void STO(int val);              // status of 0 = Off, 1 = On
       void resetState(int encID);     // gets new values for the 'prev' T/C
       void updateState(int encID, float &x, float &v);  // gets new values for all T/C states
-      void findZero();
       void trackPID0(float d0,float &x,float &u0);
       void trackU0(float d0,float u0,float &xf,float &vf,float &u);
       void testPID0(float d0,float &x,float &u0,float &up,float &ud,float &ui);
@@ -57,6 +55,7 @@ namespace Archer
       void testU0(float d0,float &xf,float u0);
       void updateRB0();
       void delayLoop(uint32_t T0, uint32_t dTdes);
+      void setRB0(float val);
     private:
       DualENC      &dENC_;
       ELMO_CANt4   &elmo_;
@@ -72,17 +71,21 @@ namespace Archer
       int _Y2       = 36;
       int _G        = 37;
 
-      double theta_max = 1.2;
-      double theta_min = -5.0;
+      double theta_max = 3;
+      double theta_min = -7.0;
 
-      uint32_t _prevTb;
+      uint32_t _prevTb = 0;
       uint32_t _nextTb;
-      long     _prevCb;
+      long     _prevCb = 0;
       long     _nextCb;
-      uint32_t _prevTf;
+      uint32_t _prevTf = 0;
       uint32_t _nextTf;
-      long     _prevCf;
+      long     _prevCf = 0;
       long     _nextCf;
+      float _filtCb = 0;    
+      float _prevFiltCb = 0;   
+      float _filtCf = 0;    
+      float _prevFiltCf = 0;      
 
       float _resB = 102400.0; // Counts per revolution
       float _x;
@@ -93,6 +96,7 @@ namespace Archer
       float _KpB = 1;
       float _KdB = 1;
       float _rb0;
+      float filter_alpha = 0;
   };
 }
 

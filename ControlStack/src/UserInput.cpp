@@ -48,7 +48,9 @@ size_t UserInput::get_axis_state(struct js_event *event, struct axis_state axes[
 }
 
 void UserInput::getJoystickInput(vector_2t &offsets,
-                                 scalar_t &reset, std::condition_variable &cv, std::mutex &m)
+                                 scalar_t &reset, 
+                                 scalar_t& yaw,
+				 bool& reset_pos, std::condition_variable &cv, std::mutex &m)
 {
     vector_3t input;
     input.setZero();
@@ -59,7 +61,7 @@ void UserInput::getJoystickInput(vector_2t &offsets,
     struct axis_state axes[3] = {0};
     size_t axis;
 
-    // if only one joystick input, almost always "/dev/input/js0"
+    // if only one joystick input, almost always "/dev/input/js1"
     device = "/dev/input/js0";
 
     // joystick device index
@@ -84,8 +86,8 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             axis = get_axis_state(&event, axes);
             if (axis == 0)
             {
-                joystick_command[0] = axes[axis].x / joystick_max;
-                joystick_command[1] = -axes[axis].y / joystick_max;
+                joystick_command[0] = -axes[axis].y / joystick_max;
+                joystick_command[1] = -axes[axis].x / joystick_max;
                 if (abs(joystick_command[0]) < deadzone)
                 { // Deadzone
                     joystick_command[0] = 0.0;
@@ -97,8 +99,8 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             }
             if (axis == 1)
             {
-                joystick_command[2] = axes[axis].x / joystick_max;
-                joystick_command[3] = -axes[axis].y / joystick_max;
+                joystick_command[2] = -axes[axis].y / joystick_max;
+                joystick_command[3] = -axes[axis].x / joystick_max;
 
                 if (abs(joystick_command[2]) < deadzone)
                 { // Deadzone
@@ -113,35 +115,50 @@ void UserInput::getJoystickInput(vector_2t &offsets,
             break;
         // pressed a button
         case JS_EVENT_BUTTON:
-            if (event.number == 5 && event.value == 1)
+            //if (event.number == 9 && event.value == 1)
+            //{
+            //    yaw -= 0.1;
+            //    std::cout << "Yaw decreased to: " << yaw << std::endl;
+            //}
+            //if (event.number == 9 && event.value == 1)
+            //{
+            //    yaw += 0.1;
+            //    std::cout << "Yaw increased to: " << yaw << std::endl;
+            //}
+            //if (event.number == 5 && event.value == 1)
+            //{
+            //    std::cout << "reset" << std::endl;
+            //    reset = 1;
+            //}
+            if (event.number == 7 && event.value == 1)
             {
-                std::cout << "reset" << std::endl;
-                reset = 1;
+                std::cout << "Position reset sent" << std::endl;
+                reset_pos = true;
             }
-            if (event.number == 4 && event.value == 1)
+            if (event.number == 6 && event.value == 1)
             {
                 std::cout << "Killed due to user input" << std::endl;
                 exit(1);
             }
-            if (event.number == 8 && event.value == 1)
-            {
-                increment *= 10;
-                std::cout << "Increasing resolution to: " << increment << std::endl;
-            }
-            if (event.number == 9 && event.value == 1)
-            {
-                increment /= 10;
-                std::cout << "Decreasing resolution to: " << increment << std::endl;
-            }
+            //if (event.number == 8 && event.value == 1)
+            //{
+            //    increment *= 10;
+            //    std::cout << "Increasing resolution to: " << increment << std::endl;
+            //}
+            //if (event.number == 9 && event.value == 1)
+            //{
+            //    increment /= 10;
+            //    std::cout << "Decreasing resolution to: " << increment << std::endl;
+            //}
             // can do something cool with buttons
             if (event.number == 0 && event.value == 1)
-                offsets[1] -= increment;
-            if (event.number == 1 && event.value == 1)
-                offsets[0] += increment;
-            if (event.number == 2 && event.value == 1)
                 offsets[1] += increment;
-            if (event.number == 3 && event.value == 1)
+            if (event.number == 1 && event.value == 1)
                 offsets[0] -= increment;
+            if (event.number == 4 && event.value == 1)
+                offsets[1] -= increment;
+            if (event.number == 3 && event.value == 1)
+                offsets[0] += increment;
             std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
             break;
 

@@ -100,9 +100,11 @@ float foot_state[3];
 
 bool exit_state = false;
 File gainFile;
-File data;
+File dataFile;
+File logFile;
 String gain_config = "gain_config.txt";
-String dFile = "log.txt";
+String dFile = "data.txt";
+String lFile = "log.txt";
 
 // SD CARD Variables
 const byte NUMBER_OF_RECORDS = 10; // number of vars in gain_config.txt
@@ -145,9 +147,26 @@ void setup() {
   //====================WIFI==============
   delay(100); //give time to open and print
   Serial.begin(115200); //this is for the monitor
+
+  // init SD card module, using built-in Teensy SD
+  Serial.println("Initializing SD card... ");
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+  Serial.println(" initialization done.");
+  
+  if (SD.exists(dFile.c_str())) {
+    SD.remove(dFile.c_str());  // Delete the file if it exists
+  }
+  dataFile = SD.open(dFile.c_str(),FILE_WRITE);
+  if (SD.exists(lFile.c_str())) {
+    SD.remove(lFile.c_str());  // Delete the file if it exists
+  }
+  logFile = SD.open(lFile.c_str(),FILE_WRITE);
+
   setupEthernet();      //Ethernet Setup
   readParams();         // read params from SD card
-  data = SD.open(dFile.c_str(),FILE_WRITE);
 
   //  //================Koios=============
   koios = new Koios(tENC, elmo);
@@ -228,15 +247,6 @@ void setupEthernet(){
 }
 
 void readParams() {
-  //==============LOAD IN FROM SD CARD=============
-  // init SD card module, using built-in Teensy SD
-  Serial.print("Initializing SD card... ");
-  if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("initialization failed!");
-    return;
-  }
-  Serial.println(" initialization done.");
-
   // open gain file config
   gainFile = SD.open(gain_config.c_str());
 
@@ -376,45 +386,52 @@ Threads::Mutex serial_mtx;
 //ThreadWrap(IMU_PORT, SerialXtra3);
 //#define IMU_PORT ThreadClone(SerialXtra3)
 
+
 void BiaThread() {
-  while (1) {
-//    #ifdef TEST_TEENSY
-//    { Threads::Scope scope(foot_state_mtx);
-//    foot_state[0] = 3;
-//    foot_state[1] = 4;
-//    foot_state[2] = 5;
-//    }
-//    #else
-    int index = 0;
-    char receivedCharsBia[11];
-//    {
-//    Threads::Scope scope(serial_mtx);
-    if (B_PORT.available() > 0) {
-      while (index < 11) {
-        { 
-        if (B_PORT.available() > 0) {
-          receivedCharsBia[index] = B_PORT.read();
-          index++;
-        }
-        }
+
+  while (true) {
+    // if (B_PORT.available() >= FRAME_SIZE) {
+    //   B_PORT.readBytes(frame, FRAME_SIZE);
+
+    //   byte checksum[2] = {frame[9], frame[10]};
+
+    //   for (int i = 0; i < 6; i++) {
+    //     decodeByte(frame[i], checksum[0], i);
+    //   }
+    //   for (int i = 7; i < 13; i++) {
+    //     decodeByte(frame[i], checksum[1], i - 7);
+    //   }
+
+    //   {
+    //     Threads::Scope scope(foot_state_mtx);
+    //     foot_state[0] = frame[0];
+
+    //     memcpy(foot_state + 1, frame + 1, 4);
+    //     memcpy(foot_state + 2, frame + 5, 4);
+    //   }
+    // }
+    if (B_PORT.available() >= sizeof(byte) + sizeof(float) * 2) {
+      // Read the bit (1 byte)
+      byte receivedBit = B_PORT.read();
+      bool bitReceived = receivedBit != 0;  // Convert byte to bool
+      
+      // Read the first float (4 bytes)
+      float float1;
+      B_PORT.readBytes((char*)&float1, sizeof(float1));
+
+      // Read the second float (4 bytes)
+      float float2;
+      B_PORT.readBytes((char*)&float2, sizeof(float2));
+
+      foot_state[0] = bitReceived;
+      foot_state[1] = float1;
+      foot_state[2] = float2;
+
+      while (B_PORT.available()) {
+        B_PORT.read();
       }
     }
-//    }
-    char oneAddedBia[2];
-    memcpy(oneAddedBia, receivedCharsBia + 9, 2 * sizeof(char));
-    for (int i = 0; i < 2; i++) {
-      for (int j = 1; j < 8; j++) {
-        if (oneAddedBia[i] & (1 << (8 - j))) {
-          receivedCharsBia[i * 7 + (j - 1)] = 0;
-        }
-      }
-    }
-    { Threads::Scope scope(foot_state_mtx);
-    foot_state[0] = (float) receivedCharsBia[0];
-    memcpy(foot_state+1, receivedCharsBia + 1, 2 * 4);
-    }
-//    #endif
-    threads.delay_us(500);
+    // threads.delay_us(500);
   }
 }
 
@@ -583,7 +600,7 @@ matrix_3t cross(vector_3t q) {
 }
 
 char oneAdded[6];
-quat_t quat_a;
+quat_t quat_a, quat_update;
 
 void getTorque(float* state, quat_t quat_d, vector_3t omega_d, vector_3t tau_ff, quat_t quat_a, vector_3t &torque) {
   vector_3t delta_omega;
@@ -622,7 +639,10 @@ void exitProgram() {
   koios->motorsOff(0);
   if(foot_on)
     koios->setSigB(1);
-  data.close();
+  dataFile.flush();
+  dataFile.close();
+  logFile.flush();
+  logFile.close();
   threads.delay(100);
   koios->setLEDs("1000");
   koios->setLogo('R');
@@ -682,27 +702,10 @@ void loop() {
       }
       q_tmp = quat_a;
     }
-      // Remove the initial yaw. If we are negative, subtract the yaw, if we are positive, then the Euler transofrmation goes through singularity and we have to go down from PI instead.
-      // VectorXf initEuler = quat_a.toRotationMatrix().eulerAngles(0, 1, 2);
-      
-      // float initRoll = - r_offset;
-      // float initPitch = - p_offset;
-      // float initYaw = initEuler[2];
-
-      // quat_t initYawQuat;
-      
-      // if (quat_a.z() > 0) {
-      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-      //     * AngleAxisf(0, Vector3f::UnitY())
-      //     * AngleAxisf(initYaw-M_PI, Vector3f::UnitZ());
-      // } else {
-      //   initYawQuat = AngleAxisf(0, Vector3f::UnitX())
-      //     * AngleAxisf(0, Vector3f::UnitY())
-      //     * AngleAxisf(initYaw, Vector3f::UnitZ());
-      // }
-
+     
       // quat_init_inverse = initYawQuat.inverse();
       initialized = true;
+      quat_update = quat_a;
       koios->setLogo('G');
     { Threads::Scope scope(state_mtx);
       // quat_a = quat_init_inverse * quat_a;
@@ -715,8 +718,8 @@ void loop() {
   }
 
   if (comms_on > 0) {
+    Serial.println("Waiting for socket connection to the computer.");
     while (!ethernet_connected) {
-      Serial.println("Waiting for socket connection to the computer.");
       threads.delay_us(100);
     }
   } else {
@@ -742,15 +745,15 @@ void loop() {
     // quat_a = quat_init_inverse * q_installation.inverse() * q_measured;
     quat_a = q_installation.inverse() * q_measured;
 
-    Serial.print(quat_a.w());     Serial.print(",");
-    Serial.print(quat_a.x());     Serial.print(",");
-    Serial.print(quat_a.y());     Serial.print(",");
-    Serial.print(quat_a.z());     Serial.print(",    ");
+    // Serial.print(quat_a.w());     Serial.print(",");
+    // Serial.print(quat_a.x());     Serial.print(",");
+    // Serial.print(quat_a.y());     Serial.print(",");
+    // Serial.print(quat_a.z());     Serial.print(",    ");
 
-    Serial.print(dR);     Serial.print(",");
-    Serial.print(dP);     Serial.print(",");
-    Serial.print(dY);     Serial.print(",");
-    Serial.println();
+    // Serial.print(dR);     Serial.print(",");
+    // Serial.print(dP);     Serial.print(",");
+    // Serial.print(dY);     Serial.print(",");
+    // Serial.println();
   }
   koios->updateStates(x1, v1, x2, v2, x3, v3);
   //  int new_contact = koios->getIntFromB();
@@ -775,11 +778,18 @@ void loop() {
     state[11] = foot_state[1];
     state[12] = foot_state[2];
 
-    if (quat_a.norm() > 1.05 || quat_a.norm() < 0.95) {
-      Serial.print("Exiting because state norm was: ");
-      Serial.println(quat_a.norm());
-      exitProgram();
-    }      
+    if (quat_a.norm() < 1.05 && quat_a.norm() > 0.95) {
+      quat_update = quat_a;
+      koios->setLogo('G');
+    } else {
+      koios->setLogo('Y');
+      Serial.println("Measured quat norm is not in bounds.");
+    }
+    // if (quat_a.norm() > 1.05 || quat_a.norm() < 0.95) {
+    //   Serial.print("Exiting because state norm was: ");
+    //   Serial.println(quat_a.norm());
+    //   exitProgram();
+    // }      
   }
 
   ////////////// Print the desired state ////////////////////////////
@@ -809,7 +819,7 @@ void loop() {
   //for a range of -1.6Nm to 1.6 Nm
   vector_3t current;
   if (initialized && send_torque > 0) {
-    getTorque(state, quat_d, omega_d, tau_ff, quat_a, current);
+    getTorque(state, quat_d, omega_d, tau_ff, quat_update, current);
   } else {
     current[0] = 0;
     current[1] = 0;
@@ -840,29 +850,30 @@ void loop() {
 
 //  vector_3t omega_a = vector_3t(state[3], state[4], state[5]);
 
-  uint32_t Tc1 = micros();
-  // Serial.println(Tc1); // timing
-  data.print(Tc1);              data.print(",");
-  data.print(quat_a.w(),4);     data.print(",");
-  data.print(quat_a.x(),4);     data.print(",");
-  data.print(quat_a.y(),4);     data.print(",");
-  data.print(quat_a.z(),4);     data.print(",");
-  data.print(quat_d.w(),4);     data.print(",");
-  data.print(quat_d.x(),4);     data.print(",");
-  data.print(quat_d.y(),4);     data.print(",");
-  data.print(quat_d.z(),4);     data.print(",");
-  data.print(omega_a[0],4);     data.print(",");
-  data.print(omega_a[1],4);     data.print(",");
-  data.print(omega_a[2],4);     data.print(",");
-  data.print(omega_d[0],4);     data.print(",");
-  data.print(omega_d[1],4);     data.print(",");
-  data.print(omega_d[2],4);     data.print(",");
-  data.print(foot_state[0],4);  data.print(",");
-  data.print(foot_state[1],4);  data.print(",");
-  data.print(foot_state[2],4);  data.print(",");
-  data.print(current[0],4);     data.print(",");
-  data.print(current[1],4);     data.print(",");
-  data.print(current[2],4);     data.println(); 
+  // uint32_t Tc1 = micros();
+  // // Serial.println(Tc1); // timing
+  // dataFile.print(Tc1);              dataFile.print(",");
+  // dataFile.print(quat_update.w(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.x(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.y(),4);     dataFile.print(",");
+  // dataFile.print(quat_update.z(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.w(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.x(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.y(),4);     dataFile.print(",");
+  // dataFile.print(quat_d.z(),4);     dataFile.print(",");
+  // dataFile.print(omega_a[0],4);     dataFile.print(",");
+  // dataFile.print(omega_a[1],4);     dataFile.print(",");
+  // dataFile.print(omega_a[2],4);     dataFile.print(",");
+  // dataFile.print(omega_d[0],4);     dataFile.print(",");
+  // dataFile.print(omega_d[1],4);     dataFile.print(",");
+  // dataFile.print(omega_d[2],4);     dataFile.print(",");
+  // dataFile.print(foot_state[0],4);  dataFile.print(",");
+  // dataFile.print(foot_state[1],4);  dataFile.print(",");
+  // dataFile.print(foot_state[2],4);  dataFile.print(",");
+  // dataFile.print(current[0],4);     dataFile.print(",");
+  // dataFile.print(current[1],4);     dataFile.print(",");
+  // dataFile.print(current[2],4);     dataFile.println();
+  // dataFile.flush();
 
 
   if (ethernet_connected) {

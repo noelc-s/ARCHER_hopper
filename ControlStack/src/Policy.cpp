@@ -76,6 +76,14 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t des_vy = -std::min(std::max(command(3), -params.vd_clip), params.vd_clip);
     scalar_t yaw_des = command(4);
 
+    vector_t global_error(2);
+    global_error << del_x, del_y;
+    scalar_t yaw = extract_yaw(state.quat);
+    matrix_t R_yaw_inv(2,2);
+    R_yaw_inv << cos(-yaw), -sin(-yaw),
+            sin(-yaw), cos(-yaw);
+    vector_t local_error = R_yaw_inv * global_error;
+
     // assuming pitch::x, roll::y, angle_desired = e^(k|del_pos|) - 1
     scalar_t pitch_d = std::min(params.kx_p * del_x + params.kx_d * (xd_a + params.kx_f * des_vx), params.angle_max);
     pitch_d = std::max(pitch_d, -params.angle_max);
@@ -87,7 +95,7 @@ quat_t RaibertPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
     scalar_t yaw_d = yaw_des_rolling;
 
     quat_t desiredLocalInput = Euler2Quaternion(roll_d, pitch_d, yaw_d);
-
+    // std::cout << global_error.transpose().format(CSVFormat) << "," << yaw << "," << local_error.transpose().format(CSVFormat) << "," << xd_a << "," << yd_a << "," << roll_d << "," << pitch_d << std::endl;
     return desiredLocalInput;
 }
 
@@ -111,61 +119,7 @@ vector_4t RaibertPolicy::DesiredInputs(const vector_3t wheel_vel, const bool con
 ZeroDynamicsPolicy::ZeroDynamicsPolicy(std::string model_name, const std::string yamlPath)
 {
     loadParams(yamlPath, params);
-
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-    inputDims[0] = 1; // hard code batch size of 1 for evaluation
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-    outputDims[0] = 1; // hard code batch size of 1 for evaluation
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
-}
-
-void ZeroDynamicsPolicy::EvaluateNetwork(const vector_4t state, vector_2t &output)
-{
-
-    std::vector<float> input(4);
-    input[0] = state(0);
-    input[1] = state(1);
-    input[2] = state(2);
-    input[3] = state(3);
-
-    std::vector<float> outpt(2);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1];
+    network = createNNInstance(model_name);
 }
 
 quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
@@ -193,8 +147,8 @@ quat_t ZeroDynamicsPolicy::DesiredQuaternion(Hopper::State state, matrix_t comma
 
     input_state << x_a - command(0), y_a - command(1), xd_a + params.kx_f * des_vx, yd_a + params.ky_f * des_vy;
     scalar_t yaw_des = command(4);
-    vector_2t rp_des;
-    EvaluateNetwork(input_state, rp_des);
+    vector_t rp_des = vector_2t::Zero();
+    network->evaluateNetwork(input_state, rp_des);
 
     static scalar_t yaw_des_rolling = 0;
     // yaw_des_rolling += yaw_damping*(yaw_des - yaw_des_rolling);
@@ -223,77 +177,83 @@ vector_4t ZeroDynamicsPolicy::DesiredInputs(const vector_3t wheel_vel, const boo
     return u_des;
 }
 
-// MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<Hopper> hopper, std::shared_ptr<MPC> mpc) : hopper(std::move(hopper)), mpc_(std::move(mpc)) {
-//     loadParams(yamlPath, params);
-//     q0.resize(21);
-//     q0_local.resize(21);
-//     x_pred.resize(21,2);
-//     u_pred.resize(4,1);
-//     sol.resize(mpc_->nx * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
-//     sol_g.resize((mpc_->nx + 1) * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
-//     q0.setZero();
-//     q0_local.setZero();
-//     sol.setZero();
-//     sol_g.setZero();
-//     x_pred.setZero();
-//     u_pred.setZero();
-//     t_last_MPC = -1;
-//     dt_elapsed_MPC = 0;
-// }
+MPCPolicy::MPCPolicy(const std::string yamlPath, std::shared_ptr<MPCInterface> mpc) : mpc_(std::move(mpc)) {
+    loadParams(yamlPath, params);
+    q0.resize(21);
+    q0_local.resize(21);
+    x_pred.resize(21,2);
+    u_pred.resize(4,1);
+    sol.resize(mpc_->nx * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
+    sol_g.resize((mpc_->nx + 1) * mpc_->p.N + mpc_->nu * (mpc_->p.N - 1));
+    q0.setZero();
+    q0_local.setZero();
+    sol.setZero();
+    sol_g.setZero();
+    x_pred.setZero();
+    u_pred.setZero();
+    t_last_MPC = -1;
+    dt_elapsed_MPC = 0;
+}
 
-// quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, vector_3t command)
-// {
-//     bool contact = state.contact;
-//     scalar_t x_a = state.pos[0];
-//     scalar_t y_a = state.pos[1];
-//     scalar_t xd_a = state.vel[0];
-//     scalar_t yd_a = state.vel[1];
+quat_t MPCPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)
+{
+    bool contact = state.contact;
+    scalar_t x_a = state.pos[0];
+    scalar_t y_a = state.pos[1];
+    scalar_t xd_a = state.vel[0];
+    scalar_t yd_a = state.vel[1];
 
-//     q0 << state.q, state.v;
-//     q0_local = MPC::global2local(q0);
-//     dt_elapsed_MPC = state.t - t_last_MPC;
-//     bool replan = dt_elapsed_MPC >= mpc_->p.MPC_dt_replan;
-//     vector_2t command_interp;
-//     command_interp << command.segment(0,2);
-//     if (replan)
-//     {
-//         mpc_->solve(*hopper, sol, command, command_interp);
-//         for (int i = 0; i < mpc_->p.N; i++)
-//         {
-//             sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << MPC::local2global(MPC::xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));
-//         }
-//         sol_g.segment((mpc_->nx + 1) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1)) << sol.segment((mpc_->nx) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1));
-//         x_pred << MPC::local2global(MPC::xik_to_qk(sol.segment(0, 20), q0_local)), MPC::local2global(MPC::xik_to_qk(sol.segment(20, 20), q0_local));
-//         u_pred << sol.segment(mpc_->p.N * mpc_->nx, 4);
-//         t_last_MPC = state.t;
-//     }
+    q0 << state.q, state.v;
+    q0_local = global2local(q0);
+    dt_elapsed_MPC = state.t - t_last_MPC;
+    bool replan = dt_elapsed_MPC >= mpc_->p.MPC_dt_replan;
+    vector_3t command_;
+    command_ << command(0), command(1), 0;
+    vector_2t command_interp;
+    command_interp << command(0), command(1);
+    if (replan)
+    {
+        mpc_->solve(sol, command_, command_interp);
+        for (int i = 0; i < mpc_->p.N; i++)
+        {
+            sol_g.segment(i * (mpc_->nx + 1), mpc_->nx + 1) << local2global(xik_to_qk(sol.segment(i * mpc_->nx, mpc_->nx), q0_local));
+        }
+        sol_g.segment((mpc_->nx + 1) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1)) << sol.segment((mpc_->nx) * mpc_->p.N, mpc_->nu * (mpc_->p.N - 1));
+        x_pred << local2global(xik_to_qk(sol.segment(0, 20), q0_local)), local2global(xik_to_qk(sol.segment(20, 20), q0_local));
+        u_pred << sol.segment(mpc_->p.N * mpc_->nx, 4);
+        t_last_MPC = state.t;
+    }
 
-//     // Compute continuous time solution to discrete time problem.
-//     // vector_t x_des(21);
-//     // hopper.css2dss(mpc_->Ac.block(0,0,mpc_->nx,mpc_->nx),mpc_->Bc.block(0,0,mpc_->nx,mpc_->nu),mpc_->Cc.block(0,0,mpc_->nx,1),state(0)-t_last_MPC,mpc_->Ad_,mpc_->Bd_,mpc_->Cd_);
-//     // x_des << MPC::local2global(MPC::Exp(mpc_->Ad_*sol.segment(0,20) + mpc_->Bd_*u_pred + mpc_->Cd_));
-//     // quat_des = Quaternion<scalar_t>(x_des(6), x_des(3), x_des(4), x_des(5));
-//     // omega_des << x_des(14), x_des(15),x_des(16);
+    // Compute continuous time solution to discrete time problem.
+    // vector_t x_des(21);
+    // hopper.css2dss(mpc_->Ac.block(0,0,mpc_->nx,mpc_->nx),mpc_->Bc.block(0,0,mpc_->nx,mpc_->nu),mpc_->Cc.block(0,0,mpc_->nx,1),state(0)-t_last_MPC,mpc_->Ad_,mpc_->Bd_,mpc_->Cd_);
+    // x_des << MPC::local2global(MPC::Exp(mpc_->Ad_*sol.segment(0,20) + mpc_->Bd_*u_pred + mpc_->Cd_));
+    // quat_des = Quaternion<scalar_t>(x_des(6), x_des(3), x_des(4), x_des(5));
+    // omega_des << x_des(14), x_des(15),x_des(16);
 
-//     // Simply set the next waypoint as the setpoint of the low level.
-//     quat_t quat_des;
-//     quat_des = Quaternion<scalar_t>(x_pred(6, 1), x_pred(3, 1), x_pred(4, 1), x_pred(5, 1));
-//     return quat_des;
-// }
+    // Simply set the next waypoint as the setpoint of the low level.
+    quat_t quat_des;
+    quat_des = Quaternion<scalar_t>(x_pred(6, 1), x_pred(3, 1), x_pred(4, 1), x_pred(5, 1));
+    return quat_des;
+}
 
-// vector_3t MPCPolicy::DesiredOmega()
-// {
-//     vector_3t omega;
-//     omega << x_pred(14, 1), x_pred(15, 1), x_pred(16, 1);
-//     return omega;
-// }
+vector_3t MPCPolicy::DesiredOmega()
+{
+    vector_3t omega;
+    omega << x_pred(14, 1), x_pred(15, 1), x_pred(16, 1);
+    return omega;
+}
 
-// vector_4t MPCPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
-// {
-//     vector_4t inputs;
-//     inputs = u_pred;
-//     return inputs;
-// }
+vector_4t MPCPolicy::DesiredInputs(const vector_3t wheel_vel, const bool contact)
+{
+    vector_4t inputs;
+    inputs = u_pred;
+    vector_3t desired_wheel_vel(0, 0,0);
+    if (contact) {
+        inputs.segment(1,3) = -0.1 * (wheel_vel - desired_wheel_vel);
+    }
+    return inputs;
+}
 
 
 RLPolicy::RLPolicy(std::string model_name, const std::string yamlPath)
@@ -303,31 +263,12 @@ RLPolicy::RLPolicy(std::string model_name, const std::string yamlPath)
     q_des << 1,0,0,0;
     t_last_RL = -1;
 
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
+    network = createNNInstance(model_name);
 }
 
 void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
-    
-    std::vector<float> input(21);
+    vector_t input(21);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
     int quat_sign = 1; 
@@ -355,33 +296,9 @@ void RLPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command
     input[19] = previous_action[2]; // y
     input[20] = previous_action[3]; // z
 
-    for (auto i : input) {
-        std::cout << i << ",";
-    }
-    std::cout << std::endl;
-
-    std::vector<float> outpt(4);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1], outpt[2], outpt[3];
+    vector_t output_network(4);
+    network->evaluateNetwork(input, output_network);
+    output << output_network;
 
     std::cout << output.transpose() << std::endl;
 
@@ -435,31 +352,13 @@ RLTrajPolicy::RLTrajPolicy(std::string model_name, const std::string yamlPath, i
     q_des << 1,0,0,0;
     t_last_RL = -1;
 
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "example-model-explorer");
-    Ort::SessionOptions session_options;
-    session = std::make_unique<Ort::Session>(Ort::Session(env, model_name.c_str(), session_options));
-
-    inputNodeName = session->GetInputNameAllocated(0, allocator).get();
-    outputNodeName = session->GetOutputNameAllocated(0, allocator).get();
-
-    inputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetInputTypeInfo(0));
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    inputType = inputTensorInfo.GetElementType();
-    inputDims = inputTensorInfo.GetShape();
-
-    outputTypeInfo = std::make_unique<Ort::TypeInfo>(session->GetOutputTypeInfo(0));
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-    outputType = outputTensorInfo.GetElementType();
-    outputDims = outputTensorInfo.GetShape();
-
-    inputTensorSize = vectorProduct(inputDims);
-    outputTensorSize = vectorProduct(outputDims);
+    network = createNNInstance(model_name);
 }
 
 void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t command, vector_4t &output)
 {
 
-    std::vector<float> input(18 + horizon * state_dim);
+    vector_t input(18 + horizon * state_dim);
     input[0] = RLparams.z_pos_scaling*state.pos[2];
     vector_4t quat_coeffs = state.quat.coeffs(); // x,y,z,w
     int quat_sign = 1; 
@@ -504,35 +403,9 @@ void RLTrajPolicy::EvaluateNetwork(const Hopper::State state, const matrix_t com
     input[16 + horizon * state_dim] = previous_action[2] * act_sign; // y
     input[17 + horizon * state_dim] = previous_action[3] * act_sign; // z
 
-    // std::cout << input << std::endl << std::endl;
-
-    // for (auto i : input) {
-    //     std::cout << i << ",";
-    // }
-    // std::cout << std::endl << std::endl;
-
-    std::vector<float> outpt(4);
-
-    auto inputTensorInfo = inputTypeInfo->GetTensorTypeAndShapeInfo();
-    auto outputTensorInfo = outputTypeInfo->GetTensorTypeAndShapeInfo();
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-    Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, const_cast<float *>(input.data()), inputTensorSize,
-        inputDims.data(), inputDims.size());
-
-    Ort::Value outputTensor = Ort::Value::CreateTensor<float>(
-        memoryInfo, outpt.data(), outputTensorSize,
-        outputDims.data(), outputDims.size());
-
-    std::vector<const char *> inputNames{inputNodeName.c_str()};
-    std::vector<const char *> outputNames{outputNodeName.c_str()};
-
-    session->Run(Ort::RunOptions{}, inputNames.data(), &inputTensor, 1, outputNames.data(), &outputTensor, 1);
-
-    output << outpt[0], outpt[1], outpt[2], outpt[3];
+    vector_t output_network(4);
+    network->evaluateNetwork(input, output_network);
+    output << output_network;
 }
 
 quat_t RLTrajPolicy::DesiredQuaternion(Hopper::State state, matrix_t command)

@@ -65,16 +65,18 @@ RaibertHeuristic:
   pos_clip: 0.5
   vel_clip: 1
   v_des_clip: 0.2
-  angle_max: 0.4
+  angle_max: 1.0
   yaw_damping: 0.004
 
 
-# roll_offset: 0.004
-# pitch_offset: 0.025
-roll_offset:  0.006
-pitch_offset: 0.018
-# roll_offset:  -0.0
-# pitch_offset: 0.0
+# roll_offset:  0.006
+# pitch_offset: 0.018
+# roll_offset:  -0.016
+# pitch_offset: 0.001
+# roll_offset: 0.0110
+# pitch_offset: -0.008
+roll_offset: 0.0
+pitch_offset: -0.0
 
 Policy:
   dt_lowlevel: 0.001
@@ -91,14 +93,15 @@ RL:
   # rom_type: single_int
   # model_name: ../../models/hopper_traj_single_int_cur3_ga0hocxq.onnx
   # model_name: ../../models/hopper_traj_single_int_cur3_rojj0ra6.onnx # Spindown
-  rom_type: position
+  rom_type: single_int
   model_name: ..
-  horizon: 10
-  # dt_replan: 0.02
-  v_max: 0.3
+  horizon: 1
+  dt_replan: 0.02
+  v_max: 0.5
   a_max: 1.0
 
-filter_alpha: 0.4
+filter_v_alpha: 0.95
+filter_w_alpha: 0
 
 zed_x_offset: 0
 zed_y_offset: 0

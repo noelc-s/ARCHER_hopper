@@ -60,6 +60,9 @@ namespace Archer
       CAN_message_t msgIn_;
       CAN_message_t msgOut_;
       const uint32_t recTimeout_;
+
+      bool write_data(uint32_t node_id, uint16_t index, uint8_t sub_index, uint32_t value);
+      bool read_data(uint32_t node_id, uint16_t index, uint8_t sub_index, uint32_t& data);
   };
 }
 

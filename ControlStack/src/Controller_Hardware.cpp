@@ -1,11 +1,29 @@
 #include "../inc/Controller_Hardware.h"
+#include <iomanip>
 
 // Driver code
 int main(int argc, char **argv)
 {
   ESPstate.setZero();
   fileHandle.open(dataLog);
-  fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,des_cmd,graph_sol,sol,obst" << std::endl;
+  fileHandle << "t,contact,legpos,legvel,x,y,z,xdot,ydot,zdot,"
+             << "qx,qy,qz,qw,wx,wy,wz,wxunfilt,wyunfilt,wzunfilt,qxdes,qydes,qzdes,qwdes,taufoot,tau1,tau2,tau3,wheelvel1,wheelvel2,wheelvel3,"
+             << "camx,camy,camz,"
+             << "camxdot,camydot,camzdot,"
+             << "camxdotfilt,camydotfilt,camzdotfilt,"
+             << "camqx,camqy,camqz,camqw,camwx,camwy,camwz,"
+             << "globalxdot,globalydot,globalzdot,"
+             << "optitrackx,optitracky,optitrackz,optitrackxdot,optitrackydot,optitrackzdot,"
+             << "optitrackqx,optitrackqy,optitrackqz,optitrackqw,"
+	     << "vn_yaw,"
+             << "cmd1,cmd2,cmd3,cmd4,cmd5"
+             << std::endl;
+
+  // Camera pos, camera velocity
+  // body aligned vel (at camera), body vel (at com)
+  // global pos, global vel
+  // optitrack pos, optitrack vel
+  // cam omega, imu omega
 
   desstate[0] = 1;
   desstate[1] = 0;
@@ -46,48 +64,48 @@ int main(int argc, char **argv)
   // RLTrajPolicy policy = RLTrajPolicy(p.model_name, gainYamlPath, command->getHorizon(), command->getStateDim());
 
   // Thread for user input
-  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
-  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(command), std::ref(cv), std::ref(m));
-  std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  bool reset_pos = false;
+  std::thread getUserInput2(&UserInput::getJoystickInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(yaw), std::ref(reset_pos), std::ref(cv), std::ref(m));
+  // std::thread getUserInput(&UserInput::getKeyboardInput, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+  //std::thread getUserInput(&UserInput::cornerTraversal, &readUserInput, std::ref(offsets), std::ref(reset), std::ref(cv), std::ref(m));
+
+  vector_t IC, EC;
+  std::shared_ptr<vector_3t> shared_goal_pose = std::make_shared<vector_3t>();
+  std::shared_ptr<vector_3t> shared_initial_pose = std::make_shared<vector_3t>();
+  std::shared_ptr<vector_2t> shared_graph_center = std::make_shared<vector_2t>();
+  scalar_t graph_move_thresh = 0.25;
+  (*shared_goal_pose).setZero();
+  (*shared_initial_pose).setZero();
+  (*shared_graph_center).setZero();
+
+  bool planner_initialized = false;
+  scalar_t time = 0;
+  IC.resize(4); IC.setZero();
+  EC.resize(4); EC.setZero();
+  std::unique_ptr<PlannerInterface> planner = createPlannerInstance(shared_goal_pose, shared_initial_pose, shared_graph_center);
+  scalar_t graph_disc = planner->getGraphDisc();
+  
+  while (!planner->isEstimateInitialized()) {std::this_thread::sleep_for(std::chrono::milliseconds(50));}
+  std::cout << "Recieving T265 messages" << std::endl;
+  sleep(1);
+
+  std::thread runPlanner(&PlannerInterface::update, planner.get(), std::ref(IC), std::ref(EC), std::ref(time), std::ref(running), std::ref(planner_initialized));
 
   // Thread for updating reduced order model
   std::thread runRoM(&Command::update, command.get(), &readUserInput, std::ref(running), std::ref(cv), std::ref(m));
   desired_command = command->getCommand();
 
-  ObstacleCollector O = ObstacleCollector();
-  Planner planner(O);
-  std::cout << "Number of Edges: " << planner.planner->edges.size() << std::endl;
+  EstimatedState estimated_state = {};
+  // std::thread realsense(&realSenseLoop, std::ref(yaw), std::ref(estimated_state), std::ref(realsense_connected), std::ref(reset_pos));
 
-  startRosNode(argc, argv);
-  // Give ROS some time to initialize
-  std::this_thread::sleep_for(std::chrono::seconds(2));
-
-  const int max_num_obstacles = planner.planner->params_.max_num_obstacles;
-  const int max_graph_sol_length = planner.planner->params_.max_graph_sol_length;
-
-  vector_t planned_command, graph_sol;
-  vector_t IC;
-  vector_t EC;
-  vector_t path_command;
-  path_command.resize(5);
-  int index = 4;
-  IC.resize(4);
-  EC.resize(4);
-  planned_command.resize(4 * planner.planner->mpc_->mpc_params_.N);
-  graph_sol.resize(4 * max_graph_sol_length);
-  IC.setZero();
-  EC.setZero();
-  planned_command.setZero();
-  graph_sol.setZero();
-
-  bool planner_initialized = false;
-
-  std::thread runPlanner(&Planner::update, &planner, std::ref(O), std::ref(IC), std::ref(EC), std::ref(planned_command), std::ref(graph_sol), std::ref(index), std::ref(running), std::ref(planner_initialized), std::ref(cv), std::ref(m));
-
-  int size = 11 + 2 + 8 * max_num_obstacles + 2 * planner.planner->mpc_->mpc_params_.N + 2 * max_graph_sol_length;
+  int size = 11 + 2;
   float *TX_torques = new float[size](); // Dynamically allocate array
   scalar_t RX_state[1] = {0.0};
   std::thread runVis(&MujocoVis, std::ref(cv), std::ref(hopper->state_), TX_torques, RX_state, size);
+
+  std::shared_ptr<EstimatedState> optitrackState = std::make_shared<EstimatedState>();
+  std::unique_ptr<OTInterface> ot = createOTInstance(optitrackState);
+
 
   quat_des.setIdentity();
   omega_des.setZero();
@@ -96,83 +114,98 @@ int main(int argc, char **argv)
   offsets << p.roll_offset, p.pitch_offset;
   std::cout << "Offsets (r, p): " << offsets.transpose() << std::endl;
 
-  A_kf << 0.4234, 0.0000, -0.0000, 0.0042, 0, 0,
-      0.0000, 0.4234, 0.0000, 0, 0.0042, 0,
-      -0.0000, -0.0000, 0.4234, 0, 0, 0.0042,
-      -30.9689, 0.0000, -0.0000, 1.0000, 0, 0,
-      0.0000, -30.9689, 0.0000, 0, 1.0000, 0,
-      -0.0000, -0.0000, -30.9689, 0, 0, 1.0000;
-  B_kf << 0, 0.5766, -0.0000, 0.0000,
-      0, -0.0000, 0.5766, -0.0000,
-      0, 0.0000, 0.0000, 0.5766,
-      0, 30.9689, -0.0000, 0.0000,
-      0, -0.0000, 30.9689, -0.0000,
-      0.0042, 0.0000, 0.0000, 30.9689;
-
-  // ROS stuff
-  ros::init(argc, argv, "listener");
-  ros::NodeHandle n;
-  ros::Subscriber sub = n.subscribe("/vrpn_client_node/hopper/pose", 200, chatterCallback);
-
-  quat_t quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-  while (quat_opti.norm() < 0.99)
-  {
-    ros::spinOnce();
-    quat_opti = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-    // std::cout << "Waiting for optitrack quat" << std::endl;
-    // std::cout << quat_opti.coeffs().transpose() << std::endl;
-  };
-
   signal(SIGINT, signal_callback_handler);
   setupSocketHardware();
   std::thread thread_object(getStateFromEthernet, std::ref(reset), std::ref(cv), std::ref(m));
-  sleep(1);
-  vector_3t current_vel, previous_vel;
-  std::chrono::high_resolution_clock::time_point last_t_state_log;
 
   tstart = std::chrono::high_resolution_clock::now();
   t_loop = tstart;
   t_lowlevel = tstart;
   t_policy = tstart;
 
-  // Obstacle positions are in local frame of hopper
-  vector_t sol(planned_command.size());
-  std::vector<vector_t> obstacle_pos_zed;
-  std::vector<Obstacle> obstacles;
-  Obstacle obs;
-  obs.center.resize(2);
-  obs.center.setZero();
-  obs.v.resize(4, 2);
-  obs.A.resize(4, 4);
-  obs.b.resize(4);
-  obs.Adjacency.resize(4, 4);
-  obs.Adjacency << 1, 0, 0, 1,
-      1, 1, 0, 0,
-      0, 1, 1, 0,
-      0, 0, 1, 1;
+  matrix_2t initial_rot;
+  scalar_t initial_yaw;
+  vector_3t global_vel;
+  vector_3t body_vel;
+  vector_3t body_omega;
+  vector_3t filt_vel, filt_omega;
+  bool init = false;
+  scalar_t vn_yaw;
+  vn_yaw = 0;
+  global_vel.setZero();
 
-  while (ros::ok())
+
+  while (1)
   {
-    ros::spinOnce();
     t_loop = std::chrono::high_resolution_clock::now();
     if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_lowlevel).count() * 1e-9 > p.dt_lowlevel)
     {
       t_lowlevel = t_loop;
 
       {
+	      estimated_state = planner->getEstimatedState();
+        // Extract the yaw of the realsense
+        scalar_t realsense_yaw = extract_yaw(quat_t(estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z));
+
+        // Remove yaw from the vector nav
+        quat_t vector_nav = quat_t(ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9));
+	      vn_yaw = extract_yaw(vector_nav);
+        vector_nav = Euler2Quaternion(0, 0, -vn_yaw) * vector_nav;
+
+        // Add in yaw from the realsense
+        quat_t yaw_corrected = Euler2Quaternion(0, 0, realsense_yaw) * vector_nav;
+        // Transform linear velocity from the body-aligned camera frame into the body frame
+        
         std::lock_guard<std::mutex> lck(state_mtx);
-        quat_optitrack = quat_t(OptiState.q_w, OptiState.q_x, OptiState.q_y, OptiState.q_z);
-        quat_optitrack.normalize();
+        body_omega << ESPstate(3), ESPstate(4), ESPstate(5);                                     // IMU angular velocity
+        if (!init) {
+          // Initialize velocity filter
+          filt_vel << estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot;
+          filt_omega = body_omega;
+          init = true;
+        } else {
+          vector_3t unfilt_vel;
+          unfilt_vel << estimated_state.x_dot, estimated_state.y_dot, estimated_state.z_dot;
+          filt_vel = p.filter_v_alpha * filt_vel + (1 - p.filter_v_alpha) * unfilt_vel;
+          filt_omega = p.filter_w_alpha * filt_omega + (1 - p.filter_w_alpha) * body_omega;
+        }
+        // body_omega << estimated_state.omega_x, estimated_state.omega_y, estimated_state.omega_z;    // Camera angular velocity
+        body_vel << filt_vel(0) + (filt_omega(1) * r_cam_to_body(2) - filt_omega(2) * r_cam_to_body(1)),
+                    filt_vel(1) + (filt_omega(2) * r_cam_to_body(0) - filt_omega(0) * r_cam_to_body(2)),
+                    filt_vel(2) + (filt_omega(0) * r_cam_to_body(1) - filt_omega(1) * r_cam_to_body(0));
+
+        global_vel = yaw_corrected * body_vel;
+
+        // Construct the state
         state << std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - tstart).count() * 1e-9,
-            OptiState.x, OptiState.y, OptiState.z,
-            quat_optitrack.w(), quat_optitrack.x(), quat_optitrack.y(), quat_optitrack.z(), // uncomment if you want optitrack as orientation
-            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9), // IMU as orientation
-            OptiState.x_dot, OptiState.y_dot, OptiState.z_dot,
-            ESPstate(3), ESPstate(4), ESPstate(5),
+          // Orientation
+            estimated_state.x, estimated_state.y, estimated_state.z,
+            // ESPstate(6), ESPstate(7), ESPstate(8), ESPstate(9),                                  // IMU as orientation
+            //estimated_state.q_w, estimated_state.q_x, estimated_state.q_y, estimated_state.q_z,  // realsense as orientation TODO: debugging
+            yaw_corrected.w(), yaw_corrected.x(), yaw_corrected.y(), yaw_corrected.z(),             // imu with realsense yaw
+          // Linear velocity
+            global_vel(0), global_vel(1), global_vel(2),                                                  // Corrected to global frame velocity
+          // Angular velocity
+            filt_omega(0), filt_omega(1), filt_omega(2),
+          // Wheel speeds and foot data?
             ESPstate(10), ESPstate(11), ESPstate(12), ESPstate(0), ESPstate(1), ESPstate(2); // TODO: Balancing make nice
       }
+
+      time = state(0);
+      // Update the state
       hopper->updateState(state);
       contact = hopper->state_.contact;
+
+      // update the graph_center if move exceeds threshold
+      vector_2t graph_center_error = hopper->state_.pos.segment(0, 2) - (*shared_graph_center);
+      if (graph_center_error.norm() > graph_move_thresh) {
+        (*shared_graph_center)(0) += ((int)(graph_center_error(0) / graph_disc)) * graph_disc;
+        (*shared_graph_center)(1) += ((int)(graph_center_error(1) / graph_disc)) * graph_disc;
+      }
+      IC << hopper->state_.pos(0) - (*shared_graph_center)(0), hopper->state_.pos(1) - (*shared_graph_center)(1),
+            hopper->state_.vel(0), hopper->state_.vel(1);
+      EC << desired_command(0) - (*shared_graph_center)(0), desired_command(1) - (*shared_graph_center)(1), 0, 0;
+
       // quat_t IMU_quat = hopper->state_.quat;
 
       // // Measure the initial absolute yaw (from optitrack)
@@ -187,87 +220,24 @@ int main(int argc, char **argv)
       // quat_t yaw_corrected = plus(optitrack_yaw_quat, minus(hopper->state_.quat, measured_yaw_quat));
       // hopper->state_.quat = yaw_corrected;
 
-      hopper->state_.quat = quat_optitrack;
-      // Add roll pitch offset to body frame
-      quat_t rollPitch = Policy::Euler2Quaternion(-offsets[0], -offsets[1], 0);
-      hopper->state_.quat = plus(hopper->state_.quat, rollPitch);
-
-      std::vector<float> boxes = getBoxPositions();
-      obstacles.clear();
-      obstacle_pos_zed.clear();
-      for (size_t i = 0; i < max_num_obstacles * 8; i += 8) // max_num_obstacles obstacles max
-      {
-        vector_t obst(8);
-        obst.setZero();
-        if (i < boxes.size())
-        {
-          for (size_t j = 0; j < 8; j += 2)
-          {
-            obst[j] = boxes[i + j] + p.zed_x_offset;
-          }
-          for (size_t j = 1; j < 8; j += 2)
-          {
-            obst[j] = boxes[i + j] + p.zed_y_offset;
-          }
-          obs.v << obst[0], obst[1],
-              obst[2], obst[3],
-              obst[4], obst[5],
-              obst[6], obst[7];
-
-          std::vector<Eigen::Vector2d> edgeVectors(4);
-          std::vector<Eigen::Vector2d> normals(4);
-
-          // Compute edge vectors
-          // 0,1
-          // 2,3
-          // 4,5
-          // 6,7
-          edgeVectors[0] = Eigen::Vector2d(obst[6] - obst[0], obst[7] - obst[1]);
-          edgeVectors[1] = Eigen::Vector2d(obst[0] - obst[2], obst[1] - obst[3]);
-          edgeVectors[2] = Eigen::Vector2d(obst[2] - obst[4], obst[3] - obst[5]);
-          edgeVectors[3] = Eigen::Vector2d(obst[4] - obst[6], obst[5] - obst[7]);
-          edgeVectors[0].normalize();
-          edgeVectors[1].normalize();
-          edgeVectors[2].normalize();
-          edgeVectors[3].normalize();
-
-          // Construct A and b
-          vector_t tmp(4);
-          tmp.setZero();
-          for (int i = 0; i < 4; ++i)
-          {
-            obs.A.row(i) << -edgeVectors[i].transpose(), 0, 0;
-            obs.b(i) = -edgeVectors[i].transpose().dot(Eigen::Vector2d(obst[2 * i], obst[2 * i + 1]));
-          }
-          obstacles.push_back(obs);
-        }
-        else
-        {
-          obs.v.setZero();
-          obs.A.setZero();
-          obs.b << -1, -1, -1, -1;
-        }
-
-        obstacle_pos_zed.push_back(obst);
-      }
-      O.obstacles = obstacles;
-      IC << hopper->state_.pos(0), hopper->state_.pos(1), hopper->state_.vel(0), hopper->state_.vel(1);
-      EC << desired_command(0), desired_command(1), 0, 0;
-      path_command << planned_command.segment(4 * index, 4), 0;
-      sol << planned_command;
 
       if (std::chrono::duration_cast<std::chrono::nanoseconds>(t_loop - t_policy).count() * 1e-9 > p.dt_policy)
       {
         t_policy = t_loop;
         desired_command = command->getCommand();
-        if (planner.planner->params_.use_planner)
-        {
+        
+        if (planner_initialized) {
+          vector_t path_command;
+          path_command = planner->getPath(time, desired_command(4));
           quat_des = policy.DesiredQuaternion(hopper->state_, path_command);
-        }
-        else
-        {
+        } else {
           quat_des = policy.DesiredQuaternion(hopper->state_, desired_command);
         }
+        *shared_goal_pose <<  desired_command(0), desired_command(1), extract_yaw(quat_des) + initial_yaw;
+
+        // Add roll pitch offset to body frame
+        quat_t rollPitch = Euler2Quaternion(-offsets[0], -offsets[1], 0);
+        quat_des = plus(quat_des, rollPitch);
 
         // Add initial yaw to desired signal
         // quat_des = plus(quat_des, initial_yaw_quat);
@@ -283,32 +253,6 @@ int main(int argc, char **argv)
       }
       TX_torques[11] = desired_command(0);
       TX_torques[12] = desired_command(1);
-      for (int i = 0; i < obstacle_pos_zed.size(); i++)
-      {
-        TX_torques[13 + i * 8] = obstacle_pos_zed[i][0];
-        TX_torques[14 + i * 8] = obstacle_pos_zed[i][1];
-        TX_torques[15 + i * 8] = obstacle_pos_zed[i][2];
-        TX_torques[16 + i * 8] = obstacle_pos_zed[i][3];
-        TX_torques[17 + i * 8] = obstacle_pos_zed[i][4];
-        TX_torques[18 + i * 8] = obstacle_pos_zed[i][5];
-        TX_torques[19 + i * 8] = obstacle_pos_zed[i][6];
-        TX_torques[20 + i * 8] = obstacle_pos_zed[i][7];
-      }
-      for (int i = 0; i < planner.planner->mpc_->mpc_params_.N; i++)
-      {
-        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i] = sol[4 * i];
-        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * i + 1] = sol[4 * i + 1];
-      }
-      for (int i = 0; i < max_graph_sol_length; i++)
-      {
-        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i] = graph_sol[4 * i];
-        TX_torques[13 + 8 * obstacle_pos_zed.size() + 2 * planner.planner->mpc_->mpc_params_.N + 2 * i + 1] = graph_sol[4 * i + 1];
-      }
-
-      e = quat_des.inverse() * hopper->state_.quat;
-      auto e_ = manif::SO3<scalar_t>(e);
-      xi = e_.log();
-      error << xi.coeffs();
 
       {
         std::lock_guard<std::mutex> lck(des_state_mtx);
@@ -339,24 +283,36 @@ int main(int argc, char **argv)
       {
         // fileHandle << "t,contact,x,y,z,legpos,vx,vy,vz,legvel,q_x,q_y,q_z,q_w,qd_x,qd_y,qd_z,qd_w,
         // w_1,w_2,w_3,tau_foot,tau1,tau2,tau3,wheel_vel1,wheel_vel2,wheel_vel3,graph_sol,mpc_sol" << std::endl;
-        fileHandle << state[0] << "," << hopper->state_.contact
-                   << "," << hopper->state_.pos.transpose().format(CSVFormat)
+        // std::cout << hopper->state_.quat.coeffs().transpose() << std::endl;
+
+        // std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(0) - desired_command(0) << " ";
+        // std::cout << std::fixed << std::setw(7) << std::setprecision(4) << hopper->state_.pos(1) - desired_command(1) << std::endl;
+	      
+        // std::cout << hopper->state_.pos(0) - desired_command(0) << ", " << hopper->state_.pos(1) - desired_command(1) << std::endl;
+
+        fileHandle << state[0] 
+                   << "," << hopper->state_.contact
                    << "," << hopper->state_.leg_pos
-                   << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.leg_vel
+                   << "," << hopper->state_.pos.transpose().format(CSVFormat)
+                   << "," << hopper->state_.vel.transpose().format(CSVFormat)
                    << "," << hopper->state_.quat.coeffs().transpose().format(CSVFormat)
-                   << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->state_.omega.transpose().format(CSVFormat)
+                   << "," << body_omega.transpose().format(CSVFormat)
+                   << "," << quat_des.coeffs().transpose().format(CSVFormat)
                    << "," << hopper->torque.transpose().format(CSVFormat)
                    << "," << hopper->state_.wheel_vel.transpose().format(CSVFormat)
-                   << "," << desired_command.col(0).transpose().format(CSVFormat)
-                   << "," << graph_sol.transpose().format(CSVFormat)
-                   << "," << sol.transpose().format(CSVFormat);
-        for (auto o : O.obstacles)
-        {
-          fileHandle << "," << o.v.col(0).transpose().format(CSVFormat);
-          fileHandle << "," << o.v.col(1).transpose().format(CSVFormat);
-        }
+                   << "," << estimated_state.cam_x << ", " << estimated_state.cam_y << ", " << estimated_state.cam_z
+                   << "," << estimated_state.x_dot << ", " << estimated_state.y_dot << ", " << estimated_state.z_dot
+                   << "," << filt_vel.transpose().format(CSVFormat)
+                   << "," << estimated_state.q_x << "," << estimated_state.q_y << "," << estimated_state.q_z << "," <<  estimated_state.q_w
+                   << "," << estimated_state.omega_x << ", " << estimated_state.omega_y << ", " << estimated_state.omega_z
+                   << "," << global_vel(0) << "," << global_vel(1) << "," << global_vel(2)
+                   << "," << optitrackState->x << "," << optitrackState->y << "," << optitrackState->z
+                   << "," << optitrackState->x_dot << "," << optitrackState->y_dot << "," << optitrackState->z_dot
+                   << "," << optitrackState->q_x << "," << optitrackState->q_y << "," << optitrackState->q_z << "," << optitrackState->q_w
+                   << "," << vn_yaw
+		   << "," << desired_command.col(0).transpose().format(CSVFormat);
         fileHandle << std::endl;
       }
     }

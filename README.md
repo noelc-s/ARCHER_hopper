@@ -7,7 +7,7 @@ This is a (minimally documented) repository for the ICRA 2023 submission: "Nonli
 * OSQP
 * OSQP-Eigen
 * glfw3
-* Pinocchio (3-preview branch)
+* Pinocchio
 * ROS
 * Mujoco
 

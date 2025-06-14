@@ -24,11 +24,15 @@ namespace Archer
     _rb0 = 0.0;
   }
 
+  void Bia::setRB0(float val) {
+    _rb0 = val;
+  }
+
   void Bia::exitProgram() {
     releaseMotor();
     rt = elmo_.motorOff(IDX_BIA);
     setLEDs("1000");
-    while(1) {};
+    while(1) {delay(100);};
   }
 
   void Bia::releaseMotor(){
@@ -101,25 +105,6 @@ namespace Archer
       flashR(10); }
     initSD();
     delay(10);
-  }
-
-  void Bia::initBia2(){
-    delay(250);
-    STO(1);
-    waitSigK(1);
-    delay(250);
-    elmo_.motorOn(IDX_BIA);
-    delay(5000);
-    resetState(1);
-    resetState(2);
-    findZero();
-    setLEDs("0100");
-    waitSigK(0);
-    reverseSig(1);
-    setSigK(0);
-    delay(5000);
-    flashG(2);
-    delay(5000);
   }
 
   void Bia::setLEDs(String val){
@@ -253,9 +238,13 @@ namespace Archer
     if(encID==1){
       _nextTb = tmp;
       _nextCb = -tcnt;      // This was inverted
-      
-      _x = (_nextCb*2*M_PI)/_resB;
-      pX = (_prevCb*2*M_PI)/_resB;
+
+      _filtCb = filter_alpha * _filtCb + (1-filter_alpha) * (_nextCb*2*M_PI)/_resB;
+
+      _x = _filtCb;
+      pX = _prevFiltCb;
+      // _x = (_nextCb*2*M_PI)/_resB;
+      // pX = (_prevCb*2*M_PI)/_resB;
       dt = (_nextTb-_prevTb)/1000000.0;
       _v = (_x-pX)/dt;
 
@@ -263,14 +252,19 @@ namespace Archer
       v = _v;
 
       _prevTb = _nextTb;
-      _prevCb = _nextCb;
+      _prevFiltCb = _filtCb;
+      // _prevCb = _nextCb;
     }
     if(encID==2){
       _nextTf = tmp;
       _nextCf = tcnt;
-      
-      _xF = _nextCf/_resF;
-      pX  = _prevCf/_resF;
+
+      _filtCf = filter_alpha * _filtCf + (1-filter_alpha) * _nextCf/_resF;
+
+      _xF = _filtCf;
+      pX = _prevFiltCf;
+      // _xF = _nextCf/_resF;
+      // pX  = _prevCf/_resF;
       dt  = (_nextTf-_prevTf)/1000000.0;
       _vF = (_xF-pX)/dt;
 
@@ -278,61 +272,19 @@ namespace Archer
       v = _vF;
 
       _prevTf = _nextTf;
-      _prevCf = _nextCf;
+      _prevFiltCf = _filtCf;
+      // _prevCf = _nextCf;
     }
   }
 
-  int32_t Bia::sendSafeTorque(float xb, float u) {
-    if (xb > theta_max || xb < theta_min) {
-      Serial.print("xb was too large: ");
-      Serial.print(xb);
+  int32_t Bia::sendSafeTorque(float theta, float u) {
+    if (theta - _rb0 > theta_max || theta - _rb0 < theta_min) {
+      Serial.print("theta was too large: theta ");
+      Serial.print(theta); Serial.print(" theta_0: "); Serial.print(_rb0);
       Serial.println(". Exiting");
       exitProgram();
     } 
     return elmo_.sendTC(u,IDX_BIA);
-  }
-
-  void Bia::findZero(){
-    // Serial.println("Finding Zero");
-    float xb,vb,xf,vf;
-    float th1 = 0.02;
-    float th2 = 0.01;
-    float u   = 0.0;
-    int i = 0;
-    // Serial.println("Pulling in");
-    while(i<1){
-      u = u - 0.001;
-      // Serial.print("U: ");
-      // Serial.println(u);
-      if (abs(u) > 10) {
-        // Serial.println("Error. Required too much torque in initialization. Exiting.");
-        exitProgram();
-      }
-      updateState(1,xb,vb);
-      updateState(2,xf,vf);
-      sendSafeTorque(xb, u);
-      if(xf>th1){
-        i = 1;
-        cBia_.logZero(xb,1);
-      }
-    }
-    // Serial.println("Deflection Registered.");
-    // Serial.println("Releasing");
-    while(i<2){
-      u = u + 0.001;
-      if (u > 6) {
-        // Serial.println("Error. Torque went above 1. Exiting.");
-        exitProgram();
-      }
-      updateState(1,xb,vb);
-      updateState(2,xf,vf);
-      sendSafeTorque(xb, u);
-      if(xf<th2){
-        i = 2;
-        cBia_.logZero(xb,2);
-      }
-    }
-    // Serial.println("Done.");
   }
 
   void Bia::trackPID0(float d0,float &x,float &u0){
